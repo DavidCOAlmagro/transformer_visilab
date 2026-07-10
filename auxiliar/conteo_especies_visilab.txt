@@ -1,0 +1,105 @@
+Achnanthidium rivulare: 305
+Nitzschia inconspicua: 280
+Achnanthidium minutissimum: 248
+Cymbella excisa var excisa: 241
+Nitzschia frustulum var frustulum: 226
+Achnanthidium catenatum: 187
+Cymbella parva: 177
+Denticula tenuis: 176
+Eolimna minima: 174
+Gomphonema minusculum: 158
+Skeletonema potamos: 155
+Encyonema reichardtii: 152
+Melosira varians: 146
+Cymbella excisiformis var excisiformis: 142
+Navicula cryptotenella: 136
+Diatoma moniliformis: 134
+Luticola goeppertiana: 133
+Eolimna rhombelliptica: 132
+Achnanthidium atomoides: 129
+Gomphonema pumilum var elegans: 128
+Achnanthidium jackii: 125
+Nitzschia amphibia: 124
+Achnanthes subhudsonis: 123
+Nitzschia capitellata: 123
+Encyonema minutum: 120
+Amphora pediculus: 117
+Cocconeis placentula var euglypta: 117
+Gomphonema micropus: 117
+Diatoma mesodon: 115
+Aulacoseira subarctica: 113
+Planothidium frequentissimum: 111
+Encyonema silesiacum: 108
+Pseudostaurosira subsalina: 108
+Navicula cryptotenelloides: 107
+Encyonopsis alpina: 106
+Nitzschia soratensis: 106
+Planothidium lanceolatum: 106
+Humidophila contenta: 105
+Cyclotella meneghiniana: 103
+Encyonema ventricosum: 101
+Debris: 100
+Achnanthidium pyrenaicum: 99
+Cyclotella atomus: 99
+Navicula tripunctata: 99
+Achnanthidium exile: 98
+Aulacoseira granulata: 98
+Achnanthidium eutrophilum: 97
+Eolimna subminuscula: 94
+Nitzschia paleacea: 94
+Rhoicosphenia abbreviata: 94
+Staurosira binodis: 94
+Achnanthidium druartii: 93
+Epithemia turgida: 93
+Fragilaria arcus: 93
+Gomphonema minutum: 93
+Puncticulata radiosa: 92
+Reimeria sinuata: 92
+Nitzschia umbonata: 91
+Encyonopsis minuta: 89
+Fragilaria perminuta: 89
+Gomphonema insigniforme: 89
+Gomphonema micropumilum: 89
+Diatoma vulgaris: 88
+Fragments: 88
+Staurosira venter: 87
+Craticula accomoda: 86
+Gomphonema angustatum: 86
+Nitzschia dissipata var dissipata: 86
+Pseudostaurosira elliptica: 86
+Cyclostephanos dubius: 85
+Epithemia sorex: 85
+Karayevia clevei var clevei: 84
+Discostella pseudostelligera: 82
+Nitzschia palea var palea: 82
+Cocconeis lineata: 81
+Nitzschia dissipata var media: 81
+Cymbella excisa var angusta: 79
+Fragilaria vaucheriae: 77
+Navicula lanceolata: 77
+Staurosirella pinnata: 77
+Navicula notha: 76
+Nitzschia fossilis: 76
+Stephanodiscus neoastraea: 75
+Fragilaria pararumpens: 74
+Stephanodiscus hantzschii: 74
+Epithemia adnata: 72
+Nitzschia costei: 72
+Nitzschia desertorum: 71
+Thalassiosira pseudonana: 70
+Nitzschia fonticola: 69
+Nitzschia tropica: 65
+Gomphonema rhombicum: 64
+Tabellaria flocculosa: 60
+Achnanthidium caravelense: 59
+Gomphonema angustivalva: 55
+Fragilaria gracilis: 54
+Gomphonema parvulum f saprophilum: 52
+Navicula gregaria: 50
+Cocconeis pediculus: 49
+Fragilaria rumpens: 49
+Navicula capitatoradiata: 46
+Mayamaea permitis: 40
+Achnanthidium rostropyrenaicum: 28
+Fistulifera saprophila: 21
+Cocconeis euglypta: 14
