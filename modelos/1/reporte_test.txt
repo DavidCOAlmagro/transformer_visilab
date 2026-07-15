@@ -1,16 +1,16 @@
                                    precision    recall  f1-score   support
 
-       Achnanthidium_minutissimum       0.84      0.97      0.90        37
-           Achnanthidium_rivulare       0.61      0.84      0.71        85
-   Achnanthidium_rostropyrenaicum       0.50      0.25      0.33         4
-                 Achnanthidium_sp       0.90      0.81      0.85       267
-Cocconeis_placentula_var_euglypta       1.00      0.94      0.97        17
-           Fistulifera_saprophila       0.88      0.90      0.89        41
-               Gomphonema_pumilum       0.86      0.86      0.86        29
-                 Navicula_caterva       0.86      1.00      0.92        12
-            Nitzschia_inconspicua       0.81      0.88      0.85       239
-                     Nitzschia_sp       0.92      0.84      0.88       385
+       Achnanthidium_minutissimum       0.90      0.95      0.92        37
+         Achnanthidium_pyrenaicum       0.90      0.78      0.83       251
+           Achnanthidium_rivulare       0.61      0.89      0.73        85
+                 Achnanthidium_sp       0.83      0.81      0.82       267
+Cocconeis_placentula_var_euglypta       0.94      1.00      0.97        17
+           Fistulifera_saprophila       0.87      0.82      0.85        40
+               Gomphonema_pumilum       0.67      0.97      0.79        29
+                 Navicula_caterva       0.65      0.92      0.76        12
+            Nitzschia_inconspicua       0.88      0.84      0.86       239
+                     Nitzschia_sp       0.87      0.86      0.87       385
 
-                         accuracy                           0.85      1116
-                        macro avg       0.82      0.83      0.82      1116
-                     weighted avg       0.86      0.85      0.85      1116
+                         accuracy                           0.84      1362
+                        macro avg       0.81      0.88      0.84      1362
+                     weighted avg       0.85      0.84      0.84      1362

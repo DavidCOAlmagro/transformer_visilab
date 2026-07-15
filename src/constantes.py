@@ -41,7 +41,6 @@ VARIABLES_GLOBALES: dict[str, object] = {
         "Gomphonema_pumilum"
     },
     "ESPECIES_MINORITARIAS": {
-        "Achnanthidium_pyrenaicum",
         "Navicula_caterva",
         "Cocconeis_placentula_var_euglypta",
         "Gomphonema_pumilum"

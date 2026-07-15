@@ -22,14 +22,14 @@ def crear_dataloaders(
     # WeightedRandomSampler permite muestrear de manera ponderada, 
     # para que las clases minoritarias tengan más probabilidad de ser seleccionadas 
     # en cada batch. Esto ayuda a compensar el desbalance de clases en el conjunto de entrenamiento.
-    
+
     pesos_muestras = calcular_pesos_muestras(et_train)
     sampler_train = WeightedRandomSampler(
     weights=pesos_muestras,
     num_samples=len(pesos_muestras),
     replacement=True 
     )
-                                         
+       
     dataloader_train = DataLoader(dataset_train,
                                   batch_size=VARIABLES_GLOBALES["BATCH_SIZE"],
                                   sampler=sampler_train,

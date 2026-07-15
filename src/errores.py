@@ -9,7 +9,8 @@ diatomeas donde se asumió una única especie).
 """
 
 from pathlib import Path
-import torch
+import torch 
+
 from constantes import VARIABLES_GLOBALES
 from clasificador import ClasificadorDiatomeas
 from preparar_datos import get_datos, codificacion
