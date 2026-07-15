@@ -24,17 +24,30 @@ class ClasificadorDiatomeas(nn.Module):
     """
 
     def __init__(self, num_clases: int):
+        """
+        En un inicio usé una sola capa lineal (fully connected) que transformaba el embedding
+        en logits de clase. Pero el modelo no era suficientemente potente para aprender a clasificar bien, así que añadí
+        capas intermedias con activaciones ReLU y Dropout para regularizar y evitar overfitting.
+        """
         super().__init__()
         # Crea y registra los pesos y sesgos de la capa lineal (fully connected)
         # que transforma el embedding en logits de clase. [2.1, -0.5, 3.7, 0.2, -1.3]
         # También crea los sesgos (bias) que se suman a los logits. [0.1, -0.2, 0.3, 0.4, -0.5]
-        self.clasificador = nn.Linear(
-            VARIABLES_GLOBALES["DIM_EMBEDDING"],
-            num_clases
-        )
-        # Xavier controla los pesos iniciales para que no dependa de pytorch
-        nn.init.xavier_uniform_(self.clasificador.weight)
-        nn.init.zeros_(self.clasificador.bias)
+        self.clasificador = nn.Sequential(
+            nn.Linear(VARIABLES_GLOBALES["DIM_EMBEDDING"], 512),
+            nn.ReLU(), # Función de activación ReLU (Rectified Linear Unit) que introduce no linealidad.
+            nn.Dropout(0.3), # Desactiva aleatoriamente un porcentaje de neuronas durante el entrenamiento.
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(256, num_clases)
+)
+        # Recorremos todas las capas y solo inicializamos las lineales
+        # (ReLU y Dropout no tienen pesos que inicializar)
+        for capa in self.clasificador:
+            if isinstance(capa, nn.Linear):
+                nn.init.xavier_uniform_(capa.weight)
+                nn.init.zeros_(capa.bias)
 
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

@@ -11,14 +11,13 @@ from pathlib import Path
 import torch
 from torch import nn
 from constantes import VARIABLES_GLOBALES
-from preparar_datos import get_datos, codificacion
-from generar_leer_splits import leer_split
+from preparar_datos import get_datos, codificacion, contar_clases_train
+from generar_leer_splits import leer_split, generar_split
 from embeddings import inicializar_dinov2, calcular_embeddings
 from clasificador import ClasificadorDiatomeas
-from dataloader import crear_dataloaders
+from dataloader import crear_dataloaders,calcular_pesos_clases
 from entrenamiento import entrenar_modelo
 from evaluar_test_metricas import main as evaluar_test, graficar_curvas_entrenamiento
-from generar_leer_splits import generar_split
 
 def limpiar_pantalla() -> None:
     """Limpia la consola de forma compatible con Windows y Unix."""
@@ -59,7 +58,7 @@ def main() -> None:
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(SEMILLA)
 
-    ruta_mejor_modelo = VARIABLES_GLOBALES["RUTA_MODELOS"] / "mejor_modelo.pth"
+    ruta_mejor_modelo = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
 
     # Si ya existe un modelo entrenado, preguntamos si se quiere reentrenar
     # o usar directamente el que ya está guardado en disco
@@ -71,10 +70,24 @@ def main() -> None:
         entrenar_de_nuevo = respuesta == "s"
 
     if entrenar_de_nuevo:
-        print("Generando splits de train/val/test...")
-        generar_split()
-        print("Preparando embeddings y splits...")
-        preparar_embeddings_splits()
+        print("Quieres regenerar splits de train/val/test? (s/n): ")
+        resp_split = input().strip().lower()
+
+        if resp_split == "s":
+            print("Regenerando splits...")
+            generar_split()
+        else:
+            print("Usando splits ya existentes.")
+        
+        print("¿Quieres recalcular embeddings? (s/n): ")
+        resp_emb = input().strip().lower()
+
+        if resp_emb == "s":
+            print("Recalculando embeddings...")
+            preparar_embeddings_splits()
+        else:
+            print("Usando embeddings ya existentes.")
+
         print("Cargando datos...")
         datos_train = get_datos("train")
         datos_val = get_datos("val")
@@ -83,7 +96,7 @@ def main() -> None:
         print("Renumerando etiquetas...")
         emb_train, et_train, _ = codificacion(datos_train)
         emb_val, et_val, _ = codificacion(datos_val)
-
+        contar_clases_train()
         num_clases = len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
         print("Creando modelo...")
         modelo = ClasificadorDiatomeas(num_clases).to(
@@ -91,10 +104,10 @@ def main() -> None:
 
         # El optimizador es el encargado de actualizar los pesos de la red neuronal para que aprenda
         # modelo.parameters() devuelve los pesos y sesgos de la red neuronal entrenables.
-        # Learning rate 0.001 es un valor pequeño para no oscilar demasiado.
+        # Learning rate 0.0003 es un valor pequeño para no oscilar demasiado.
         # AdamW con weight decay 0.0001 ayuda a regularizar el modelo y evitar overfitting.
         optimizador = torch.optim.AdamW(
-            modelo.parameters(), lr=0.001, weight_decay=0.0001)
+            modelo.parameters(), lr=0.0003, weight_decay=0.0001)
 
         num_epocas_total = VARIABLES_GLOBALES["num_epocas"]
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizador, lr_lambda)
@@ -103,20 +116,21 @@ def main() -> None:
         dataloader_train, dataloader_val = crear_dataloaders(
             emb_train, et_train, emb_val, et_val)
 
+        pesos_clase = calcular_pesos_clases(et_train)
         # Función que devuelve la puntuación(logits) de cada clase para cada imagen.
-        func_loss = nn.CrossEntropyLoss(label_smoothing=0.1)
+        func_loss = nn.CrossEntropyLoss(label_smoothing=0.05, weight=pesos_clase.to(VARIABLES_GLOBALES["DEVICE"]))
         print("Iniciando entrenamiento...")
 
-        historial_perdida_train, historial_perdida_val, historial_precision_val = entrenar_modelo(
+        historial_perdida_train, historial_perdida_val, historial_precision_val, historial_macro_f1_val = entrenar_modelo(
             modelo, dataloader_train, dataloader_val, func_loss, optimizador, scheduler,
-            ruta_mejor_modelo, num_epocas_total, paciencia=5)
+            ruta_mejor_modelo, num_epocas_total, paciencia=VARIABLES_GLOBALES["PACIENCIA"])
 
         # Graficamos la evolución de pérdida y precisión de todas las épocas entrenadas
         ruta_curvas = VARIABLES_GLOBALES["RUTA_MODELOS"] / \
             "curvas_entrenamiento.png"
         graficar_curvas_entrenamiento(
             historial_perdida_train, historial_perdida_val,
-            historial_precision_val, ruta_curvas)
+            historial_precision_val, historial_macro_f1_val, ruta_curvas)
     else:
         print("Usando el modelo ya entrenado, sin reentrenar.")
 
@@ -151,7 +165,7 @@ def preparar_embeddings_splits() -> None:
             todos_existen = False
 
     regenerar_todo = False
-    
+
     if todos_existen:
         respuesta = input(
             "Ya existen embeddings de train, val y test.\n"

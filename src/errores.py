@@ -46,7 +46,7 @@ def cargar_modelo() -> ClasificadorDiatomeas:
     num_clases = len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     modelo = ClasificadorDiatomeas(num_clases).to(VARIABLES_GLOBALES["DEVICE"])
 
-    ruta_pesos = VARIABLES_GLOBALES["RUTA_MODELOS"] / "mejor_modelo.pth"
+    ruta_pesos = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
     pesos = torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"])
     modelo.load_state_dict(pesos)
     modelo.eval()
@@ -57,7 +57,7 @@ def cargar_modelo() -> ClasificadorDiatomeas:
 @torch.no_grad()
 def predecir(modelo: ClasificadorDiatomeas, embeddings: torch.Tensor) -> list[int]:
     """Pasa todos los embeddings por el modelo y devuelve el índice predicho de cada uno."""
-    embeddings = embeddings.to(modelo.clasificador.weight.device)
+    embeddings = embeddings.to(next(modelo.parameters()).device)
     salidas = modelo(embeddings)
     _, indices_predichos = torch.max(salidas, 1)
     return indices_predichos.cpu().tolist()

@@ -30,7 +30,8 @@ def obtener_predicciones(
     y_pred: list[int] = []
 
     for batch_embeddings, batch_etiquetas in tqdm(dataloader, desc="Evaluando test"):
-        batch_embeddings = batch_embeddings.to(modelo.clasificador.weight.device)
+        batch_embeddings = batch_embeddings.to(next(modelo.parameters()).device)
+
 
         # Para cada embedding, el modelo devuelve un vector con las probabilidades/logits.
         salida: torch.Tensor = modelo(batch_embeddings)
@@ -105,7 +106,7 @@ def main() -> None:                              # <-- aquí está
     modelo = ClasificadorDiatomeas(num_clases).to(VARIABLES_GLOBALES["DEVICE"])
 
     # Carga los pesos del mejor modelo entrenado
-    ruta_pesos = VARIABLES_GLOBALES["RUTA_MODELOS"] / "mejor_modelo.pth"
+    ruta_pesos = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
     pesos = torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"])
     # Carga los pesos en el modelo
     modelo.load_state_dict(pesos)
@@ -117,7 +118,7 @@ def main() -> None:                              # <-- aquí está
     nombres_clases = sorted(numero_especie, key=numero_especie.get)
 
 
-    ruta_matriz = VARIABLES_GLOBALES["RUTA_MODELOS"] / \
+    ruta_matriz = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / \
         "matriz_confusion_test.png"
     matriz_confusion(y_true, y_pred, nombres_clases, ruta_matriz)
 
@@ -125,13 +126,13 @@ def main() -> None:                              # <-- aquí está
     print("\nReporte de clasificación (test):\n")
     print(reporte)
 
-    ruta_reporte = VARIABLES_GLOBALES["RUTA_MODELOS"] / "reporte_test.txt"
+    ruta_reporte = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / "reporte_test.txt"
     with open(ruta_reporte, "w", encoding="utf-8") as archivo:
         archivo.write(reporte)
     print(f"Reporte guardado en: {ruta_reporte}")
 
 def graficar_curvas_entrenamiento( perdida_train: list[float], perdida_val: list[float],
-        precision_val: list[float], ruta_guardado: Path) -> None:
+        precision_val: list[float], macro_f1_val: list[float], ruta_guardado: Path) -> None:
     """
     Dibuja dos gráficas una al lado de la otra: la evolución de la pérdida
     (train vs val) y la evolución de la precisión de validación, por época.
@@ -157,6 +158,12 @@ def graficar_curvas_entrenamiento( perdida_train: list[float], perdida_val: list
     eje_precision.set_xlabel("Época")
     eje_precision.set_ylabel("Precisión")
     eje_precision.legend()
+
+    # Gráfica de la derecha: macro F1 de validación
+    eje_macro_f1 = eje_precision.twinx()
+    eje_macro_f1.plot(epocas, macro_f1_val, label="Macro F1", color="blue")
+    eje_macro_f1.set_ylabel("Macro F1")
+    eje_macro_f1.legend(loc="upper right")
 
     plt.tight_layout()
 

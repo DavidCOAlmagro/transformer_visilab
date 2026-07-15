@@ -32,11 +32,22 @@ VARIABLES_GLOBALES: dict[str, object] = {
         "Achnanthidium_minutissimum",
         "Nitzschia_inconspicua",
         "Cocconeis_placentula_var_euglypta",
-        "Achnanthidium_rostropyrenaicum"
+        "Achnanthidium_pyrenaicum",
         "Fistulifera_saprophila",
+        "Achnanthidium_sp",
+        "Nitzschia_sp",
+        "Navicula_caterva",
+        "Achnanthidium_rivulare",
+        "Gomphonema_pumilum"
     },
     "ESPECIES_MINORITARIAS": {
-        "Achnanthidium_pyrenaicum"
+        "Achnanthidium_pyrenaicum",
+        "Navicula_caterva",
+        "Cocconeis_placentula_var_euglypta",
+        "Gomphonema_pumilum"
+    },
+    "ESPECIES_MUY_MINORITARIAS": {
+        
     },
 
     # -------------------------
@@ -44,11 +55,17 @@ VARIABLES_GLOBALES: dict[str, object] = {
     # -------------------------
     "BATCH_SIZE": 32,
     "DIM_EMBEDDING": 768,
-    "num_epocas": 20,
+    "num_epocas": 40,
     "NUM_WORKERS": 4,
     "PIN_MEMORY": True,
     "PERSISTENT_WORKERS": True,
     "EPOCAS_WARMUP": 3,
+    "PACIENCIA": 5,
+    # -------------------------
+    # Numero de pruebas
+    # -------------------------
+    "PRUEBA" : "1",
+
     # -------------------------
     # Device
     # -------------------------

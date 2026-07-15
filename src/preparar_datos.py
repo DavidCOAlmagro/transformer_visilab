@@ -55,12 +55,11 @@ def rutas_imagenes() -> list[tuple[str, str]]:
     Las funciones usadas en este metodo son de pathlib.Path
     """
     imagenes: list[tuple[str, str]] = []
-    grupos = ["Common_Species","Unique_Species","Seleccion_5_especies_por_especie"]
+    grupos = ["Common_Species","Unique_Species","Seleccion_5_especies_por_especie","UDE_Diatoms_84k_normalizadas_reinhard"]
 
     for grupo in grupos:
         ruta_grupo = VARIABLES_GLOBALES["RUTA_BASE"] / "imagenes_visilab(raw)" /grupo
         print(f"Recorriendo {ruta_grupo}...")
-        print(ruta_grupo.exists())
         if ruta_grupo.exists():
 
             especies = [ruta for ruta in ruta_grupo.iterdir() if ruta.is_dir()
@@ -74,3 +73,19 @@ def rutas_imagenes() -> list[tuple[str, str]]:
                         imagenes.append((archivo, especie.name))
 
     return imagenes
+def contar_clases_train() -> None:
+    """
+    Cuenta cuántas imágenes de train hay por cada especie de
+    ESPECIES_FILTRADAS, para detectar si alguna se ha quedado
+    con 0 muestras (lo que provocaría nan en la loss por división
+    entre cero al calcular los pesos de clase).
+    """
+    datos_train = get_datos("train")
+    _, et_train, numero_especie = codificacion(datos_train)
+
+    especie_numero = {numero: especie for especie, numero in numero_especie.items()}
+    conteo = torch.bincount(et_train, minlength=len(numero_especie))
+
+    for numero, cantidad in enumerate(conteo):
+        especie = especie_numero[numero]
+        print(f"{especie:40s} {cantidad.item()} imágenes en train")

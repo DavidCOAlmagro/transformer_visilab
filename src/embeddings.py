@@ -30,6 +30,7 @@ def inicializar_dinov2() -> tuple[AutoImageProcessor, AutoModel, torch.device, t
     model.to(device)
     model.eval()
     model.requires_grad_(False)
+    
     augmentation: transforms.Compose = crear_augmentation()
 
     return processor, model, device, augmentation
@@ -45,16 +46,16 @@ def crear_augmentation() -> transforms.Compose:
         transforms.RandomHorizontalFlip(p=0.5),
         transforms.RandomVerticalFlip(p=0.5),
         transforms.RandomRotation(360),
-        # Rotación aleatoria de hasta 15 grados, escalado y traslación
+        # Rotación pequeña de hasta 5 grados, escalado y traslación
         transforms.RandomAffine(
             degrees=0,
-            translate=(0.05, 0.05),
-            scale=(0.95, 1.05)
+            translate=(0.02, 0.02),
+            scale=(0.97, 1.03)
         ),
         # Ajuste aleatorio de brillo y contraste
         transforms.ColorJitter(
-            brightness=0.15,
-            contrast=0.15
+            brightness=0.08,
+            contrast=0.08
         ),
         # Aplicación de un desenfoque gaussiano aleatorio
         transforms.GaussianBlur(
@@ -120,10 +121,15 @@ def calcular_embeddings(imagenes: list[tuple[Path, str]], processor: AutoImagePr
     lista_etiquetas: list[str] = []
 
     for ruta, especie in tqdm(imagenes, desc="Calculando embeddings"):
-        embedding: torch.Tensor = get_embedding(ruta, processor, model, device,
-                                                augmentation, is_train=False)
-
-        lista_embeddings.append(embedding.cpu())  # el .cpu
+        try:
+            embedding: torch.Tensor = get_embedding(
+                ruta, processor, model, device,
+                augmentation, is_train=False
+            )
+        except FileNotFoundError:
+            print(f"Imagen no encontrada, se omite: {ruta}")
+            continue
+        lista_embeddings.append(embedding.cpu())
         lista_etiquetas.append(especie)
         # Si es train, añadimos ADEMÁS una versión aumentada de la misma imagen
         if is_train:
@@ -131,14 +137,28 @@ def calcular_embeddings(imagenes: list[tuple[Path, str]], processor: AutoImagePr
                 ruta, processor, model, device, augmentation, is_train=True)
             lista_embeddings.append(embedding_aumentado.cpu())
             lista_etiquetas.append(especie)
-         # Augmentation extra solo para clases raras
-        if especie in VARIABLES_GLOBALES["ESPECIES_MINORITARIAS"]:
-            for _ in range(3):  # aplica 3 augmentations adicionales
-                embedding_extra = get_embedding(
-                    ruta, processor, model, device, augmentation, is_train=True
-                )
-                lista_embeddings.append(embedding_extra.cpu())
-                lista_etiquetas.append(especie)
+            # Augmentation extra solo para clases raras
+            if especie in VARIABLES_GLOBALES["ESPECIES_MINORITARIAS"]:
+                for _ in range(3):
+                    embedding_extra = get_embedding(
+                        ruta, processor, model, device,
+                        augmentation, is_train=True
+                    )
+                    lista_embeddings.append(embedding_extra.cpu())
+                    lista_etiquetas.append(especie)
+                    
+            # Augmentation aun mas extra solo para clases muy raras
+            if especie in VARIABLES_GLOBALES["ESPECIES_MUY_MINORITARIAS"]:
+                for _ in range(5):
+                    embedding_extra = get_embedding(
+                        ruta, processor, model, device,
+                        augmentation, is_train=True
+                    )
+                    lista_embeddings.append(embedding_extra.cpu())
+                    lista_etiquetas.append(especie)
+        
+
+
     # Apilamos todos los embeddings individuales [1, 768] en uno solo [N, 768]
     embeddings_finales: torch.Tensor = torch.cat(lista_embeddings, dim=0)
 
