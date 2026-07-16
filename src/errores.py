@@ -9,7 +9,7 @@ diatomeas donde se asumió una única especie).
 """
 
 from pathlib import Path
-import torch 
+import torch
 
 from constantes import VARIABLES_GLOBALES
 from clasificador import ClasificadorDiatomeas
@@ -47,7 +47,7 @@ def cargar_modelo() -> ClasificadorDiatomeas:
     num_clases = len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     modelo = ClasificadorDiatomeas(num_clases).to(VARIABLES_GLOBALES["DEVICE"])
 
-    ruta_pesos = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
+    ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
     pesos = torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"])
     modelo.load_state_dict(pesos)
     modelo.eval()

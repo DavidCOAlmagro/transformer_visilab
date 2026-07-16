@@ -73,15 +73,13 @@ def rutas_imagenes() -> list[tuple[str, str]]:
                         imagenes.append((archivo, especie.name))
 
     return imagenes
-def contar_clases_train() -> None:
+def contar_clases_train(et_train: torch.Tensor, numero_especie: dict[str, int]) -> None:
     """
     Cuenta cuántas imágenes de train hay por cada especie de
     ESPECIES_FILTRADAS, para detectar si alguna se ha quedado
     con 0 muestras (lo que provocaría nan en la loss por división
     entre cero al calcular los pesos de clase).
     """
-    datos_train = get_datos("train")
-    _, et_train, numero_especie = codificacion(datos_train)
 
     especie_numero = {numero: especie for especie, numero in numero_especie.items()}
     conteo = torch.bincount(et_train, minlength=len(numero_especie))

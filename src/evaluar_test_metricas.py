@@ -106,7 +106,7 @@ def main() -> None:                              # <-- aquí está
     modelo = ClasificadorDiatomeas(num_clases).to(VARIABLES_GLOBALES["DEVICE"])
 
     # Carga los pesos del mejor modelo entrenado
-    ruta_pesos = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
+    ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
     pesos = torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"])
     # Carga los pesos en el modelo
     modelo.load_state_dict(pesos)
@@ -126,7 +126,7 @@ def main() -> None:                              # <-- aquí está
     print("\nReporte de clasificación (test):\n")
     print(reporte)
 
-    ruta_reporte = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / "reporte_test.txt"
+    ruta_reporte=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"]/"reporte_test.txt"
     with open(ruta_reporte, "w", encoding="utf-8") as archivo:
         archivo.write(reporte)
     print(f"Reporte guardado en: {ruta_reporte}")

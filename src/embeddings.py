@@ -6,6 +6,12 @@ Este script recorre las carpetas de imágenes del proyecto, procesa cada
 archivo con el AutoImageProcessor y obtiene un embedding de 768 valores
 usando DINOv2. Los embeddings y sus etiquetas se devuelven listos para
 guardarse y usarse para clasificación.
+
+He utilizado embeddings ya que es mucho más barato computacionalmente que entrenar un modelo 
+desde cero, o hacer fine tuning de DINOv2, pasar imagenes por un modelo tan grande es carisimo
+y no aprende ya que tiene pesos fijos por lo que habria que hacerse constantemente. Por eso
+uso: Transfer Learning + Feature extraction(extraccion embeddings) + 
+entrenamiento de un clasificador supervisado (MLP) sobre esos embeddings congelados.
 --------------------------------------
 """
 from pathlib import Path
@@ -30,17 +36,15 @@ def inicializar_dinov2() -> tuple[AutoImageProcessor, AutoModel, torch.device, t
     model.to(device)
     model.eval()
     model.requires_grad_(False)
-    
+
     augmentation: transforms.Compose = crear_augmentation()
 
     return processor, model, device, augmentation
 
-# Decorador @torch.no_grad() indica que no se calcularán gradientes, si no colapsa la gpu
 
 def crear_augmentation() -> transforms.Compose:
     """
-    Crea la secuencia de transformaciones de data augmentation aplicadas
-    a las imágenes de entrenamiento (flip horizontal, vertical y rotación).
+    Crea la augmentation del tipo giro horizontal, vertical, rotación,blur y color.
     """
     return transforms.Compose([
         transforms.RandomHorizontalFlip(p=0.5),
@@ -65,15 +69,15 @@ def crear_augmentation() -> transforms.Compose:
     ])
 
 # Decorador @torch.inference_mode() indica que no se calcularán gradientes, es mas rapido
-# que @torch.no_grad() y es el recomendado para inferencia
+# que @torch.no_grad()
 @torch.inference_mode()
 def get_embedding(ruta_imagen: str, processor: AutoImageProcessor, model: AutoModel,
                   device: torch.device, augmentation: transforms.Compose,
                   is_train: bool) -> torch.Tensor:
     """
-    Obtiene el embedding [0.23, -1.4, 0.87, 0.01, ..., 0.55] = 768 números per imagen.
-    El resultado inputs es un diccionario con este aspecto:
-            "pixel_values": tensor [1, 3, 224, 224] 1 imagen, 3 canales, 224x224 píxeles
+    Dada la ruta de una imagen, devuelve su embedding de 768 valores
+    calculado por DINOv2. Aplica augmentation si is_train=True.
+    "pixel_values": tensor [1, 3, 224, 224] 1 imagen, 3 canales, 224x224 píxeles
     """
 
     imagen: Image = Image.open(ruta_imagen).convert("RGB")
@@ -81,18 +85,20 @@ def get_embedding(ruta_imagen: str, processor: AutoImageProcessor, model: AutoMo
         imagen = augmentation(imagen)
 
     # El procesador: Redimensiona(224x224), Normaliza([-1, 1]) y convierte a tensor.
-    inputs: dict[str, torch.Tensor] = processor(
-        images=imagen, return_tensors="pt")
+    inputs: dict[str, torch.Tensor] = processor(images=imagen, return_tensors="pt")
 
     # Se mueven los tensores al mismo dispositivo que el modelo (CPU o GPU)
-    inputs = {k: v.to(device) for k, v in inputs.items()}
+    for i in inputs:
+        inputs[i] = inputs[i].to(device)
 
     # Se pasa la imagen por dinov2 y se obtienen los nuevos tensores
-    outputs: dict[str, torch.Tensor] = model(
-        pixel_values=inputs["pixel_values"])
-   # Usamos pooler_output: el token CLS, recomendado para clasificación
+    outputs: dict[str, torch.Tensor] = model(pixel_values=inputs["pixel_values"])
+    
+    # Usamos pooler_output: el token CLS, recomendado para clasificación
+    
     embedding = outputs.pooler_output  # forma: [1, 768]
     del outputs, inputs, imagen  # Liberamos memoria de GPU
+    
     # Asegura float32 para compatibilidad con el clasificador, que espera float32
     embedding = embedding.float()
     # Normaliza el embedding para que tenga norma 1, lo que ayuda a la estabilidad del entrenamiento
@@ -109,18 +115,13 @@ def calcular_embeddings(imagenes: list[tuple[Path, str]], processor: AutoImagePr
     """
     Calcula el embedding de cada imagen de la lista y los guarda todos juntos
     con sus etiquetas correspondientes.
-
-    .cpu() copia el tensor desde la memoria de la GPU a la memoria RAM normal del ordenador.
-    Una vez hecha la copia, el tensor original en GPU ya no tiene ninguna referencia activa,
-    así que Python y PyTorch lo pueden liberar la GPU solo tiene que cargar una imagen a la vez,
-    calcular su embedding y enviarlo a la RAM.
-    Nunca acumula más de un embedding en la GPU simultáneamente, que le hace sobrecargar y fallar.
     """
     # En vez de tuplas, usamos dos listas ya que torch.cat requiere una lista de tensores solamente
     lista_embeddings: list[torch.Tensor] = []
     lista_etiquetas: list[str] = []
 
     for ruta, especie in tqdm(imagenes, desc="Calculando embeddings"):
+        valid: bool = True
         try:
             embedding: torch.Tensor = get_embedding(
                 ruta, processor, model, device,
@@ -128,35 +129,37 @@ def calcular_embeddings(imagenes: list[tuple[Path, str]], processor: AutoImagePr
             )
         except FileNotFoundError:
             print(f"Imagen no encontrada, se omite: {ruta}")
-            continue
-        lista_embeddings.append(embedding.cpu())
-        lista_etiquetas.append(especie)
-        # Si es train, añadimos ADEMÁS una versión aumentada de la misma imagen
-        if is_train:
-            embedding_aumentado: torch.Tensor = get_embedding(
-                ruta, processor, model, device, augmentation, is_train=True)
-            lista_embeddings.append(embedding_aumentado.cpu())
+            valid = False
+        if valid:
+            lista_embeddings.append(embedding.cpu())
             lista_etiquetas.append(especie)
-            # Augmentation extra solo para clases raras
-            if especie in VARIABLES_GLOBALES["ESPECIES_MINORITARIAS"]:
-                for _ in range(3):
-                    embedding_extra = get_embedding(
-                        ruta, processor, model, device,
-                        augmentation, is_train=True
-                    )
-                    lista_embeddings.append(embedding_extra.cpu())
-                    lista_etiquetas.append(especie)
-                    
-            # Augmentation aun mas extra solo para clases muy raras
-            if especie in VARIABLES_GLOBALES["ESPECIES_MUY_MINORITARIAS"]:
-                for _ in range(5):
-                    embedding_extra = get_embedding(
-                        ruta, processor, model, device,
-                        augmentation, is_train=True
-                    )
-                    lista_embeddings.append(embedding_extra.cpu())
-                    lista_etiquetas.append(especie)
-        
+            # Si es train, añadimos ADEMÁS una augmentation de la imagen
+            if is_train:
+                embedding_aumentado: torch.Tensor = get_embedding(
+                    ruta, processor, model, device, augmentation, is_train=True)
+                lista_embeddings.append(embedding_aumentado.cpu())
+                lista_etiquetas.append(especie)
+                
+                # Augmentation extra solo para clases raras
+                if especie in VARIABLES_GLOBALES["ESPECIES_MINORITARIAS"]:
+                    for _ in range(3):
+                        embedding_extra = get_embedding(
+                            ruta, processor, model, device,
+                            augmentation, is_train=True
+                        )
+                        lista_embeddings.append(embedding_extra.cpu())
+                        lista_etiquetas.append(especie)
+
+                # Augmentation aun mas extra solo para clases muy raras
+                if especie in VARIABLES_GLOBALES["ESPECIES_MUY_MINORITARIAS"]:
+                    for _ in range(5):
+                        embedding_extra = get_embedding(
+                            ruta, processor, model, device,
+                            augmentation, is_train=True
+                        )
+                        lista_embeddings.append(embedding_extra.cpu())
+                        lista_etiquetas.append(especie)
+
 
 
     # Apilamos todos los embeddings individuales [1, 768] en uno solo [N, 768]

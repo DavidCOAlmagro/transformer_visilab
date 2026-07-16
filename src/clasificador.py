@@ -13,35 +13,37 @@ from constantes import VARIABLES_GLOBALES
 
 class ClasificadorDiatomeas(nn.Module):
     """
-    Clase clasificador.El problema es que pesos y sesgo son números
+    El problema es que pesos y sesgo son números
     que cambian durante el entrenamiento necesitan vivir en algún sitio,
-    recordarse entre llamadas, guardarse en disco, moverse a GPU...
-    Por eso en lugar de funciones usamos una clase que hereda de nn.Module,
-    que es la clase base de todos los modelos de PyTorch.
-    nn es la neural network library de PyTorch, contiene capas, funciones de activación,
-    optimizadores...Donde se guardan los pesos y sesgos de la red neuronal.
-    768 entradas → n clases (especies).
+    recordarse entre llamadas, guardarse en disco, moverse a GPU... Por
+    eso los encapsulamos en un clasificador que hereda de nn.Module. (Neural Network Module)
     """
 
     def __init__(self, num_clases: int):
         """
-        En un inicio usé una sola capa lineal (fully connected) que transformaba el embedding
-        en logits de clase. Pero el modelo no era suficientemente potente para aprender a clasificar bien, así que añadí
-        capas intermedias con activaciones ReLU y Dropout para regularizar y evitar overfitting.
+        En un inicio probé con una sola capa lineal (fully connected) que transformaba el embedding
+        en logits de clase. Pero el modelo no era suficientemente potente para aprender a clasificar
+        bien, así que añadí capas intermedias con activaciones ReLU y Dropout para regularizar
+        y evitar overfitting. Transforma el embedding en logits de clase.
+        También crea los sesgos (bias) que se suman a los logits.
         """
         super().__init__()
-        # Crea y registra los pesos y sesgos de la capa lineal (fully connected)
-        # que transforma el embedding en logits de clase. [2.1, -0.5, 3.7, 0.2, -1.3]
-        # También crea los sesgos (bias) que se suman a los logits. [0.1, -0.2, 0.3, 0.4, -0.5]
         self.clasificador = nn.Sequential(
+            # Capa 1: Coge 768 valores de embedding y los transforma en 512 valores intermedios
             nn.Linear(VARIABLES_GLOBALES["DIM_EMBEDDING"], 512),
-            nn.ReLU(), # Función de activación ReLU (Rectified Linear Unit) que introduce no linealidad.
-            nn.Dropout(0.3), # Desactiva aleatoriamente un porcentaje de neuronas durante el entrenamiento.
+            # Función de activación ReLU (Rectified Linear Unit) que introduce no linealidad.
+            nn.ReLU(),
+            # Desactiva aleatoriamente un porcentaje de neuronas durante el entrenamiento.
+            nn.Dropout(0.3),
+
+            # Capa 2: Coge 512 valores de la capa previa y los transforma en 256 valores intermedios
             nn.Linear(512, 256),
             nn.ReLU(),
             nn.Dropout(0.2),
+
+            #Capa3:Coge 256 valores de la capa previa y los transforma en num_clases logits de clase
             nn.Linear(256, num_clases)
-)
+        )
         # Recorremos todas las capas y solo inicializamos las lineales
         # (ReLU y Dropout no tienen pesos que inicializar)
         for capa in self.clasificador:

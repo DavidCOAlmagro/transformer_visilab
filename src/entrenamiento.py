@@ -12,7 +12,11 @@ from tqdm import tqdm
 from sklearn.metrics import f1_score
 
 @torch.no_grad()
-def validacion(modelo, dataloader, func_loss):
+def validacion(modelo, dataloader, func_loss) -> tuple[float, float, float]:
+    """
+    Trabaja con los datos no utilizados en entrenamiento para ver si
+    el modelo realmente está aprendiendo y no memorizando.
+    """
     modelo.eval()
     perdida_acumulada = 0.0
     y_true, y_pred = [], []
@@ -26,12 +30,17 @@ def validacion(modelo, dataloader, func_loss):
         perdida = func_loss(salida, batch_etiquetas)
         perdida_acumulada += perdida.item()
 
-        _, indice_predicciones = torch.max(salida, 1)
+        # Calcula el número de aciertos en este batch
+        _, indice_predicciones = torch.max(salida, 1) # devuelve valor max e indice(especie)
+        # Añade las etiquetas verdaderas y predichas a las listas correspondientes
         y_true.extend(batch_etiquetas.cpu().tolist())
         y_pred.extend(indice_predicciones.cpu().tolist())
 
     perdida_media = perdida_acumulada / len(dataloader)
+    # Calcula precision sumando los aciertos y dividiendo entre el total de muestras
     precision = sum(t == p for t, p in zip(y_true, y_pred)) / len(y_true)
+    # Calcula macro F1 score, que es la media de F1 de cada clase, útil para datasets desbalanceados
+    # como el nuestro
     macro_f1 = f1_score(y_true, y_pred, average="macro", zero_division=0)
 
     return perdida_media, precision, macro_f1
@@ -88,8 +97,8 @@ def entrenar_modelo(
     historial_perdida_val: list[float] = []
     historial_precision_val: list[float] = []
     historial_macro_f1_val: list[float] = []
-    # Si no mejora en 'paciencia' épocas consecutivas, se detiene el entrenamiento (early stopping)
-    mejor_perdida_val = float("inf")
+    # Si no mejora en macrof1 'paciencia' épocas consecutivas,
+    # se detiene el entrenamiento (early stopping)
     mejor_macro_f1 = -1.0
     contador_no_mejora = 0
     # Crea directorio si no existe
@@ -99,7 +108,8 @@ def entrenar_modelo(
         if valid:
             if contador_no_mejora < paciencia:
                 perdida_train = entrenar_epoca(modelo, dataloader_train, func_loss, optimizador)
-                perdida_val, precision_val, macro_f1_val = validacion(modelo, dataloader_val, func_loss)
+                perdida_val, precision_val, macro_f1_val = validacion(modelo,
+                                                                      dataloader_val, func_loss)
 
                 scheduler.step()  # avanza el learning rate según el schedule
 

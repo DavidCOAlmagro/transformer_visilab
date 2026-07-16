@@ -46,7 +46,7 @@ VARIABLES_GLOBALES: dict[str, object] = {
         "Gomphonema_pumilum"
     },
     "ESPECIES_MUY_MINORITARIAS": {
-        
+
     },
 
     # -------------------------
@@ -59,8 +59,11 @@ VARIABLES_GLOBALES: dict[str, object] = {
     "PIN_MEMORY": True,
     "PERSISTENT_WORKERS": True,
     "EPOCAS_WARMUP": 3,
-    "PACIENCIA": 5,
-    # -------------------------
+    "PACIENCIA": 7,
+    "UMBRAL_CONF": 0.60,
+    "LEARNING_RATE": 0.0003,
+    "WEIGHT_DECAY": 0.0001,
+    "LABEL_SMOOTHING": 0.05, # No confia mucho en sus predicciones.
     # Numero de pruebas
     # -------------------------
     "PRUEBA" : "1",

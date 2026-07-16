@@ -78,7 +78,7 @@ def main() -> None:
             generar_split()
         else:
             print("Usando splits ya existentes.")
-        
+
         print("¿Quieres recalcular embeddings? (s/n): ")
         resp_emb = input().strip().lower()
 
@@ -94,9 +94,9 @@ def main() -> None:
         _ = get_datos("test")
 
         print("Renumerando etiquetas...")
-        emb_train, et_train, _ = codificacion(datos_train)
+        emb_train, et_train, numero_especie = codificacion(datos_train)
         emb_val, et_val, _ = codificacion(datos_val)
-        contar_clases_train()
+        contar_clases_train(et_train, numero_especie)
         num_clases = len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
         print("Creando modelo...")
         modelo = ClasificadorDiatomeas(num_clases).to(
@@ -107,7 +107,8 @@ def main() -> None:
         # Learning rate 0.0003 es un valor pequeño para no oscilar demasiado.
         # AdamW con weight decay 0.0001 ayuda a regularizar el modelo y evitar overfitting.
         optimizador = torch.optim.AdamW(
-            modelo.parameters(), lr=0.0003, weight_decay=0.0001)
+            modelo.parameters(), lr=VARIABLES_GLOBALES["LEARNING_RATE"], 
+            weight_decay=VARIABLES_GLOBALES["WEIGHT_DECAY"])
 
         num_epocas_total = VARIABLES_GLOBALES["num_epocas"]
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizador, lr_lambda)
@@ -118,7 +119,8 @@ def main() -> None:
 
         pesos_clase = calcular_pesos_clases(et_train)
         # Función que devuelve la puntuación(logits) de cada clase para cada imagen.
-        func_loss = nn.CrossEntropyLoss(label_smoothing=0.05, weight=pesos_clase.to(VARIABLES_GLOBALES["DEVICE"]))
+        func_loss = nn.CrossEntropyLoss(label_smoothing=VARIABLES_GLOBALES["LABEL_SMOOTHING"],
+                                        weight=pesos_clase.to(VARIABLES_GLOBALES["DEVICE"]))
         print("Iniciando entrenamiento...")
 
         historial_perdida_train, historial_perdida_val, historial_precision_val, historial_macro_f1_val = entrenar_modelo(

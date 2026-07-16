@@ -22,7 +22,7 @@ def cargar_modelo() -> tuple[ClasificadorDiatomeas, list[str]]:
 
     modelo = ClasificadorDiatomeas(num_clases).to(VARIABLES_GLOBALES["DEVICE"])
 
-    ruta_pesos = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
+    ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
     modelo.load_state_dict(torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"]))
     modelo.eval()
 
@@ -99,7 +99,7 @@ def inferir_imagen_suelta(ruta_imagen: str) -> None:
         valid = False
         print(f"Error: {e}")
 
-    if(valid):
+    if valid:
         print(f"\nClasificando: {ruta.name}")
 
         modelo, especies_ordenadas = cargar_modelo()
@@ -133,10 +133,10 @@ def inferir_carpeta(ruta_carpeta: str) -> None:
             print(f"No se encontraron imágenes en {ruta}")
             valid = False
 
-    except Exception as e:
+    except ValueError as e:
         valid = False
         print(f"Error al procesar la carpeta: {e}")
-    if(valid):
+    if valid:
         modelo, especies_ordenadas = cargar_modelo()
         processor, dinov2, device, augmentation = inicializar_dinov2()
 

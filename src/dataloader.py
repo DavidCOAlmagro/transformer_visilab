@@ -19,17 +19,15 @@ def crear_dataloaders(
 
     dataset_train = MyDataset(emb_train, et_train)
     dataset_val = MyDataset(emb_val, et_val)
-    # WeightedRandomSampler permite muestrear de manera ponderada, 
-    # para que las clases minoritarias tengan más probabilidad de ser seleccionadas 
-    # en cada batch. Esto ayuda a compensar el desbalance de clases en el conjunto de entrenamiento.
-
+    
+    # WeightedRandomSampler balancea las clases minoritarias
     pesos_muestras = calcular_pesos_muestras(et_train)
     sampler_train = WeightedRandomSampler(
     weights=pesos_muestras,
     num_samples=len(pesos_muestras),
-    replacement=True 
+    replacement=True
     )
-       
+
     dataloader_train = DataLoader(dataset_train,
                                   batch_size=VARIABLES_GLOBALES["BATCH_SIZE"],
                                   sampler=sampler_train,
@@ -60,6 +58,7 @@ def calcular_pesos_muestras(etiquetas: torch.Tensor) -> torch.Tensor:
     # Le asigna a cada muestra el peso de la clase a la que pertenece
     pesos_muestras: torch.Tensor = peso_por_clase[etiquetas]
     return pesos_muestras
+
 def calcular_pesos_clases(etiquetas: torch.Tensor) -> torch.Tensor:
     """
     Calcula un peso por cada clase (no por muestra), inversamente
@@ -67,7 +66,6 @@ def calcular_pesos_clases(etiquetas: torch.Tensor) -> torch.Tensor:
     para que los errores en clases minoritarias penalicen más.
     """
     conteo_por_clase: torch.Tensor = torch.bincount(etiquetas)
-    peso_por_clase: torch.Tensor = 1.0 / conteo_por_clase.float()
-
+    peso_por_clase: torch.Tensor = 1.0 / torch.sqrt(conteo_por_clase.float())
 
     return peso_por_clase.to(VARIABLES_GLOBALES["DEVICE"])
