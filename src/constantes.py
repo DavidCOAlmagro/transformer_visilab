@@ -23,7 +23,7 @@ VARIABLES_GLOBALES: dict[str, object] = {
     # -------------------------
     # Token HuggingFace
     # -------------------------
-    "HF_TOKEN": os.environ.get("HF_TOKEN", ""),
+    "HF_TOKEN": os.environ.get("HF_TOKEN", "") or None,
 
     # -------------------------
     # Especies filtradas

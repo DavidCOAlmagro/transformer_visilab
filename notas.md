@@ -1,4 +1,4 @@
-# Notas del proyecto — Clasificador de diatomeas (DINOv2 + capa lineal)
+# Notas del proyecto Clasificador de diatomeas (DINOv2 + capa lineal)
 
 Este documento explica los conceptos de deep learning usados en el proyecto,
 en el orden en el que aparecen al ejecutar `main.py`, y por qué se tomó cada
@@ -23,7 +23,7 @@ Se eligió la opción 2. Con pocas imágenes por especie (algunas clases
 tienen menos de 50), entrenar una red grande desde cero sería inviable:
 no habría datos suficientes para que aprendiera texturas y formas por sí
 misma. DINOv2, en cambio, ya ha visto millones de imágenes genéricas y ha
-aprendido a representar "qué hay en una imagen" de forma muy general — solo
+aprendido a representar "qué hay en una imagen" de forma muy general solo
 hace falta enseñarle a un clasificador pequeño cómo traducir esa
 representación a "qué especie de diatomea es esta".
 
@@ -61,7 +61,7 @@ se solapan entre sí:
   modelo con imágenes reales que nunca ha visto ni de forma indirecta.
 
 **Por qué separar val de test si los dos son "datos no vistos":** porque
-val se usa muchas veces (cada época) para tomar decisiones — cuál es la
+val se usa muchas veces (cada época) para tomar decisiones cuál es la
 mejor época, cuándo hacer early stopping, qué hiperparámetros probar. Al
 usarlo tantas veces para decidir, el modelo acaba "sobreajustando"
 un poco a val sin querer, aunque el modelo nunca vea esas imágenes
@@ -75,7 +75,7 @@ entonces sus métricas serían poco fiables (calculadas sobre 2-3 imágenes).
 
 **Por qué se guarda en `.txt` en vez de recalcularlo cada vez:** para que
 el split sea siempre el mismo entre ejecuciones. Si se regenerara al azar
-cada vez, no se podría comparar de forma justa un entrenamiento con otro —
+cada vez, no se podría comparar de forma justa un entrenamiento con otro
 no sabrías si un cambio en el modelo mejoró las cosas, o si simplemente le
 tocó un split más fácil.
 
@@ -93,7 +93,7 @@ es el modelo que convierte imagen → estos 768 números.
 implicaría o bien entrenar DINOv2 entero (carísimo computacionalmente e
 innecesario con este tamaño de dataset) o bien pasar cada imagen por
 DINOv2 en cada época de entrenamiento (mucho más lento, y repetitivo,
-porque DINOv2 no cambia — sus pesos están congelados).
+porque DINOv2 no cambia sus pesos están congelados).
 
 **Por qué se precalculan y se guardan en `.pt` en vez de calcularlos al
 vuelo:** DINOv2 está congelado (`model.requires_grad_(False)`), así que su
@@ -133,7 +133,7 @@ por contenido real).
 Las especies con pocas imágenes reciben más copias aumentadas (3 extra si
 están en `ESPECIES_MINORITARIAS`, 5 extra si están en
 `ESPECIES_MUY_MINORITARIAS`). Esto es una primera capa de compensación del
-desbalance — se solapa con el `WeightedRandomSampler` y los pesos de la
+desbalance se solapa con el `WeightedRandomSampler` y los pesos de la
 loss (ver sección 5), así que si el desbalance sigue siendo un problema al
 escalar a 10 o ~100 especies, este es uno de los tres mecanismos a los que
 puedes bajarle la intensidad para no sobrecorregir.
@@ -153,7 +153,7 @@ clase que lo implemente debe saber responder a dos preguntas:
 - `__getitem__(i)`: dame el elemento número `i`.
 
 PyTorch no necesita saber si esos elementos son imágenes, embeddings, filas
-de un CSV o lo que sea — con esas dos respuestas, ya sabe cómo recorrerlos,
+de un CSV o lo que sea con esas dos respuestas, ya sabe cómo recorrerlos,
 mezclarlos y agruparlos en lotes a través del `DataLoader`.
 
 **Por qué `MyDataset` guarda embeddings y etiquetas por separado (dos
@@ -176,7 +176,7 @@ entrenamiento. Se encarga de:
   imagen cada vez (muy lento) o por todo el dataset a la vez (no cabría en
   memoria y sería inestable).
 - Mezclar el orden de los datos en cada época (o, en este caso, muestrear
-  con pesos — ver más abajo) para que el modelo no aprenda patrones falsos
+  con pesos ver más abajo) para que el modelo no aprenda patrones falsos
   basados en el orden.
 - Cargar los datos en paralelo con varios procesos (`NUM_WORKERS`) para
   que la CPU prepare el siguiente batch mientras la GPU procesa el
@@ -185,7 +185,7 @@ entrenamiento. Se encarga de:
 **Por qué train usa `WeightedRandomSampler` y val no:** el sampler decide
 con qué probabilidad se elige cada muestra en cada batch. Se usa solo en
 train para combatir el desbalance de clases (que unas especies tengan
-muchas más imágenes que otras) — se le da más probabilidad de aparecer a
+muchas más imágenes que otras) se le da más probabilidad de aparecer a
 las clases raras. En val no tiene sentido usarlo: en val no se ajustan
 pesos, solo se mide, y para medir de forma representativa necesitas ver
 los datos con su proporción real, no artificialmente rebalanceada.
@@ -210,16 +210,16 @@ especies tienen muchas más imágenes que otras:
 2. **`WeightedRandomSampler`** en `dataloader.py` (más probabilidad de
    elegir muestras de clases raras en cada batch).
 
-3. **Pesos en la loss** (`calcular_pesos_clases`) — los errores en clases
+3. **Pesos en la loss** (`calcular_pesos_clases`) los errores en clases
    raras penalizan más al calcular cuánto se equivocó el modelo.
 
 Los tres hacen, en esencia, lo mismo: decirle al modelo "presta más
 atención a las clases con pocos ejemplos". El riesgo de tener los tres a
 la vez con intensidades descoordinadas es que el modelo se pase de frenada
-y empiece a "sobre-predecir" las clases raras — es decir, alta recall pero
+y empiece a "sobre-predecir" las clases raras es decir, alta recall pero
 baja precision en esas clases (como se vio con `Gomphonema_pumilum`: recall
 0.97 pero precision 0.76). Por eso se igualó el suavizado del sampler
-(`1/sqrt(n)`) y la loss (`1/sqrt(n)`, antes era `1/n`) — para que ambos
+(`1/sqrt(n)`) y la loss (`1/sqrt(n)`, antes era `1/n`) para que ambos
 tiren con la misma fuerza y no se acumule doble corrección.
 
 Si al escalar a 10 y luego a ~100 especies el problema persiste, el ajuste
@@ -231,14 +231,14 @@ subir los tres a la vez.
 ## 6. El clasificador: por qué esta arquitectura
 
 **Qué hace la capa lineal (`nn.Linear`):** transforma un vector de entrada
-en otro de salida aplicando pesos y un sesgo — literalmente, una
+en otro de salida aplicando pesos y un sesgo literalmente, una
 combinación lineal de los 768 números de entrada por cada una de las
 salidas. Los "pesos" son justo los números que se ajustan durante el
 entrenamiento para que esa transformación tenga sentido.
 
 **Por qué varias capas (768→512→256→num_clases) y no una sola:** con una
 sola capa lineal, el modelo solo puede separar clases si son "linealmente
-separables" en el espacio de 768 dimensiones — a veces eso basta, pero
+separables" en el espacio de 768 dimensiones a veces eso basta, pero
 aquí no fue suficiente. Añadir capas intermedias con `ReLU` permite
 al modelo aprender relaciones no lineales entre los embeddings y las
 clases, dándole más capacidad de separar especies parecidas entre sí.
@@ -246,7 +246,7 @@ clases, dándole más capacidad de separar especies parecidas entre sí.
 **Qué es ReLU:** una función de activación muy simple: deja pasar los
 valores positivos tal cual y convierte los negativos en cero. Sin este
 tipo de función entre capas lineales, apilar varias capas lineales
-seguidas equivaldría matemáticamente a tener una sola capa — la no
+seguidas equivaldría matemáticamente a tener una sola capa la no
 linealidad es lo que le da poder real a la arquitectura multicapa.
 
 **Qué es Dropout y por qué 0.3 y luego 0.2:** durante el entrenamiento,
@@ -258,7 +258,7 @@ razonable: cuantas más neuronas hay, más margen hay para "apagar" algunas
 sin perder demasiada capacidad.
 
 **Por qué inicialización Xavier:** al crear la red, los pesos empiezan con
-valores aleatorios, pero no cualquier aleatoriedad vale — si empiezan
+valores aleatorios, pero no cualquier aleatoriedad vale si empiezan
 demasiado grandes o demasiado pequeños, el entrenamiento puede ser
 inestable desde el principio. Xavier es una forma de inicializar esos
 pesos aleatorios con una escala pensada para que la señal no explote ni se
@@ -286,7 +286,7 @@ el entrenamiento.
   más finos según se acerca al final (afinar sin desestabilizar lo ya
   aprendido).
 
-**Pérdida (loss) — CrossEntropyLoss:** mide cuánto se aleja la predicción
+**Pérdida (loss) CrossEntropyLoss:** mide cuánto se aleja la predicción
 del modelo (una puntuación por especie) de la especie real. Cuanto más
 segura y equivocada esté la predicción, mayor es la pérdida. Es la
 cantidad que el optimizador intenta minimizar.
@@ -294,6 +294,7 @@ cantidad que el optimizador intenta minimizar.
 - `label_smoothing=0.05`: en vez de pedirle al modelo que esté 100%
   seguro de la clase correcta, se le pide un 95%, dejando un pequeño
   margen. Esto evita que el modelo se vuelva excesivamente confiado
+
   (overconfident), lo cual suele generalizar mejor.
 - `weight=pesos_clase`: ver sección 5.
 
@@ -306,7 +307,7 @@ podrían desestabilizar el entrenamiento.
 con esos datos) para ver si mejora de verdad o si solo está memorizando
 train. Se usa `macro F1` (media del F1 de cada clase, todas con el mismo
 peso) en vez de accuracy simple, porque con clases desbalanceadas la
-accuracy puede ser engañosa — un modelo que siempre predice la clase
+accuracy puede ser engañosa un modelo que siempre predice la clase
 mayoritaria tendría accuracy alta pero sería inútil para las clases raras.
 
 **Early stopping:** si el macro F1 en val no mejora durante `PACIENCIA=5`
@@ -325,7 +326,7 @@ empezó a sobreajustar en las últimas épocas).
 **Matriz de confusión:** una tabla donde cada fila es la especie real y
 cada columna la especie predicha. La diagonal son los aciertos; todo lo
 demás fuera de la diagonal son errores, y te dice *con qué* se confunde
-cada especie — información mucho más rica que un solo número de accuracy.
+cada especie información mucho más rica que un solo número de accuracy.
 
 **Precision, recall, F1 (por clase):**
 - **Precision**: de todo lo que el modelo etiquetó como especie X,
@@ -339,42 +340,28 @@ cada especie — información mucho más rica que un solo número de accuracy.
   correcta aquí porque el objetivo es que el modelo funcione bien en
   *todas* las especies, no solo en las mayoritarias.
 
-### Dónde estaba esto en el código → revisar
 
-`evaluar_test_metricas.py` está limpio de explicaciones de manual, no hace
-falta tocar comentarios ahí.
-
----
 
 ## 9. `errores.py`: por qué existe este script aparte
 
-No es una herramienta de entrenamiento ni de evaluación agregada — es para
+No es una herramienta de entrenamiento ni de evaluación agregada es para
 inspección manual, caso por caso. Su función es cruzar predicción vs
 etiqueta real y devolver la ruta exacta de cada imagen mal clasificada,
 para poder abrirla y comprobar a ojo si el fallo es del modelo o del
-propio etiquetado del dataset (el caso que comentaste de recortes con
-varias diatomeas donde solo se etiquetó una especie). Es la herramienta
-para diferenciar "el modelo se equivoca" de "el dato está mal etiquetado".
-
-`comprobar_orden()` existe porque `test.txt` (rutas) y
-`embeddings_test.pt` (etiquetas guardadas) son dos archivos separados que
-deben coincidir en el mismo orden para que la ruta N se corresponda con la
-predicción N — si algo se regenera por separado y quedan desincronizados,
-esta comprobación lo detecta antes de dar resultados sin sentido.
-
+propio etiquetado del dataset.
 ---
 
 ## 10. `inferencia.py`: diferencia con el resto del pipeline
 
 Todo lo anterior trabaja sobre el dataset conocido (train/val/test, con
 etiquetas). `inferencia.py` es el único script pensado para imágenes
-**nuevas**, sin etiqueta, fuera del dataset original — el caso de uso real
+**nuevas**, sin etiqueta, fuera del dataset original el caso de uso real
 final una vez el modelo esté listo para el cliente. Por eso calcula el
 embedding al vuelo (no hay un `.pt` precalculado para imágenes que no
 existían de antemano) y no usa augmentation (`is_train=False`), igual que
 val/test.
 
 `intervalo_confianza` (0.60 por defecto) es el umbral por debajo del cual
-una predicción se marca como "revisar" — no es que el modelo esté
+una predicción se marca como "revisar" no es que el modelo esté
 "seguro" o no en un sentido absoluto, es una decisión de diseño: cuándo
 confiar en la predicción automática y cuándo pedir revisión humana.
