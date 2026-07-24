@@ -1,0 +1,29 @@
+                            precision    recall  f1-score   support
+
+   Conticribra_weissflogii       0.87      0.80      0.83        25
+         Cyclotella_atomus       0.94      0.97      0.95        64
+    Fistulifera_saprophila       0.77      0.82      0.80        40
+          Navicula_antonii       0.38      0.53      0.44        32
+          Navicula_caterva       0.24      0.33      0.28        12
+    Navicula_cryptocephala       0.33      0.47      0.39        32
+    Navicula_cryptotenella       0.70      0.59      0.64        88
+Navicula_cryptotenelloides       0.56      0.58      0.57        33
+          Navicula_erifuga       0.24      0.69      0.36        16
+        Navicula_germainii       0.77      0.82      0.80        80
+         Navicula_gregaria       0.92      0.88      0.90       356
+       Navicula_lanceolata       0.97      0.93      0.95       353
+Navicula_metareichardtiana       0.14      0.21      0.17        28
+           Navicula_recens       0.53      0.52      0.52        54
+       Navicula_rostellata       0.45      0.74      0.56        34
+         Navicula_simulata       0.75      0.75      0.75        16
+               Navicula_sp       0.72      0.48      0.58       251
+           Navicula_veneta       0.40      0.49      0.44        90
+  Sellaphora_crassulexigua       0.22      0.31      0.26        29
+          Sellaphora_nigri       0.74      0.62      0.67       143
+         Sellaphora_pupula       0.71      0.80      0.75        25
+             Sellaphora_sp       0.09      0.13      0.11        23
+ Stephanodiscus_hantzschii       0.83      0.89      0.86        27
+
+                  accuracy                           0.71      1851
+                 macro avg       0.58      0.62      0.59      1851
+              weighted avg       0.75      0.71      0.72      1851

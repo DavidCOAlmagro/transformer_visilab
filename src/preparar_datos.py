@@ -9,7 +9,7 @@ dividir los datos en conjuntos de entrenamiento, validación y prueba.
 from tqdm import tqdm
 import torch
 from constantes import VARIABLES_GLOBALES
-
+from pathlib import Path
 
 def get_datos(nombre_split: str) -> dict[str, torch.Tensor]:
     """
@@ -87,3 +87,39 @@ def contar_clases_train(et_train: torch.Tensor, numero_especie: dict[str, int]) 
     for numero, cantidad in enumerate(conteo):
         especie = especie_numero[numero]
         print(f"{especie:40s} {cantidad.item()} imágenes en train")
+        if cantidad.item() == 0:
+            raise ValueError(
+                f"La especie '{especie}' tiene 0 imágenes en train. "
+                "Revisa que el nombre coincide exactamente con el de la carpeta.")
+        
+import statistics
+
+
+def calcular_conteo_por_especie(imagenes: list[tuple[Path, str]]) -> dict[str, int]:
+    """
+    Cuenta cuántas imágenes originales hay de cada especie en la lista dada
+    (antes de aplicar ningún augmentation).
+    """
+    conteo_por_especie: dict[str, int] = {}
+    for _, especie in imagenes:
+        conteo_por_especie[especie] = conteo_por_especie.get(especie, 0) + 1
+    return conteo_por_especie
+
+
+def calcular_copias_extra_por_especie(
+        conteo_por_especie: dict[str, int], max_copias: int = 5) -> dict[str, int]:
+    """
+    Calcula cuántas copias extra de augmentation le corresponden a cada especie,
+    de forma continua según su frecuencia relativa respecto la mediana de todas las
+    especies. Las especies con tantas imágenes como la mediana o más no reciben
+    copias extra. Las más minoritarias reciben más copias, hasta max_copias.
+    """
+    mediana: float = statistics.median(conteo_por_especie.values())
+
+    copias_por_especie: dict[str, int] = {}
+    for especie, conteo in conteo_por_especie.items():
+        copias_ideales: float = (mediana / conteo) - 1
+        copias: int = max(0, min(max_copias, round(copias_ideales)))
+        copias_por_especie[especie] = copias
+
+    return copias_por_especie

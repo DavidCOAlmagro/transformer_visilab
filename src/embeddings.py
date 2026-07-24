@@ -111,11 +111,17 @@ def get_embedding(ruta_imagen: str, processor: AutoImageProcessor, model: AutoMo
 def calcular_embeddings(imagenes: list[tuple[Path, str]], processor: AutoImageProcessor,
                         model: AutoModel,
                         device: torch.device, augmentation: transforms.Compose,
-                        is_train: bool) -> dict[str, torch.Tensor | list[str]]:
+                        is_train: bool, copias_por_especie: dict[str, int]
+                        ) -> dict[str, torch.Tensor | list[str]]:
     """
     Calcula el embedding de cada imagen de la lista y los guarda todos juntos
     con sus etiquetas correspondientes.
+    copias_por_especie indica, para train, cuántas copias de augmentation
+    recibe cada especie, según su desbalance.
     """
+
+    if copias_por_especie is None:
+        copias_por_especie = {}
     # En vez de tuplas, usamos dos listas ya que torch.cat requiere una lista de tensores solamente
     lista_embeddings: list[torch.Tensor] = []
     lista_etiquetas: list[str] = []
@@ -140,26 +146,16 @@ def calcular_embeddings(imagenes: list[tuple[Path, str]], processor: AutoImagePr
                 lista_embeddings.append(embedding_aumentado.cpu())
                 lista_etiquetas.append(especie)
                 
-                # Augmentation extra solo para clases raras
-                if especie in VARIABLES_GLOBALES["ESPECIES_MINORITARIAS"]:
-                    for _ in range(3):
-                        embedding_extra = get_embedding(
-                            ruta, processor, model, device,
-                            augmentation, is_train=True
-                        )
-                        lista_embeddings.append(embedding_extra.cpu())
-                        lista_etiquetas.append(especie)
-
-                # Augmentation aun mas extra solo para clases muy raras
-                if especie in VARIABLES_GLOBALES["ESPECIES_MUY_MINORITARIAS"]:
-                    for _ in range(5):
-                        embedding_extra = get_embedding(
-                            ruta, processor, model, device,
-                            augmentation, is_train=True
-                        )
-                        lista_embeddings.append(embedding_extra.cpu())
-                        lista_etiquetas.append(especie)
-
+            # Copias extra según el desbalance de la especie (0 si está
+            # por encima de la mediana, hasta el tope para las más raras)
+            copias_extra: int = copias_por_especie.get(especie, 0)
+            for _ in range(copias_extra):
+                embedding_extra = get_embedding(
+                    ruta, processor, model, device,
+                    augmentation, is_train=True
+                )
+                lista_embeddings.append(embedding_extra.cpu())
+                lista_etiquetas.append(especie)
 
 
     # Apilamos todos los embeddings individuales [1, 768] en uno solo [N, 768]

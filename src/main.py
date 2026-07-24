@@ -11,13 +11,14 @@ from pathlib import Path
 import torch
 from torch import nn
 from constantes import VARIABLES_GLOBALES
-from preparar_datos import get_datos, codificacion, contar_clases_train
+from preparar_datos import get_datos, codificacion, contar_clases_train,    calcular_conteo_por_especie, calcular_copias_extra_por_especie
 from generar_leer_splits import leer_split, generar_split
 from embeddings import inicializar_dinov2, calcular_embeddings
 from clasificador import ClasificadorDiatomeas
-from dataloader import crear_dataloaders,calcular_pesos_clases
+from dataloader import crear_dataloaders, calcular_pesos_clases
 from entrenamiento import entrenar_modelo
 from evaluar_test_metricas import main as evaluar_test, graficar_curvas_entrenamiento
+
 
 def limpiar_pantalla() -> None:
     """Limpia la consola de forma compatible con Windows y Unix."""
@@ -58,7 +59,8 @@ def main() -> None:
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(SEMILLA)
 
-    ruta_mejor_modelo = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
+    ruta_mejor_modelo = VARIABLES_GLOBALES["RUTA_MODELOS"] / \
+        VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
 
     # Si ya existe un modelo entrenado, preguntamos si se quiere reentrenar
     # o usar directamente el que ya está guardado en disco
@@ -107,7 +109,7 @@ def main() -> None:
         # Learning rate 0.0003 es un valor pequeño para no oscilar demasiado.
         # AdamW con weight decay 0.0001 ayuda a regularizar el modelo y evitar overfitting.
         optimizador = torch.optim.AdamW(
-            modelo.parameters(), lr=VARIABLES_GLOBALES["LEARNING_RATE"], 
+            modelo.parameters(), lr=VARIABLES_GLOBALES["LEARNING_RATE"],
             weight_decay=VARIABLES_GLOBALES["WEIGHT_DECAY"])
 
         num_epocas_total = VARIABLES_GLOBALES["num_epocas"]
@@ -128,7 +130,7 @@ def main() -> None:
             ruta_mejor_modelo, num_epocas_total, paciencia=VARIABLES_GLOBALES["PACIENCIA"])
 
         # Graficamos la evolución de pérdida y precisión de todas las épocas entrenadas
-        ruta_curvas = VARIABLES_GLOBALES["RUTA_MODELOS"] / \
+        ruta_curvas = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / \
             "curvas_entrenamiento.png"
         graficar_curvas_entrenamiento(
             historial_perdida_train, historial_perdida_val,
@@ -184,8 +186,22 @@ def preparar_embeddings_splits() -> None:
             imagenes = leer_split(ruta_split_txt)
             print(
                 f"Calculando embeddings de {nombre_split} ({len(imagenes)} imágenes)...")
+
+            copias_por_especie: dict[str, int] | None = None
+            if is_train:
+                conteo_por_especie = calcular_conteo_por_especie(imagenes)
+                copias_por_especie = calcular_copias_extra_por_especie(
+                    conteo_por_especie)
+                print("Copias extra por especie (train):")
+                # Recorre las especies en orden alfabético y
+                # muestra cuántas copias extra le corresponden a cada una
+                for especie, copias in sorted(copias_por_especie.items()):
+                    if copias > 0:
+                        print(f"  {especie:40s} +{copias} copias extra")
+
             datos = calcular_embeddings(imagenes, processor, model, device,
-                                        augmentation, is_train=is_train)
+                                        augmentation, is_train=is_train,
+                                        copias_por_especie=copias_por_especie)
             torch.save(datos, ruta_destino)
             print(f"Guardado en {ruta_destino}")
 
