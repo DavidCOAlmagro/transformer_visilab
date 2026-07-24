@@ -1,0 +1,76 @@
+Gomphonema fp: 1289
+Achnanthidium rivulare: 1052
+Nitzschia inconspicua: 1015
+Achnanthidium fp: 951
+Nitzschia frustulum var frustulum: 878
+Denticula tenuis: 729
+Cymbella excisiformis var excisiformis: 627
+Navicula cryptotenella: 613
+Encyonema reichardtii: 572
+Encyonema minutum: 561
+Amphora pediculus: 552
+Cocconeis placentula var euglypta: 552
+Planothidium frequentissimum: 536
+Cymbella parva: 531
+Humidophila contenta: 516
+Achnanthidium pyrenaicum: 514
+Encyonema ventricosum: 506
+Achnanthidium atomoides: 505
+Melosira varians: 505
+Planothidium lanceolatum: 504
+Cyclotella atomus: 498
+Aulacoseira granulata: 494
+Achnanthidium eutrophilum: 486
+Rhoicosphenia abbreviata: 484
+Nitzschia paleacea: 483
+Achnanthidium druartii: 479
+Staurosira venter: 466
+Diatoma vulgaris: 465
+Craticula accomoda: 458
+Encyonopsis minuta: 458
+Karayevia clevei var clevei: 453
+Cocconeis lineata: 443
+Achnanthidium catenatum: 438
+Navicula notha: 429
+Nitzschia amphibia: 425
+Stephanodiscus hantzschii: 423
+Nitzschia desertorum: 417
+Nitzschia fonticola: 410
+Diatoma moniliformis: 403
+Fistulifera saprophila: 386
+Nitzschia capitellata: 370
+Reimeria sinuata: 366
+Gomphonema parvulum f saprophilum: 358
+Navicula gregaria: 352
+Discostella pseudostelligera: 346
+Navicula capitatoradiata: 341
+Fragilaria pararumpens: 330
+Navicula cryptotenelloides: 321
+Achnanthidium minutissimum: 319
+Encyonema silesiacum: 317
+Nitzschia soratensis: 312
+Gomphonema minutum: 309
+Navicula tripunctata: 298
+Epithemia adnata: 284
+Gomphonema pumilum var elegans: 265
+Achnanthidium exile: 252
+Nitzschia palea var palea: 246
+Fragilaria vaucheriae: 231
+Navicula lanceolata: 231
+Mayamaea permitis: 221
+Tabellaria fp: 211
+Achnanthidium caravelense: 210
+Fragilaria perminuta: 207
+Gomphonema angustivalva: 191
+Tabellaria flocculosa: 174
+Nitzschia fp: 158
+Fragilaria fp: 152
+Gomphonema minusculum: 152
+Cocconeis pediculus: 147
+Melosira fp: 134
+Epithemia fp: 133
+Reimeria sp: 111
+Gomphonema rhombicum: 102
+Encyonema fp: 94
+Planothidium fp: 15
+Encyonopsis fp: 13

@@ -55,7 +55,7 @@ def rutas_imagenes() -> list[tuple[str, str]]:
     Las funciones usadas en este metodo son de pathlib.Path
     """
     imagenes: list[tuple[str, str]] = []
-    grupos = ["Common_Species","Unique_Species","Seleccion_5_especies_por_especie","UDE_Diatoms_84k_normalizadas_reinhard"]
+    grupos = ["Common_Species","Unique_Species","Seleccion_5_especies_por_especie","UDE_Diatoms_84k_normalizadas_reinhard","dataset_aq_dbo5"]
 
     for grupo in grupos:
         ruta_grupo = VARIABLES_GLOBALES["RUTA_BASE"] / "imagenes_visilab(raw)" /grupo
