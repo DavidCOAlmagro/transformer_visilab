@@ -48,7 +48,7 @@ def cargar_modelo() -> ClasificadorDiatomeas:
     modelo = ClasificadorDiatomeas(num_clases).to(VARIABLES_GLOBALES["DEVICE"])
 
     ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
-    pesos = torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"])
+    pesos = torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"],weights_only=True)
     modelo.load_state_dict(pesos)
     modelo.eval()
 

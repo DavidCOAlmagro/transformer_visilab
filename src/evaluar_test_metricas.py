@@ -107,7 +107,7 @@ def main() -> None:                              # <-- aquí está
 
     # Carga los pesos del mejor modelo entrenado
     ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
-    pesos = torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"])
+    pesos = torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"],weights_only=True)
     # Carga los pesos en el modelo
     modelo.load_state_dict(pesos)
     modelo.eval()

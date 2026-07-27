@@ -23,7 +23,7 @@ def cargar_modelo() -> tuple[ClasificadorDiatomeas, list[str]]:
     modelo = ClasificadorDiatomeas(num_clases).to(VARIABLES_GLOBALES["DEVICE"])
 
     ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
-    modelo.load_state_dict(torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"]))
+    modelo.load_state_dict(torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"], weights_only=True))
     modelo.eval()
 
     return modelo, especies_numero

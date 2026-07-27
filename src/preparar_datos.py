@@ -17,7 +17,7 @@ def get_datos(nombre_split: str) -> dict[str, torch.Tensor]:
     según si es de entrenamiento, val o test.
     """
     ruta_embeddings = VARIABLES_GLOBALES["RUTA_EMBEDDINGS"]/ f"embeddings_{nombre_split}.pt"
-    datos: dict[str, torch.Tensor] = torch.load(ruta_embeddings)
+    datos: dict[str, torch.Tensor] = torch.load(ruta_embeddings,weights_only=True)
 
     return datos
 
