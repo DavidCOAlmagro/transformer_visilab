@@ -10,7 +10,6 @@ import statistics
 from tqdm import tqdm
 import torch
 from constantes import VARIABLES_GLOBALES
-from preparar_datos import construir_numero_genero
 from pathlib import Path
 
 def get_datos(nombre_split: str) -> dict[str, torch.Tensor]:
