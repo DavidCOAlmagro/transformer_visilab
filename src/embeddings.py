@@ -126,7 +126,7 @@ def calcular_embeddings(imagenes: list[tuple[Path, str]], processor: AutoImagePr
     lista_embeddings: list[torch.Tensor] = []
     lista_etiquetas: list[str] = []
 
-    for ruta, especie in tqdm(imagenes, desc="Calculando embeddings"):
+    for ruta, especie in tqdm(imagenes, desc="Calculando embeddings",dynamic_ncols=True, mininterval=0.3, ascii=False):
         valid: bool = True
         try:
             embedding: torch.Tensor = get_embedding(

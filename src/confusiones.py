@@ -40,7 +40,13 @@ def cargar_modelo(num_clases: int, num_generos: int) -> ClasificadorDiatomeas:
 
 
 def main() -> None:
-    """Carga el modelo, evalúa en test e imprime los pares de especies confundidas."""
+    """
+    Carga el modelo, evalúa en test e imprime los pares de especies
+    confundidas, solo si se repiten al menos UMBRAL_MINIMO veces,
+    ordenados de más a menos frecuentes.
+    """
+    UMBRAL_MINIMO = 5  # sube o baja este número según cuánto "ruido" quieras filtrar
+
     datos_test = get_datos("test")
     emb_test, et_test, numero_especie = codificacion(datos_test)
     dataset_test = MyDataset(emb_test, et_test)
@@ -56,11 +62,18 @@ def main() -> None:
     nombres_clases = sorted(numero_especie, key=numero_especie.get)
     matriz = confusion_matrix(y_true, y_pred)
 
-    print("\n=== Especies que se confunden entre sí ===\n")
+    # Recogemos todos los pares que superen el umbral, para poder ordenarlos
+    confusiones: list[tuple[str, str, int]] = []
     for i, especie_real in enumerate(nombres_clases):
         for j, especie_predicha in enumerate(nombres_clases):
-            if i != j and matriz[i, j] > 0:
-                print(f"{especie_real:35s} -> {especie_predicha:35s} : {matriz[i, j]} veces")
+            if i != j and matriz[i, j] >= UMBRAL_MINIMO:
+                confusiones.append((especie_real, especie_predicha, int(matriz[i, j])))
+
+    confusiones.sort(key=lambda tupla: tupla[2], reverse=True)
+
+    print(f"\n=== Confusiones con {UMBRAL_MINIMO} o más casos ===\n")
+    for especie_real, especie_predicha, veces in confusiones:
+        print(f"{especie_real:35s} -> {especie_predicha:35s} : {veces} veces")
 
 
 if __name__ == "__main__":
