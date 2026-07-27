@@ -19,8 +19,10 @@ def cargar_modelo() -> tuple[ClasificadorDiatomeas, list[str]]:
     """
     especies_numero: list[str] = sorted(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     num_clases = len(especies_numero)
+    numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
+    num_generos = len(numero_genero)
 
-    modelo = ClasificadorDiatomeas(num_clases).to(VARIABLES_GLOBALES["DEVICE"])
+    modelo = ClasificadorDiatomeas(num_clases, num_generos).to(VARIABLES_GLOBALES["DEVICE"])
 
     ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
     modelo.load_state_dict(torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"], weights_only=True))
@@ -54,8 +56,8 @@ def predecir_imagen(embedding: torch.Tensor,modelo: ClasificadorDiatomeas,
     embedding = embedding.to(VARIABLES_GLOBALES["DEVICE"])
 
     # logits → probabilidades con softmax
-    logits: torch.Tensor = modelo(embedding)                    # [1, n_clases]
-    probs: torch.Tensor = torch.softmax(logits, dim=1)          # [1, n_clases]
+    logits_especie, _ = modelo(embedding)                    # [1, n_clases]
+    probs: torch.Tensor = torch.softmax(logits_especie, dim=1)          # [1, n_clases]
 
     # especie con mayor probabilidad y su confianza
     top3_probs, top3_indices = torch.topk(probs, k=3, dim=1)

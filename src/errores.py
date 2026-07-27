@@ -45,7 +45,9 @@ def comprobar_orden(rutas: list[str], etiquetas_guardadas: list[str]) -> None:
 def cargar_modelo() -> ClasificadorDiatomeas:
     """Carga el modelo entrenado con los pesos guardados en disco."""
     num_clases = len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
-    modelo = ClasificadorDiatomeas(num_clases).to(VARIABLES_GLOBALES["DEVICE"])
+    numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
+    num_generos = len(numero_genero)
+    modelo = ClasificadorDiatomeas(num_clases, num_generos).to(VARIABLES_GLOBALES["DEVICE"])
 
     ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
     pesos = torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"],weights_only=True)
@@ -59,8 +61,8 @@ def cargar_modelo() -> ClasificadorDiatomeas:
 def predecir(modelo: ClasificadorDiatomeas, embeddings: torch.Tensor) -> list[int]:
     """Pasa todos los embeddings por el modelo y devuelve el índice predicho de cada uno."""
     embeddings = embeddings.to(next(modelo.parameters()).device)
-    salidas = modelo(embeddings)
-    _, indices_predichos = torch.max(salidas, 1)
+    logits_especie, logits_genero = modelo(embeddings)
+    _, indices_predichos = torch.max(logits_especie, 1)
     return indices_predichos.cpu().tolist()
 
 

@@ -6,18 +6,22 @@ dividir los datos en conjuntos de entrenamiento, validación y prueba.
 --------------------------------------
 """
 
+import statistics
 from tqdm import tqdm
 import torch
 from constantes import VARIABLES_GLOBALES
 from pathlib import Path
+
 
 def get_datos(nombre_split: str) -> dict[str, torch.Tensor]:
     """
     Devuelve los embeddings y las etiquetas de las imágenes,
     según si es de entrenamiento, val o test.
     """
-    ruta_embeddings = VARIABLES_GLOBALES["RUTA_EMBEDDINGS"]/ f"embeddings_{nombre_split}.pt"
-    datos: dict[str, torch.Tensor] = torch.load(ruta_embeddings,weights_only=True)
+    ruta_embeddings = VARIABLES_GLOBALES["RUTA_EMBEDDINGS"] / \
+        f"embeddings_{nombre_split}.pt"
+    datos: dict[str, torch.Tensor] = torch.load(
+        ruta_embeddings, weights_only=True)
 
     return datos
 
@@ -29,7 +33,8 @@ def codificacion(
     correlativos (0, 1, 2, ...). Devuelve los embeddings, las etiquetas numéricas y especie -> num.
     """
     # Mapeo especie -> número
-    especies_ordenadas: list[str] = sorted(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
+    especies_ordenadas: list[str] = sorted(
+        VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     numero_especie: dict[str, int] = {}
     for i, especie in enumerate(especies_ordenadas):
         numero_especie[especie] = i
@@ -49,16 +54,19 @@ def codificacion(
 
     return embeddings_tensor, etiquetas_tensor, numero_especie
 
+
 def rutas_imagenes() -> list[tuple[str, str]]:
     """
     Recorre las carpetas con las imágenes y devuelve una lista de tuplas (ruta_completa, especie).
     Las funciones usadas en este metodo son de pathlib.Path
     """
     imagenes: list[tuple[str, str]] = []
-    grupos = ["Common_Species","Unique_Species","Seleccion_5_especies_por_especie","UDE_Diatoms_84k_normalizadas_reinhard","dataset_aq_dbo5"]
+    grupos = ["Common_Species", "Unique_Species", "Seleccion_5_especies_por_especie",
+              "UDE_Diatoms_84k_normalizadas_reinhard", "dataset_aq_dbo5"]
 
     for grupo in grupos:
-        ruta_grupo = VARIABLES_GLOBALES["RUTA_BASE"] / "imagenes_visilab(raw)" /grupo
+        ruta_grupo = VARIABLES_GLOBALES["RUTA_BASE"] / \
+            "imagenes_visilab(raw)" / grupo
         print(f"Recorriendo {ruta_grupo}...")
         if ruta_grupo.exists():
 
@@ -73,6 +81,8 @@ def rutas_imagenes() -> list[tuple[str, str]]:
                         imagenes.append((archivo, especie.name))
 
     return imagenes
+
+
 def contar_clases_train(et_train: torch.Tensor, numero_especie: dict[str, int]) -> None:
     """
     Cuenta cuántas imágenes de train hay por cada especie de
@@ -81,7 +91,10 @@ def contar_clases_train(et_train: torch.Tensor, numero_especie: dict[str, int]) 
     entre cero al calcular los pesos de clase).
     """
 
-    especie_numero = {numero: especie for especie, numero in numero_especie.items()}
+    especie_numero: dict[int, str] = {}
+    for especie, numero in numero_especie.items():
+        especie_numero[numero] = especie
+    # torch.bincount() devuelve un tensor con el conteo de cada número en et_train.
     conteo = torch.bincount(et_train, minlength=len(numero_especie))
 
     for numero, cantidad in enumerate(conteo):
@@ -91,8 +104,6 @@ def contar_clases_train(et_train: torch.Tensor, numero_especie: dict[str, int]) 
             raise ValueError(
                 f"La especie '{especie}' tiene 0 imágenes en train. "
                 "Revisa que el nombre coincide exactamente con el de la carpeta.")
-        
-import statistics
 
 
 def calcular_conteo_por_especie(imagenes: list[tuple[Path, str]]) -> dict[str, int]:
@@ -123,3 +134,50 @@ def calcular_copias_extra_por_especie(
         copias_por_especie[especie] = copias
 
     return copias_por_especie
+
+
+def obtener_genero(especie: str) -> str:
+    """Extrae el género de UNA SOLA especie a partir de la primera palabra antes del '_'."""
+    genero: str = especie.split("_")[0]
+    return genero
+
+
+def construir_numero_genero(especies_filtradas: set[str]) -> dict[str, int]:
+    """Mapea cada género presente en ESPECIES_FILTRADAS a un índice numérico."""
+    generos_desordenados: list[str] = []
+    for especie in especies_filtradas:
+        genero: str = obtener_genero(especie)
+        generos_desordenados.append(genero)
+    generos_ordenados = sorted(set(generos_desordenados))
+    mapeado: dict[str, int] = {}
+    for i, genero in enumerate(generos_ordenados):
+        mapeado[genero] = i
+    return mapeado
+
+
+def etiquetas_a_generos(
+        etiquetas_especie: torch.Tensor, numero_especie: dict[str, int],
+        numero_genero: dict[str, int]) -> torch.Tensor:
+    """
+    Convierte un tensor de etiquetas de especie en un tensor de etiquetas de
+    género, manteniendo el mismo orden de las muestras.Invierte numero_especie 
+    para pasar de número->especie en vez de especie->número. Finalmente,
+    convierte el género a su índice numérico 
+    """
+    especie_numero: dict[int, str] = {}
+
+    for especie, numero in numero_especie.items():
+        especie_numero[numero] = especie   # aquí SÍ rellenamos el diccionario
+
+    etiquetas_genero: list[int] = []
+
+    for idx in etiquetas_especie:
+        numero = idx.item()
+        especie = especie_numero[numero]
+        genero = obtener_genero(especie)
+        numero_del_genero = numero_genero[genero]
+        etiquetas_genero.append(numero_del_genero)
+
+    etiquetas_genero_tensor = torch.tensor(etiquetas_genero, dtype=torch.long)
+
+    return etiquetas_genero_tensor

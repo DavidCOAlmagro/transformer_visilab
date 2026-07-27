@@ -10,28 +10,35 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from sklearn.metrics import f1_score
+from constantes import VARIABLES_GLOBALES
 
 @torch.no_grad()
-def validacion(modelo, dataloader, func_loss) -> tuple[float, float, float]:
+def validacion(modelo, dataloader, func_loss_especie,
+               func_loss_genero, peso_genero: float = VARIABLES_GLOBALES["PESO_GENERO"]) -> tuple[float, float, float]:
     """
-    Trabaja con los datos no utilizados en entrenamiento para ver si
-    el modelo realmente está aprendiendo y no memorizando.
+    Igual que entrenar_epoca pero sin actualizar pesos. Las métricas
+    (precisión, macro F1) se calculan solo sobre la predicción de especie,
+    que es la que de verdad nos interesa evaluar.
     """
     modelo.eval()
     perdida_acumulada = 0.0
     y_true, y_pred = [], []
 
-    for batch_embeddings, batch_etiquetas in tqdm(dataloader, desc="Validando", leave=False):
+    for batch_embeddings, batch_etiquetas, batch_etiquetas_genero in tqdm(dataloader, desc="Validando", leave=False):
         device = next(modelo.parameters()).device
         batch_embeddings = batch_embeddings.to(device)
         batch_etiquetas = batch_etiquetas.to(device)
+        batch_etiquetas_genero = batch_etiquetas_genero.to(device)
 
-        salida = modelo(batch_embeddings)
-        perdida = func_loss(salida, batch_etiquetas)
+        logits_especie, logits_genero = modelo(batch_embeddings)
+
+        perdida_especie= func_loss_especie(logits_especie, batch_etiquetas)
+        perdida_genero = func_loss_genero(logits_genero, batch_etiquetas_genero)
+        perdida: torch.Tensor = perdida_especie + peso_genero * perdida_genero
         perdida_acumulada += perdida.item()
 
         # Calcula el número de aciertos en este batch
-        _, indice_predicciones = torch.max(salida, 1) # devuelve valor max e indice(especie)
+        _, indice_predicciones = torch.max(logits_especie, 1) # devuelve valor max e indice(especie)
         # Añade las etiquetas verdaderas y predichas a las listas correspondientes
         y_true.extend(batch_etiquetas.cpu().tolist())
         y_pred.extend(indice_predicciones.cpu().tolist())
@@ -45,28 +52,36 @@ def validacion(modelo, dataloader, func_loss) -> tuple[float, float, float]:
 
     return perdida_media, precision, macro_f1
 
-def entrenar_epoca(modelo: nn.Module,dataloader: DataLoader,func_loss: nn.Module,
-    optimizador: torch.optim.Optimizer) -> float:
+def entrenar_epoca(modelo: nn.Module,dataloader: DataLoader,func_loss_especie: nn.Module,
+    func_loss_genero: nn.Module, optimizador: torch.optim.Optimizer,
+    peso_genero: float = VARIABLES_GLOBALES["PESO_GENERO"]) -> float:
     """
-    Entrena el modelo durante una época completa (una pasada por todo el
-    dataloader). Devuelve la pérdida media de la época.
+    Entrena el modelo durante una época completa. La pérdida total es la
+    suma de la pérdida de especie (la que importa) más la pérdida de
+    género ponderada por peso_genero (tarea auxiliar, ayuda a entrenar
+    mejor el tronco compartido). Devuelve la pérdida media de la época.
     """
+    
     modelo.train()
     perdida_acumulada: float = 0.0
 
     # Itera sobre todos los batches del dataloader
-    for batch_embeddings, batch_etiquetas in tqdm(dataloader, desc="Entrenando",leave=False):
+    for batch_embeddings, batch_etiquetas,batch_etiquetas_genero in tqdm(dataloader, desc="Entrenando",leave=False):
         # Mueve los tensores a la GPU si el modelo está en GPU
         device = next(modelo.parameters()).device
         batch_embeddings = batch_embeddings.to(device)
         batch_etiquetas = batch_etiquetas.to(device)
+        batch_etiquetas_genero = batch_etiquetas_genero.to(device)
 
         # Limpia los gradientes de la GPU para que no se acumulen de un batch a otro.
         optimizador.zero_grad()
-
-        # Hace forward, intenta adivinar la especie
-        salida: torch.Tensor = modelo(batch_embeddings)
-        perdida: torch.Tensor = func_loss(salida, batch_etiquetas)
+        # El modelo ahora devuelve DOS salidas: logits de especie y de género(forward)
+        logits_especie, logits_genero = modelo(batch_embeddings)
+        
+        perdida_especie: torch.Tensor = func_loss_especie(logits_especie, batch_etiquetas)
+        perdida_genero: torch.Tensor = func_loss_genero(logits_genero, batch_etiquetas_genero)
+        # La pérdida total es la suma de ambas, multiplicando la de género
+        perdida: torch.Tensor = perdida_especie + peso_genero * perdida_genero
 
         # Calcula los gradientes de la pérdida con respecto a los pesos(como mejorar)
         perdida.backward()
@@ -82,9 +97,10 @@ def entrenar_epoca(modelo: nn.Module,dataloader: DataLoader,func_loss: nn.Module
 
 def entrenar_modelo(
         modelo: nn.Module, dataloader_train: DataLoader, dataloader_val: DataLoader,
-        func_loss: nn.Module, optimizador: torch.optim.Optimizer,
+        func_loss_especie: nn.Module, func_loss_genero: nn.Module, 
+        optimizador: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler.LRScheduler, ruta_mejor_modelo: Path,
-        num_epocas: int, paciencia: int = 5
+        num_epocas: int, paciencia: int, peso_genero: float = VARIABLES_GLOBALES["PESO_GENERO"]
         ) -> tuple[list[float], list[float], list[float], list[float]]:
     """
     Bucle completo de entrenamiento por épocas: entrena, valida, actualiza
@@ -107,9 +123,9 @@ def entrenar_modelo(
     for epoca in range(num_epocas):
         if valid:
             if contador_no_mejora < paciencia:
-                perdida_train = entrenar_epoca(modelo, dataloader_train, func_loss, optimizador)
+                perdida_train = entrenar_epoca(modelo, dataloader_train, func_loss_especie, func_loss_genero, optimizador, peso_genero)
                 perdida_val, precision_val, macro_f1_val = validacion(modelo,
-                                                                      dataloader_val, func_loss)
+                                                                      dataloader_val, func_loss_especie, func_loss_genero, peso_genero)
 
                 scheduler.step()  # avanza el learning rate según el schedule
 

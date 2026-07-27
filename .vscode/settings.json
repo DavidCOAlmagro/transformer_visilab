@@ -1,3 +1,4 @@
 {
-    "chat.byokUtilityModelDefault": "copilot"
+    "chat.byokUtilityModelDefault": "copilot",
+    "python-envs.defaultEnvManager": "ms-python.python:system"
 }

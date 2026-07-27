@@ -11,14 +11,15 @@ from constantes import VARIABLES_GLOBALES
 
 
 def crear_dataloaders(
-        emb_train: torch.Tensor, et_train: torch.Tensor, emb_val: torch.Tensor,
-        et_val: torch.Tensor) -> tuple[DataLoader, DataLoader]:
+        emb_train: torch.Tensor, et_train: torch.Tensor, 
+        et_train_genero: torch.Tensor, emb_val: torch.Tensor,
+        et_val: torch.Tensor, et_val_genero: torch.Tensor) -> tuple[DataLoader, DataLoader]:
     """
     Crea los DataLoaders para entrenamiento y validación.
     """
 
-    dataset_train = MyDataset(emb_train, et_train)
-    dataset_val = MyDataset(emb_val, et_val)
+    dataset_train = MyDataset(emb_train, et_train, et_train_genero)
+    dataset_val = MyDataset(emb_val, et_val, et_val_genero)
     
     # WeightedRandomSampler balancea las clases minoritarias
     pesos_muestras = calcular_pesos_muestras(et_train)

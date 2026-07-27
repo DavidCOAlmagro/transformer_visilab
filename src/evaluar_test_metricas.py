@@ -34,9 +34,9 @@ def obtener_predicciones(
 
 
         # Para cada embedding, el modelo devuelve un vector con las probabilidades/logits.
-        salida: torch.Tensor = modelo(batch_embeddings)
+        logits_especie, logits_genero = modelo(batch_embeddings)
         # Predicción final, devuelve el mayor logit y el indice
-        _, indice_predicciones = torch.max(salida, 1)
+        _, indice_predicciones = torch.max(logits_especie, 1)
         # Añade las etiquetas verdaderas y predichas a las listas correspondientes
         y_true.extend(batch_etiquetas.tolist())
         y_pred.extend(indice_predicciones.cpu().tolist())
@@ -85,7 +85,7 @@ def generar_reporte_clasificacion(
     return reporte
 
 
-def main() -> None:                              # <-- aquí está
+def main() -> None:                            
     """
     Carga el modelo entrenado, evalúa el conjunto de test y genera
     la matriz de confusión + el reporte de clasificación.
@@ -103,7 +103,9 @@ def main() -> None:                              # <-- aquí está
     )
 
     num_clases = len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
-    modelo = ClasificadorDiatomeas(num_clases).to(VARIABLES_GLOBALES["DEVICE"])
+    numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
+    num_generos = len(numero_genero)
+    modelo = ClasificadorDiatomeas(num_clases, num_generos).to(VARIABLES_GLOBALES["DEVICE"])
 
     # Carga los pesos del mejor modelo entrenado
     ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
