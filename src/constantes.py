@@ -40,7 +40,7 @@ VARIABLES_GLOBALES: dict[str, object] = {
         "Navicula_caterva",
         "Achnanthidium_rivulare",
         "Gomphonema_pumilum",
-        "Achnanthidium_delmontii",
+        "Seminavis_strigosa",
         "Achnanthidium_rostropyrenaicum",
         "Fragilaria_sp",
         "Gomphonema_rhombicum",
