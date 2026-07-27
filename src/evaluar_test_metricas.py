@@ -14,7 +14,7 @@ import numpy as np
 from tqdm import tqdm
 from constantes import VARIABLES_GLOBALES
 from clasificador import ClasificadorDiatomeas
-from preparar_datos import get_datos, codificacion
+from preparar_datos import get_datos, codificacion, construir_numero_genero
 from dataset import MyDataset
 
 @torch.no_grad()

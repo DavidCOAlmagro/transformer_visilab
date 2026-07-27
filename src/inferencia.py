@@ -11,6 +11,7 @@ import pandas as pd
 from clasificador import ClasificadorDiatomeas
 from constantes import VARIABLES_GLOBALES
 from embeddings import inicializar_dinov2, get_embedding
+from preparar_datos import construir_numero_genero
 
 def cargar_modelo() -> tuple[ClasificadorDiatomeas, list[str]]:
     """

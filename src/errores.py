@@ -13,7 +13,7 @@ import torch
 
 from constantes import VARIABLES_GLOBALES
 from clasificador import ClasificadorDiatomeas
-from preparar_datos import get_datos, codificacion
+from preparar_datos import get_datos, codificacion, construir_numero_genero
 from generar_leer_splits import leer_split
 
 
