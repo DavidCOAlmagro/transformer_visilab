@@ -6,8 +6,11 @@ extensiones = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
 
 base_dir = Path(__file__).resolve().parent.parent
 dataset_roots = [
-    base_dir / "proyecto_transformer" / "data" / "imagenes_visilab(raw)",
-    base_dir / "auxiliar" / "UDE_Diatoms_84k",
+    base_dir / "data" /"imagenes_visilab(raw)" / "dataset_aq_dbo5",
+    base_dir / "data" /"imagenes_visilab(raw)" / "Common_Species",
+    base_dir / "data" /"imagenes_visilab(raw)" / "Seleccion_5_especies_por_especie",
+    base_dir / "data" /"imagenes_visilab(raw)" / "UDE_Diatoms_84k_normalizadas_reinhard",
+    base_dir / "data" /"imagenes_visilab(raw)" / "Unique_Species"
 ]
 
 
