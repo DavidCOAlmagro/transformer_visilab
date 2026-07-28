@@ -52,10 +52,11 @@ VARIABLES_GLOBALES: dict[str, object] = {
         "Mayamaea_permitis"
     },
  # De las 20 especies más enviadas en el excel:
- # -Eunotia exigua solo 6 imágenes en dataset, insuficiente para entrenar.
- # -Fragilaria radians: solo 3 imágenes, mismo problema.
+ # - Eunotia exigua solo 6 imágenes en dataset, insuficiente para entrenar.
+ # - Fragilaria radians: solo 3 imágenes, mismo problema.
  # - Gomphonema pumilum var. rigidum: ninguna, existe pumilum a secas
-
+ # - Achnanthidium delmontii: daba malos resultados
+ # - Achnanthidium rostropyrenaicum: muy pocas imágenes
     # -------------------------
     # Parámetros
     # -------------------------

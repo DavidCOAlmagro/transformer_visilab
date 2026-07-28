@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix
 from constantes import VARIABLES_GLOBALES
 from clasificador import ClasificadorDiatomeas
-from preparar_datos import get_datos, codificacion, construir_numero_genero
+from preparar_datos import get_datos, codificacion, construir_numero_genero,construir_especies_por_genero
 from dataset import MyDataset
 
 
@@ -29,9 +29,9 @@ def obtener_predicciones(modelo, dataloader) -> tuple[list[int], list[int]]:
     return y_true, y_pred
 
 
-def cargar_modelo(num_clases: int, num_generos: int) -> ClasificadorDiatomeas:
+def cargar_modelo(num_clases: int, num_generos: int, especies_por_genero: dict) -> ClasificadorDiatomeas:
     """Carga el modelo entrenado con los pesos guardados en disco."""
-    modelo = ClasificadorDiatomeas(num_clases, num_generos).to(VARIABLES_GLOBALES["DEVICE"])
+    modelo = ClasificadorDiatomeas(num_clases, num_generos, especies_por_genero).to(VARIABLES_GLOBALES["DEVICE"])
     ruta_pesos = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
     pesos = torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"], weights_only=True)
     modelo.load_state_dict(pesos)
@@ -55,8 +55,9 @@ def main() -> None:
     num_clases = len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     num_generos = len(numero_genero)
+    especies_por_genero = construir_especies_por_genero(numero_especie, numero_genero)
 
-    modelo = cargar_modelo(num_clases, num_generos)
+    modelo = cargar_modelo(num_clases, num_generos, especies_por_genero)
     y_true, y_pred = obtener_predicciones(modelo, dataloader_test)
 
     nombres_clases = sorted(numero_especie, key=numero_especie.get)

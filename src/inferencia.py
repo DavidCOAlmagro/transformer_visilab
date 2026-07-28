@@ -11,7 +11,7 @@ import pandas as pd
 from clasificador import ClasificadorDiatomeas
 from constantes import VARIABLES_GLOBALES
 from embeddings import inicializar_dinov2, get_embedding
-from preparar_datos import construir_numero_genero
+from preparar_datos import construir_numero_genero, construir_especies_por_genero
 
 def cargar_modelo() -> tuple[ClasificadorDiatomeas, list[str]]:
     """
@@ -22,8 +22,9 @@ def cargar_modelo() -> tuple[ClasificadorDiatomeas, list[str]]:
     num_clases = len(especies_numero)
     numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     num_generos = len(numero_genero)
+    especies_por_genero = construir_especies_por_genero(numero_especie, numero_genero)
 
-    modelo = ClasificadorDiatomeas(num_clases, num_generos).to(VARIABLES_GLOBALES["DEVICE"])
+    modelo = ClasificadorDiatomeas(num_clases, num_generos, especies_por_genero).to(VARIABLES_GLOBALES["DEVICE"])
 
     ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
     modelo.load_state_dict(torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"], weights_only=True))
@@ -46,7 +47,7 @@ def calcular_embedding_imagen(ruta_imagen: str) -> torch.Tensor:
 
 @torch.no_grad()
 def predecir_imagen(embedding: torch.Tensor,modelo: ClasificadorDiatomeas,
-        especies_ordenadas: list[str],intervalo_confianza: float = 0.60) -> dict[str, object]:
+        especies_ordenadas: list[str],intervalo_confianza: float = VARIABLES_GLOBALES["UMBRAL_CONF"]) -> dict[str, object]:
     """
     Recibe el embedding de una imagen y devuelve un diccionario con:
     - especie_predicha: la clase con mayor probabilidad
@@ -139,11 +140,11 @@ def inferir_carpeta(ruta_carpeta: str) -> None:
     except ValueError as e:
         valid = False
         print(f"Error al procesar la carpeta: {e}")
+    rows: list[dict[str, object]] = []
     if valid:
         modelo, especies_ordenadas = cargar_modelo()
         processor, dinov2, device, augmentation = inicializar_dinov2()
 
-        rows: list[dict[str, object]] = []
         for imagen in imagenes:
             print(f"  Procesando: {imagen.name}")
 

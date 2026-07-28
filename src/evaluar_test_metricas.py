@@ -14,7 +14,7 @@ import numpy as np
 from tqdm import tqdm
 from constantes import VARIABLES_GLOBALES
 from clasificador import ClasificadorDiatomeas
-from preparar_datos import get_datos, codificacion, construir_numero_genero
+from preparar_datos import get_datos, codificacion, construir_numero_genero,construir_especies_por_genero
 from dataset import MyDataset
 
 @torch.no_grad()
@@ -105,7 +105,9 @@ def main() -> None:
     num_clases = len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     num_generos = len(numero_genero)
-    modelo = ClasificadorDiatomeas(num_clases, num_generos).to(VARIABLES_GLOBALES["DEVICE"])
+    especies_por_genero = construir_especies_por_genero(numero_especie, numero_genero)
+    
+    modelo = ClasificadorDiatomeas(num_clases, num_generos, especies_por_genero).to(VARIABLES_GLOBALES["DEVICE"])
 
     # Carga los pesos del mejor modelo entrenado
     ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"

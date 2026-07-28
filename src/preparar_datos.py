@@ -180,3 +180,22 @@ def etiquetas_a_generos(
     etiquetas_genero_tensor = torch.tensor(etiquetas_genero, dtype=torch.long)
 
     return etiquetas_genero_tensor
+
+def construir_especies_por_genero(
+        numero_especie: dict[str, int], numero_genero: dict[str, int]) -> dict[int, list[int]]:
+    """
+    Mapea cada índice de género al listado de índices de especie (globales)
+    que le pertenecen. Necesario para que el clasificador sepa qué cabeza
+    usar y cómo traducir sus salidas locales a índices globales de especie.
+    Se deriva automáticamente del nombre de cada especie.
+    Devuelve un diccionario: índice de género -> lista de índices
+    (Achnanthidium: Achnanthidium_minutissimum, Achnanthidium_parvulum, ...)
+    """
+    especies_por_genero: dict[int, list[int]] = {}
+    for especie, indice_especie in numero_especie.items():
+        genero: str = obtener_genero(especie)
+        indice_genero: int = numero_genero[genero]
+        # Si clave no existe, se crea la lista y se guarda en el diccionario. Y luego se 
+        # añade el índice de especie a la lista correspondiente.
+        especies_por_genero.setdefault(indice_genero, []).append(indice_especie)
+    return especies_por_genero
