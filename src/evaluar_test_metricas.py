@@ -14,7 +14,7 @@ import numpy as np
 from tqdm import tqdm
 from constantes import VARIABLES_GLOBALES
 from clasificador import ClasificadorDiatomeas
-from preparar_datos import get_datos, codificacion, construir_numero_genero,construir_especies_por_genero,etiquetas_a_generos
+from preparar_datos import get_datos, codificacion, construir_numero_genero, etiquetas_a_generos
 from dataset import MyDataset
 
 @torch.no_grad()
@@ -91,8 +91,9 @@ def generar_reporte_clasificacion(
     )
     return reporte
 
-def accuracy_genero(y_true_especie: list[int], gen_pred: list[int], 
-                    numero_genero: dict[str, int], numero_especie: dict[str, int]) -> float:
+def calcular_accuracy_genero(y_true_especie: list[int], gen_pred: list[int],
+                             numero_especie: dict[str, int],
+                             numero_genero: dict[str, int]) -> float:
     """
     Calcula qué porcentaje de muestras de test tienen el género predicho
     correctamente. Sirve para diagnosticar si los errores de especie del
@@ -101,7 +102,7 @@ def accuracy_genero(y_true_especie: list[int], gen_pred: list[int],
     clasificador de especie en sí).
     """
     # Convertimos las etiquetas verdaderas de especie a género real
-    et_true_tensor : torch.Tensor = torch.tensor(y_true_especie,dtupe=torch.long)
+    et_true_tensor : torch.Tensor = torch.tensor(y_true_especie, dtype=torch.long)
     genero_true_tensor : torch.Tensor =  etiquetas_a_generos(et_true_tensor, numero_especie, numero_genero)
     genero_true : list[int] = genero_true_tensor.tolist()
     
@@ -129,8 +130,7 @@ def main() -> None:
     num_clases = len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     num_generos = len(numero_genero)
-    especies_por_genero = construir_especies_por_genero(numero_especie, numero_genero)
-    modelo = ClasificadorDiatomeas(num_clases, num_generos, especies_por_genero).to(VARIABLES_GLOBALES["DEVICE"])
+    modelo = ClasificadorDiatomeas(num_clases, num_generos).to(VARIABLES_GLOBALES["DEVICE"])
 
     # Carga los pesos del mejor modelo entrenado
     ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
@@ -140,7 +140,7 @@ def main() -> None:
     modelo.eval()
 
     y_true, y_pred, y_pred_genero = obtener_predicciones(modelo, dataloader_test)
-    accuracy_genero = accuracy_genero(y_true, y_pred_genero, numero_especie, numero_genero)
+    accuracy_genero = calcular_accuracy_genero(y_true, y_pred_genero, numero_especie, numero_genero)
     print(f"\nAccuracy del clasificador de género en test: {accuracy_genero:.2%}\n")
     # La lista de nombres de clases se ordena según el índice de especie
     # para que coincida con las etiquetas

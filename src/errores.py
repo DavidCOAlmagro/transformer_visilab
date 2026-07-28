@@ -13,7 +13,7 @@ import torch
 
 from constantes import VARIABLES_GLOBALES
 from clasificador import ClasificadorDiatomeas
-from preparar_datos import get_datos, codificacion, construir_numero_genero,construir_especies_por_genero
+from preparar_datos import get_datos, codificacion, construir_numero_genero
 from generar_leer_splits import leer_split
 
 
@@ -47,9 +47,7 @@ def cargar_modelo() -> ClasificadorDiatomeas:
     num_clases = len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     num_generos = len(numero_genero)
-    especies_por_genero = construir_especies_por_genero(numero_especie, numero_genero)
-    
-    modelo = ClasificadorDiatomeas(num_clases, num_generos, especies_por_genero).to(VARIABLES_GLOBALES["DEVICE"])
+    modelo = ClasificadorDiatomeas(num_clases, num_generos).to(VARIABLES_GLOBALES["DEVICE"])
     
     ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
     pesos = torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"],weights_only=True)

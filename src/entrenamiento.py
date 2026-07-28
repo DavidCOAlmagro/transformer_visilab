@@ -30,7 +30,7 @@ def validacion(modelo, dataloader, func_loss_especie,
         batch_etiquetas = batch_etiquetas.to(device)
         batch_etiquetas_genero = batch_etiquetas_genero.to(device)
 
-        logits_especie, logits_genero = modelo(batch_embeddings,genero_target=batch_etiquetas_genero)
+        logits_especie, logits_genero = modelo(batch_embeddings)
 
         perdida_especie= func_loss_especie(logits_especie, batch_etiquetas)
         perdida_genero = func_loss_genero(logits_genero, batch_etiquetas_genero)
@@ -76,7 +76,7 @@ def entrenar_epoca(modelo: nn.Module,dataloader: DataLoader,func_loss_especie: n
         # Limpia los gradientes de la GPU para que no se acumulen de un batch a otro.
         optimizador.zero_grad()
         # El modelo ahora devuelve DOS salidas: logits de especie y de género(forward)
-        logits_especie, logits_genero = modelo(batch_embeddings, genero_target=batch_etiquetas_genero)
+        logits_especie, logits_genero = modelo(batch_embeddings)
         
         perdida_especie: torch.Tensor = func_loss_especie(logits_especie, batch_etiquetas)
         perdida_genero: torch.Tensor = func_loss_genero(logits_genero, batch_etiquetas_genero)

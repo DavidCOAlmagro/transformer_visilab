@@ -11,7 +11,7 @@ from pathlib import Path
 import torch
 from torch import nn
 from constantes import VARIABLES_GLOBALES
-from preparar_datos import get_datos, codificacion, contar_clases_train, calcular_conteo_por_especie, calcular_copias_extra_por_especie,construir_numero_genero,etiquetas_a_generos,construir_especies_por_genero
+from preparar_datos import get_datos, codificacion, contar_clases_train, calcular_conteo_por_especie, calcular_copias_extra_por_especie,construir_numero_genero,etiquetas_a_generos
 from generar_leer_splits import leer_split, generar_split
 from embeddings import inicializar_dinov2, calcular_embeddings
 from clasificador import ClasificadorDiatomeas
@@ -101,14 +101,13 @@ def main() -> None:
         contar_clases_train(et_train, numero_especie)
         numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
         num_generos = len(numero_genero)
-        especies_por_genero = construir_especies_por_genero(numero_especie, numero_genero)
         et_train_genero = etiquetas_a_generos(et_train, numero_especie, numero_genero)
         
         
         et_val_genero = etiquetas_a_generos(et_val, numero_especie, numero_genero)
         num_clases = len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
         print("Creando modelo...")
-        modelo = ClasificadorDiatomeas(num_clases, num_generos, especies_por_genero).to(
+        modelo = ClasificadorDiatomeas(num_clases, num_generos).to(
             VARIABLES_GLOBALES["DEVICE"])
         
         # El optimizador es el encargado de actualizar los pesos de la red neuronal para que aprenda
