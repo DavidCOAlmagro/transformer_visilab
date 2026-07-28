@@ -128,7 +128,8 @@ def main() -> None:
         pesos_clase = calcular_pesos_clases(et_train)
         # Función que devuelve la puntuación(logits) de cada clase para cada imagen.
         func_loss_especie = nn.CrossEntropyLoss(label_smoothing=VARIABLES_GLOBALES["LABEL_SMOOTHING"],
-                                                weight=pesos_clase.to(VARIABLES_GLOBALES["DEVICE"]))
+                                                )
+        weight=pesos_clase.to(VARIABLES_GLOBALES["DEVICE"])
         func_loss_genero = nn.CrossEntropyLoss()
         print("Iniciando entrenamiento...")
 
