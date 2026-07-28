@@ -124,7 +124,8 @@ def main() -> None:
         print("Creando dataloaders...")
         dataloader_train, dataloader_val = crear_dataloaders(
             emb_train, et_train, et_train_genero, emb_val, et_val, et_val_genero)
-
+        print(f"Sampler train: {type(dataloader_train.sampler).__name__}")
+        print("EXPERIMENTO: sin WeightedRandomSampler, shuffle=True")
         pesos_clase = calcular_pesos_clases(et_train)
         # Función que devuelve la puntuación(logits) de cada clase para cada imagen.
         func_loss_especie = nn.CrossEntropyLoss(label_smoothing=VARIABLES_GLOBALES["LABEL_SMOOTHING"],
