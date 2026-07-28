@@ -14,20 +14,25 @@ import numpy as np
 from tqdm import tqdm
 from constantes import VARIABLES_GLOBALES
 from clasificador import ClasificadorDiatomeas
-from preparar_datos import get_datos, codificacion, construir_numero_genero,construir_especies_por_genero
+from preparar_datos import get_datos, codificacion, construir_numero_genero,construir_especies_por_genero,etiquetas_a_generos
 from dataset import MyDataset
 
 @torch.no_grad()
 def obtener_predicciones(
         modelo: nn.Module, dataloader: DataLoader) -> tuple[list[int], list[int]]:
     """
-    Pasa todos los batches de un dataloader por el modelo y devuelve dos listas
-    paralelas: las etiquetas verdaderas (y_true) y las predichas por el modelo (y_pred).
+    Pasa todos los batches de un dataloader por el modelo y devuelve tres listas
+    paralelas: las etiquetas verdaderas de especie (y_true), las predichas de
+    especie (y_pred), y las predichas de género (genero_pred). Esto último sirve
+    para medir si los errores de especie vienen de que el género se predice mal
+    (en cuyo caso el error de especie es inevitable, ya que la cabeza de ese
+    género ni siquiera tiene la especie correcta entre sus opciones).
     """
     modelo.eval()
 
     y_true: list[int] = []
     y_pred: list[int] = []
+    genero_pred: list[int] = []
 
     for batch_embeddings, batch_etiquetas in tqdm(dataloader, desc="Evaluando test"):
         batch_embeddings = batch_embeddings.to(next(modelo.parameters()).device)
@@ -37,11 +42,13 @@ def obtener_predicciones(
         logits_especie, logits_genero = modelo(batch_embeddings)
         # Predicción final, devuelve el mayor logit y el indice
         _, indice_predicciones = torch.max(logits_especie, 1)
+        _, indice_predicciones_genero = torch.max(logits_genero, 1)
         # Añade las etiquetas verdaderas y predichas a las listas correspondientes
         y_true.extend(batch_etiquetas.tolist())
         y_pred.extend(indice_predicciones.cpu().tolist())
+        genero_pred.extend(indice_predicciones_genero.cpu().tolist())
 
-    return y_true, y_pred
+    return y_true, y_pred,genero_pred
 
 
 def matriz_confusion(y_true: list[int], y_pred: list[int],
@@ -84,6 +91,23 @@ def generar_reporte_clasificacion(
     )
     return reporte
 
+def accuracy_genero(y_true_especie: list[int], gen_pred: list[int], 
+                    numero_genero: dict[str, int], numero_especie: dict[str, int]) -> float:
+    """
+    Calcula qué porcentaje de muestras de test tienen el género predicho
+    correctamente. Sirve para diagnosticar si los errores de especie del
+    clasificador jerárquico vienen de que el género se predice mal (en
+    cuyo caso el error de especie es inevitable, no un fallo del
+    clasificador de especie en sí).
+    """
+    # Convertimos las etiquetas verdaderas de especie a género real
+    et_true_tensor : torch.Tensor = torch.tensor(y_true_especie,dtupe=torch.long)
+    genero_true_tensor : torch.Tensor =  etiquetas_a_generos(et_true_tensor, numero_especie, numero_genero)
+    genero_true : list[int] = genero_true_tensor.tolist()
+    
+    aciertos : int = sum(1 for true, pred in zip(genero_true, gen_pred) if true == pred)
+    accuracy : float = aciertos / len(genero_true) 
+    return accuracy
 
 def main() -> None:                            
     """
@@ -106,7 +130,6 @@ def main() -> None:
     numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     num_generos = len(numero_genero)
     especies_por_genero = construir_especies_por_genero(numero_especie, numero_genero)
-    
     modelo = ClasificadorDiatomeas(num_clases, num_generos, especies_por_genero).to(VARIABLES_GLOBALES["DEVICE"])
 
     # Carga los pesos del mejor modelo entrenado
@@ -116,7 +139,9 @@ def main() -> None:
     modelo.load_state_dict(pesos)
     modelo.eval()
 
-    y_true, y_pred = obtener_predicciones(modelo, dataloader_test)
+    y_true, y_pred, y_pred_genero = obtener_predicciones(modelo, dataloader_test)
+    accuracy_genero = accuracy_genero(y_true, y_pred_genero, numero_especie, numero_genero)
+    print(f"\nAccuracy del clasificador de género en test: {accuracy_genero:.2%}\n")
     # La lista de nombres de clases se ordena según el índice de especie
     # para que coincida con las etiquetas
     nombres_clases = sorted(numero_especie, key=numero_especie.get)

@@ -110,7 +110,7 @@ def main() -> None:
         print("Creando modelo...")
         modelo = ClasificadorDiatomeas(num_clases, num_generos, especies_por_genero).to(
             VARIABLES_GLOBALES["DEVICE"])
-
+        
         # El optimizador es el encargado de actualizar los pesos de la red neuronal para que aprenda
         # modelo.parameters() devuelve los pesos y sesgos de la red neuronal entrenables.
         # Learning rate 0.0003 es un valor pequeño para no oscilar demasiado.
