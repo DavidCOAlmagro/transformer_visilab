@@ -1,0 +1,102 @@
+MEJORAS FUTURAS PARA EL MACRO F1
+Nota corta para retomar el proyecto
+
+PUNTO DE PARTIDA
+================
+
+Última iteración (29/07/2026):
+
+  - Macro F1 de validación: 0,8311 (mejor época: 18)
+  - Macro F1 de test: 0,84
+  - Accuracy de test: 0,87
+  - Accuracy de género: 93,97 %
+
+Ya probado sin mejora clara:
+
+  - label smoothing a 0;
+  - variar PESO_GENERO (el mejor valor fue 0,1);
+  - quitar WeightedRandomSampler;
+  - probar sin pesos en la loss.
+
+No merece la pena volver a invertir tiempo en esos cambios aislados salvo que
+cambien los datos o se implemente un experimento distinto.
+
+
+QUÉ EXPLICA PARTE DE LAS CONFUSIONES
+====================================
+
+Las confusiones más frecuentes aparecen entre Achnanthidium, Nitzschia y
+etiquetas “sp”. Esto no siempre es un error evitable: una carpeta “sp” puede
+contener imágenes de subespecies o especies concretas, por ejemplo
+Achnanthidium_pyrenaicum. En ese caso hay solapamiento de etiquetas: imágenes
+visualmente correctas pueden tener etiquetas taxonómicas demasiado generales.
+
+Antes de penalizar esos fallos como errores del modelo, revisar una pequeña
+muestra de los pares más confundidos. Si “sp” es una clase paraguas, considerar:
+
+  - mantenerla para inferencia general, pero medir aparte los errores contra
+    especies de su mismo género;
+  - o excluir temporalmente la clase “sp” al evaluar la identificación fina;
+  - o relabelar las imágenes “sp” que sí puedan identificarse con seguridad.
+
+
+PRUEBAS FUTURAS ÚTILES (EN ESTE ORDEN)
+======================================
+
+1. Revisar augmentation.
+
+   Es la primera prueba recomendada. El código actual aplica rotación, flips,
+   affine, color jitter y GaussianBlur; el blur se aplica siempre. Hacer pruebas
+   sencillas, manteniendo los mismos splits:
+
+   - solo rotaciones y flips;
+   - añadir blur con probabilidad, no siempre;
+   - comparar con y sin color jitter.
+
+   Elegir la configuración por macro F1 de validación y mirar específicamente
+   precision/recall de Achnanthidium y Nitzschia. No cambiar varias cosas a la
+   vez.
+
+2. Center loss junto con CrossEntropy.
+
+   Es una opción razonable para este problema: además de clasificar, fuerza a
+   que los embeddings del clasificador de una misma clase queden más juntos y
+   que clases distintas estén más separadas. Puede ayudar a separar géneros
+   visualmente próximos, como Achnanthidium y Nitzschia.
+
+   Implementarlo como una pérdida auxiliar pequeña:
+
+       loss_total = CrossEntropy + lambda_center * CenterLoss
+
+   Empezar con lambda_center bajo y comparar contra la línea base 0,84. Guardar
+   macro F1, F1 por clase y matriz de confusión. Si reduce errores entre géneros
+   pero empeora “sp”, interpretar ese resultado junto con el solapamiento de
+   etiquetas, no solo con el número global.
+
+3. Mejorar los datos de los pares difíciles.
+
+   Usar errores.py y confusiones.py para localizar ejemplos de:
+
+   - Achnanthidium_pyrenaicum <-> Achnanthidium_sp;
+   - Nitzschia_inconspicua <-> Nitzschia_sp;
+   - Fistulifera_saprophila <-> Mayamaea_permitis.
+
+   Revisar etiquetas y recortes, y añadir imágenes reales variadas de esos
+   pares si están disponibles. Es más probable que esto mejore el macro F1 que
+   seguir cambiando el sampler o el peso de género.
+
+4. Fine-tuning parcial de DINOv2 (solo si hay GPU y tiempo).
+
+   Descongelar los últimos bloques de DINOv2 con learning rate muy bajo, dejando
+   un learning rate mayor para el clasificador. Es la prueba de mayor coste, pero
+   puede capturar detalles morfológicos que el embedding congelado no separa.
+   Probarla solo después de augmentation y center loss.
+
+
+REGLA PARA RETOMAR
+==================
+
+Hacer un cambio por experimento, conservar los mismos splits, guardar reporte,
+matriz de confusión y macro F1 de validación/test. Si el cambio no reduce las
+confusiones objetivo ni supera 0,84 de forma consistente, descartarlo.
+

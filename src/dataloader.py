@@ -21,18 +21,17 @@ def crear_dataloaders(
     dataset_train = MyDataset(emb_train, et_train, et_train_genero)
     dataset_val = MyDataset(emb_val, et_val, et_val_genero)
     
-    # WeightedRandomSampler balancea las clases minoritarias
-    # pesos_muestras = calcular_pesos_muestras(et_train)
-    # sampler_train = WeightedRandomSampler(
-    # weights=pesos_muestras,
-    # num_samples=len(pesos_muestras),
-    # replacement=True 
-    # )
+    WeightedRandomSampler balancea las clases minoritarias
+    pesos_muestras = calcular_pesos_muestras(et_train)
+    sampler_train = WeightedRandomSampler(
+    weights=pesos_muestras,
+    num_samples=len(pesos_muestras),
+    replacement=True 
+    )
 
     dataloader_train = DataLoader(dataset_train,
                                   batch_size=VARIABLES_GLOBALES["BATCH_SIZE"],
-                                  #sampler=sampler_train,
-                                  shuffle=True,
+                                  sampler=sampler_train,
                                   num_workers=VARIABLES_GLOBALES["NUM_WORKERS"],
                                   pin_memory=VARIABLES_GLOBALES["PIN_MEMORY"],
                                   persistent_workers=VARIABLES_GLOBALES["PERSISTENT_WORKERS"])

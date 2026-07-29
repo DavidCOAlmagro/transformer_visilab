@@ -1,151 +1,99 @@
-# Clasificación de Diatomeas mediante DINOv2
+# Clasificación de diatomeas con DINOv2
 
-Pipeline de clasificación de especies de diatomeas (microorganismos) a partir de
-imágenes de microscopía, desarrollado en VISILAB para un proyecto medioambiental.
+Pipeline para clasificar especies de diatomeas a partir de imágenes de microscopía. Usa `facebook/dinov2-base` como extractor congelado de embeddings de 768 dimensiones y entrena una red neuronal ligera sobre ellos.
 
-El sistema usa **DINOv2** (Vision Transformer autosupervisado) como extractor de
-características congelado (embeddings de 768 dimensiones), sobre el cual se
-entrena un clasificador ligero (una capa lineal) para predecir la especie de
-cada imagen.
+El modelo actual realiza dos predicciones a la vez: especie (tarea principal) y género (tarea auxiliar de regularización). Está configurado para 20 especies filtradas; la selección, las rutas y los hiperparámetros se definen en `src/constantes.py`.
 
-## Estructura del proyecto
+## Estructura
 
-```
-PROYECTO_TRANSFORMER/
+```text
+proyecto_transformer_v2/
 ├── requirements.txt
-├── .gitignore
 ├── data/
-│   ├── imagenes_visilab(raw)/
-│   │   ├── Common_species/
-│   │   ├── Unique_species/
-│   │   └── Seleccion_5_especies_por_especie/
-│   ├── embeddings_procesado/         # Embeddings generados
-│   ├── metadata/                     # Documentación y referencias
-│   └── splits/                       # Rutas de train/val/test generadas automáticamente
+│   ├── imagenes_visilab(raw)/          # Imágenes originales organizadas por especie
+│   ├── splits/                         # train.txt, val.txt y test.txt
+│   └── embeddings_procesado/           # Embeddings guardados (.pt)
+├── modelos/
+│   └── 20_especies/                    # Pesos y resultados del experimento
 └── src/
-    ├── constantes.py                 # Configuración global del proyecto
-    ├── generar_leer_splits.py        # Generación y lectura de splits
-    ├── embeddings.py                 # Extracción de embeddings con DINOv2
-    ├── preparar_datos.py             # Codificación de etiquetas y filtrado
-    ├── dataset.py                    # Dataset PyTorch basado en embeddings
-    ├── dataloader.py                 # DataLoaders de train/val/test
-    ├── clasificador.py               # Capa lineal para clasificación
-    ├── entrenamiento.py              # Bucle de entrenamiento + early stopping
-    ├── evaluar_test_metricas.py      # Métricas avanzadas y matriz de confusión
-    └── main.py                       # Punto de entrada del pipeline
+    ├── main.py                         # Entrenamiento y evaluación completa
+    ├── constantes.py                   # Rutas, especies y parámetros
+    ├── embeddings.py                   # DINOv2 y aumentos de datos
+    ├── clasificador.py                 # MLP compartido y cabezas de especie/género
+    ├── inferencia.py                   # Predicción de una imagen o carpeta
+    ├── evaluar_test_metricas.py        # Métricas, matriz y curvas
+    ├── errores.py                      # Lista de errores del conjunto de test
+    └── confusiones.py                  # Pares de especies más confundidos
 ```
 
 ## Instalación
 
-1. Clona el repositorio e instala las dependencias:
+Se recomienda Python 3.10 o superior. Crea y activa un entorno virtual y después instala las dependencias:
 
-```bash
+```
 pip install -r requirements.txt
 ```
 
-2. Si tienes GPU NVIDIA, instala antes la build de PyTorch con soporte CUDA
-   correspondiente a tu versión (comprueba tu versión con `nvidia-smi`):
+Para usar una GPU NVIDIA, instala antes la variante de PyTorch que corresponda a tu versión de CUDA. Por ejemplo, para CUDA 12.1:
 
-```bash
-# Ejemplo para CUDA 12.1
+```
 pip install torch==2.7.1 torchvision==0.22.1 --index-url https://download.pytorch.org/whl/cu121
+pip install -r requirements.txt
 ```
 
-   Si no tienes GPU, el paso 1 ya instala la versión CPU sin nada más que hacer.
+Configura un token de Hugging Face con permiso de lectura, necesario para descargar DINOv2 la primera vez:
 
-3. Configura el token de Hugging Face como variable de entorno (necesario para
-   descargar el modelo DINOv2). Puedes generar uno en
-   https://huggingface.co/settings/tokens (basta con permisos de lectura/"Read"):
+```powershell
+# PowerShell, solo para la sesión actual
+$env:HF_TOKEN = "tu_token"
 
-```bash
-# Linux / macOS
-export HF_TOKEN="tu_token_aqui"
 
-# Windows (cmd)
-set HF_TOKEN=tu_token_aqui
+
+## Datos
+
+Las imágenes se buscan en `data/imagenes_visilab(raw)/` dentro de los grupos definidos en `src/preparar_datos.py`. Cada especie debe corresponder a una carpeta y su nombre debe estar incluido en `ESPECIES_FILTRADAS` de `src/constantes.py`.
+
+Al regenerar los splits, se crean particiones estratificadas reproducibles de 70 % entrenamiento, 15 % validación y 15 % test en `data/splits/`.
+
+## Entrenar y evaluar
+
+Desde la raíz del proyecto:
+
 ```
-
-## Uso del pipeline
-
-Ejecutar el pipeline completo:
-
-```bash
 py src/main.py
 ```
 
-El script:
+El programa pregunta si se desea reentrenar y, en ese caso, si se deben regenerar los splits y los embeddings. Durante el entrenamiento:
 
-1. Pregunta si quieres reentrenar o usar el modelo existente.
-2. Genera splits reproducibles.
-3. Calcula embeddings (con augmentation en train).
-4. Entrena el clasificador lineal.
-5. Guarda el mejor modelo.
-6. Evalúa automáticamente en test.
-7. Genera:
-   - matriz de confusión
-   - reporte de clasificación
-   - curvas de entrenamiento
+- DINOv2 permanece congelado y solo calcula embeddings.
+- Para `train` se aplica aumento de datos y copias adicionales para clases minoritarias.
+- Un `WeightedRandomSampler` compensa el desbalance de especies.
+- El clasificador usa un tronco `768 → 512 → 256`, con ReLU y dropout, y dos cabezas lineales: especie y género.
+- La pérdida combina `CrossEntropy` de especie (con label smoothing) y de género, ponderada por `PESO_GENERO`.
+- Se usa AdamW, warmup seguido de descenso coseno y early stopping según el macro F1 de validación.
 
-## Detalles técnicos
+Al finalizar, se guardan en `modelos/20_especies/` el mejor modelo (`mejor_modelo.pth`), las curvas de entrenamiento, la matriz de confusión de test y el reporte de clasificación. El nombre de la carpeta de experimento se controla con `PRUEBA`.
 
-**Embeddings (DINOv2):**
-- Modelo: `facebook/dinov2-base`
-- Dimensión patch: 768
-- Normalización L2 embeddings
-- Modelo congelado (no se entrena); de DINOv2 solo se extraen los embeddings,
-  solo se entrena nuestro clasificador lineal (`nn.Linear(768, num_clases)`)
+## Inferencia
 
-**Clasificador:**
-- Capa lineal: `Linear(768 → num_clases)`
-
-  Es decir:
-  - Entrada: un vector de 768 números (embedding de DINOv2)
-  - Salida: un vector de tamaño num_clases (logits)
-
-- Inicialización Xavier (normalización de pesos)
-- Loss: CrossEntropy con label smoothing
-- Optimizer: AdamW
-- Scheduler: warmup + coseno
-
-**Data augmentation (solo en train):**
-- Flips horizontales y verticales
-- Rotación 360°
-- Traslación + escala
-- Ajuste aleatorio de brillo y contraste
-- Aplicación de un desenfoque gaussiano aleatorio
-- Augmentation extra para clases minoritarias
-
-## Flujo del sistema (PyTorch)
-
-Este es el recorrido que sigue cada imagen dentro del pipeline:
+Ejecuta el asistente interactivo:
 
 ```
-Imagen
-   ↓
-Tensor
-   ↓
-Dataset
-   ↓
-DataLoader
-   ↓
-Modelo (DINOv2 congelado + capa lineal entrenable)
-   ↓
-Loss (CrossEntropy)
-   ↓
-Optimizer (AdamW)
-   ↓
-Actualización de pesos (solo en la capa lineal)
+py src/inferencia.py
 ```
 
-**Breve explicación del flujo:**
+Permite clasificar una sola imagen o todas las imágenes de una carpeta. En el segundo caso crea `predicciones.xlsx` con la especie más probable, el top 3, sus confianzas y una marca de revisión para resultados por debajo del umbral `UMBRAL_CONF`.
 
-- **Tensor:** la imagen se carga con PIL y se transforma en un tensor normalizado
-  mediante el `AutoImageProcessor` de DINOv2.
-- **Dataset:** guarda embeddings y etiquetas, y permite acceder a cada muestra por índice.
-- **DataLoader:** mezcla los datos (`shuffle=True` en train), los agrupa en batches,
-  usa workers en paralelo y los sirve al modelo durante el entrenamiento.
-- **Modelo:** DINOv2 + clasificador lineal.
-- **Loss:** compara la predicción con la etiqueta real para ver cuánto ha fallado.
-- **Optimizer:** calcula gradientes, aplica el scheduler (warmup + coseno, que ajusta
-  el learning rate por épocas) y finalmente actualiza los pesos de
-  `nn.Linear(768 → num_clases)`.
+## Análisis de resultados
+
+Con un modelo y los embeddings de test disponibles, se pueden ejecutar:
+
+```
+py src/evaluar_test_metricas.py  # Matriz, reporte y exactitud de género
+py src/errores.py                # Rutas y etiquetas de las predicciones erróneas
+py src/confusiones.py            # Confusiones repetidas entre especies
+```
+
+## Parámetros principales
+
+Los parámetros se centralizan en `src/constantes.py`: dispositivo (`cuda` cuando está disponible), tamaño de lote, número de épocas, número de workers, tasa de aprendizaje, regularización, paciencia, umbral de confianza y especies incluidas. Modifícalos allí antes de iniciar un nuevo experimento.

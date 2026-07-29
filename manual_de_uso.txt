@@ -1,0 +1,156 @@
+MANUAL DE USO SENCILLO
+Clasificador de diatomeas con DINOv2
+
+ANTES DE EMPEZAR
+================
+
+1. Abrir una terminal en la carpeta raíz del proyecto.
+2. Activar el entorno virtual si se utiliza uno.
+3. Configurar HF_TOKEN si DINOv2 todavía no se ha descargado.
+4. Tener las imágenes en data/imagenes_visilab(raw)/, organizadas en carpetas
+   por especie, y comprobar que los nombres están en ESPECIES_FILTRADAS de
+   src/constantes.py.
+
+El programa usa:
+  - data/splits/ para train.txt, val.txt y test.txt;
+  - data/embeddings_procesado/ para los embeddings;
+  - modelos/20_especies/ para el modelo y los resultados actuales.
+
+
+1. ENTRENAR O EVALUAR CON main.py
+=================================
+
+Desde la raíz del proyecto ejecutar:
+
+    py src/main.py
+
+En Linux, si “py” no existe:
+
+    python3 src/main.py
+
+El programa pregunta tres cosas.
+
+A) “¿Quieres entrenar uno nuevo? (s/n)”
+
+   - n: NO entrena. Carga el mejor modelo ya guardado y ejecuta directamente
+     la evaluación de test.
+   - s: entrena un modelo nuevo. A continuación pregunta por splits y
+     embeddings.
+
+B) “¿Quieres regenerar splits de train/val/test? (s/n)”
+
+   - n: usa los archivos actuales de data/splits/. Es la opción adecuada para
+     comparar experimentos de forma justa.
+   - s: crea de nuevo train.txt, val.txt y test.txt con reparto 70/15/15.
+     Usarlo solo si han cambiado las imágenes o las especies incluidas. Al
+     hacerlo cambia la comparación respecto a resultados anteriores.
+
+C) “¿Quieres recalcular embeddings? (s/n)”
+
+   - n: usa los .pt actuales de data/embeddings_procesado/. Es rápido.
+   - s: vuelve a pasar las imágenes por DINOv2 y guarda los embeddings de
+     train, validación y test. Puede tardar bastante y requiere acceso al
+     modelo DINOv2.
+
+     Si ya existen los tres archivos .pt, aparecerá una confirmación adicional:
+     responder “s” para reemplazarlos todos desde cero; responder “n” para
+     conservarlos.
+
+
+CUÁNDO RECALCULAR LOS EMBEDDINGS
+================================
+
+Responder “s” a recalcular embeddings cuando ocurra cualquiera de estos casos:
+
+  - Se añadieron, eliminaron o sustituyeron imágenes.
+  - Se corrigieron etiquetas o se movieron imágenes entre carpetas de especie.
+  - Se regeneraron los splits.
+  - Se cambió ESPECIES_FILTRADAS.
+  - Se cambió el modelo DINOv2, el procesador, la normalización, el pooling o
+    los aumentos de datos de src/embeddings.py.
+
+Responder “n” cuando solo se hayan cambiado parámetros del clasificador o del
+entrenamiento, por ejemplo learning rate, número de épocas, dropout,
+PESO_GENERO, label smoothing, sampler, loss o early stopping. Esos cambios
+usan los mismos embeddings y no necesitan recalcularlos.
+
+IMPORTANTE: si se regeneran splits, hay que recalcular embeddings. Los .pt
+antiguos ya no corresponden necesariamente a las rutas de train/val/test.
+
+
+QUÉ GENERA main.py
+==================
+
+Al entrenar, guarda el mejor modelo según el macro F1 de validación y después
+evalúa test. En modelos/20_especies/ se generan normalmente:
+
+  - mejor_modelo.pth
+  - curvas_entrenamiento.png
+  - matriz_confusion_test.png
+  - reporte_test.txt
+
+El nombre “20_especies” depende de PRUEBA en src/constantes.py.
+
+
+2. REVISAR ERRORES (SE EJECUTA APARTE)
+======================================
+
+main.py no imprime la ruta de cada imagen equivocada. Para ello ejecutar:
+
+    py src/errores.py
+
+o en Linux:
+
+    python3 src/errores.py
+
+Requiere que existan el mejor modelo, los embeddings de test y test.txt. Muestra
+cada imagen mal clasificada con la especie real, la predicha y su ruta. Es útil
+para detectar etiquetas incorrectas, recortes malos o imágenes ambiguas.
+
+
+3. VER CONFUSIONES REPETIDAS (SE EJECUTA APARTE)
+================================================
+
+Para ver qué especies se confunden más de una vez:
+
+    py src/confusiones.py
+
+o en Linux:
+
+    python3 src/confusiones.py
+
+El script muestra pares “especie real -> especie predicha” que superan el
+umbral definido dentro de confusiones.py. Sirve para decidir qué pares revisar
+en el dataset o qué clases necesitan más imágenes.
+
+
+4. CLASIFICAR IMÁGENES NUEVAS (SE EJECUTA APARTE)
+=================================================
+
+Para usar el modelo con imágenes fuera del dataset:
+
+    py src/inferencia.py
+
+o en Linux:
+
+    python3 src/inferencia.py
+
+El menú permite:
+
+  1. Clasificar una imagen: muestra especie predicha, confianza y top 3.
+  2. Clasificar una carpeta: procesa sus imágenes y crea predicciones.xlsx
+     dentro de esa misma carpeta.
+
+Las predicciones con confianza menor que UMBRAL_CONF de src/constantes.py se
+marcan para revisión. Ese umbral solo sirve para avisar de resultados dudosos;
+no cambia el entrenamiento ni el macro F1 calculado por main.py.
+
+
+ORDEN RECOMENDADO DE TRABAJO
+============================
+
+1. Modificar datos/configuración si hace falta.
+2. Ejecutar main.py y responder según la tabla anterior.
+3. Leer modelos/20_especies/reporte_test.txt y abrir la matriz de confusión.
+4. Ejecutar errores.py y confusiones.py para investigar los fallos.
+5. Ejecutar inferencia.py solo para imágenes nuevas, no para medir el test.

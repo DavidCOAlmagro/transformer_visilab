@@ -73,7 +73,7 @@ VARIABLES_GLOBALES: dict[str, object] = {
     "WEIGHT_DECAY": 0.0001,
     "LABEL_SMOOTHING": 0.05, # No confia mucho en sus predicciones.
     "PRUEBA": "20_especies",
-    "PESO_GENERO": 0.1, # Rango típico 0.1-0.5. Cuanto más alto, más importancia a la pérdida de género.
+    "PESO_GENERO": 0.3, # Rango típico 0.1-0.5. Cuanto más alto, más importancia a la pérdida de género.
     # -------------------------
     # Device
     # -------------------------
