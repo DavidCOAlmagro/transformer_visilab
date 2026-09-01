@@ -21,7 +21,7 @@ def crear_dataloaders(
     dataset_train = MyDataset(emb_train, et_train, et_train_genero)
     dataset_val = MyDataset(emb_val, et_val, et_val_genero)
     
-    WeightedRandomSampler balancea las clases minoritarias
+    # WeightedRandomSampler balancea las clases minoritarias
     pesos_muestras = calcular_pesos_muestras(et_train)
     sampler_train = WeightedRandomSampler(
     weights=pesos_muestras,
