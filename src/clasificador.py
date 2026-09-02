@@ -15,18 +15,18 @@ class ClasificadorDiatomeas(nn.Module):
         super().__init__()
 
         self.tronco = nn.Sequential(
-            nn.Linear(VARIABLES_GLOBALES["DIM_EMBEDDING"], 512),
+            nn.Linear(VARIABLES_GLOBALES["DIM_EMBEDDING"], VARIABLES_GLOBALES["DIM_CAPA_1"]),
             nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(512, 256),
+            nn.Dropout(VARIABLES_GLOBALES["DROPOUT_CAPA_1"]),
+            nn.Linear(VARIABLES_GLOBALES["DIM_CAPA_1"], VARIABLES_GLOBALES["DIM_CAPA_2"]),
             nn.ReLU(),
-            nn.Dropout(0.2),
+            nn.Dropout(VARIABLES_GLOBALES["DROPOUT_CAPA_2"]),
         )
 
         # La especie es la tarea principal. La cabeza de género regulariza el
         # tronco compartido, pero no condiciona la predicción de especie.
-        self.cabeza_especie = nn.Linear(256, num_clases)
-        self.cabeza_genero = nn.Linear(256, num_generos)
+        self.cabeza_especie = nn.Linear(VARIABLES_GLOBALES["DIM_CAPA_2"], num_clases)
+        self.cabeza_genero = nn.Linear(VARIABLES_GLOBALES["DIM_CAPA_2"], num_generos)
         self.apply(self._inicializar_capa_lineal)
 
     @staticmethod

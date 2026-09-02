@@ -7,6 +7,8 @@ dividir los datos en conjuntos de entrenamiento, validación y prueba.
 """
 
 import statistics
+import random
+import numpy as np
 from tqdm import tqdm
 import torch
 from constantes import VARIABLES_GLOBALES
@@ -60,10 +62,8 @@ def rutas_imagenes() -> list[tuple[str, str]]:
     Las funciones usadas en este metodo son de pathlib.Path
     """
     imagenes: list[tuple[str, str]] = []
-    grupos = ["Common_Species", "Unique_Species", "Seleccion_5_especies_por_especie",
-              "UDE_Diatoms_84k_normalizadas_reinhard", "dataset_aq_dbo5"]
 
-    for grupo in grupos:
+    for grupo in VARIABLES_GLOBALES["GRUPOS_DATOS"]:
         ruta_grupo = VARIABLES_GLOBALES["RUTA_BASE"] / \
             "imagenes_visilab(raw)" / grupo
         print(f"Recorriendo {ruta_grupo}...")
@@ -71,10 +71,11 @@ def rutas_imagenes() -> list[tuple[str, str]]:
 
             especies = [ruta for ruta in ruta_grupo.iterdir() if ruta.is_dir()
                         and ruta.name in VARIABLES_GLOBALES["ESPECIES_FILTRADAS"]]
-
+            # Orden alfabetico para que sea determinista y reproducible
+            especies_alfabetico = sorted(especies, key=lambda x: x.name)
             # tqdm es una librería que muestra una barra de progreso en la consola
-            for especie in tqdm(especies, desc=f"Recorriendo {grupo}"):
-                for archivo in especie.iterdir():
+            for especie in tqdm(especies_alfabetico, desc=f"Recorriendo {grupo}"):
+                for archivo in sorted(especie.iterdir(), key=lambda y: y.name):
                     # La funcion suffix() devuelve la extensión del archivo, incluyendo el punto
                     if archivo.suffix.lower() in VARIABLES_GLOBALES["EXTENSIONES_VALIDAS"]:
                         imagenes.append((archivo, especie.name))
@@ -199,3 +200,17 @@ def construir_especies_por_genero(
         # añade el índice de especie a la lista correspondiente.
         especies_por_genero.setdefault(indice_genero, []).append(indice_especie)
     return especies_por_genero
+
+def fijar_semilla(semilla: int) -> None:
+    """
+    Configura una semilla para que los resultados no cambien.
+    """
+    random.seed(semilla)
+    np.random.seed(semilla)
+    torch.manual_seed(semilla)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(semilla)
+    # Evita que la inicialización de pesos y el shuffle del dataloader sean aleatorios
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    

@@ -8,7 +8,8 @@ cada vez que se ejecute el programa.
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 from preparar_datos import rutas_imagenes
-
+from collections import Counter
+from constantes import VARIABLES_GLOBALES
 
 def generar_split() -> None:
     """
@@ -20,7 +21,21 @@ def generar_split() -> None:
 
     rutas: list[str] = [str(ruta) for ruta, especie in imagenes]
     especies: list[str] = [especie for ruta, especie in imagenes]
+    conteo_por_especie = Counter(especies)
 
+    especies_faltantes = sorted(
+        VARIABLES_GLOBALES["ESPECIES_FILTRADAS"] - set(conteo_por_especie)
+    )
+    
+    if especies_faltantes:
+        print(f"Advertencia: las siguientes especies filtradas no tienen imágenes: {especios_faltantes}")
+   
+    for especie, cantidad in sorted(conteo_por_especie.items()):
+        if cantidad < VARIABLES_GLOBALES["MINIMO_IMAGENES_POR_ESPECIE"]:
+            print(
+                f"Advertencia: {especie} solo tiene {cantidad} imágenes "
+                f"(mínimo recomendado: {VARIABLES_GLOBALES['MINIMO_IMAGENES_POR_ESPECIE']})."
+            )
     rutas_train, rutas_temp, _, especies_temp = train_test_split(
         rutas, especies,
         test_size=0.30,

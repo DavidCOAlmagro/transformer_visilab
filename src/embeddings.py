@@ -30,7 +30,7 @@ def inicializar_dinov2() -> tuple[AutoImageProcessor, AutoModel, torch.device, t
     """
     processor: AutoImageProcessor = AutoImageProcessor.from_pretrained(
         'facebook/dinov2-base')
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = VARIABLES_GLOBALES["DEVICE"]
     model: AutoModel = AutoModel.from_pretrained(
         'facebook/dinov2-base', token = VARIABLES_GLOBALES["HF_TOKEN"])
     model.to(device)

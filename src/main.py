@@ -7,11 +7,14 @@ David Calzado Olmo
 
 import os
 import math
+import random
+import numpy as np
 from pathlib import Path
 import torch
+
 from torch import nn
 from constantes import VARIABLES_GLOBALES
-from preparar_datos import get_datos, codificacion, contar_clases_train, calcular_conteo_por_especie, calcular_copias_extra_por_especie,construir_numero_genero,etiquetas_a_generos
+from preparar_datos import get_datos, codificacion, contar_clases_train, calcular_conteo_por_especie, calcular_copias_extra_por_especie,construir_numero_genero,etiquetas_a_generos,fijar_semilla
 from generar_leer_splits import leer_split, generar_split
 from embeddings import inicializar_dinov2, calcular_embeddings
 from clasificador import ClasificadorDiatomeas
@@ -43,6 +46,7 @@ def lr_lambda(epoca_actual: int) -> float:
         max(1, num_epocas_total - epocas_warmup)
     return 0.5 * (1 + math.cos(math.pi * progreso))
 
+    
 
 def main() -> None:
     """
@@ -53,11 +57,7 @@ def main() -> None:
     # Semilla fija para que la inicialización de pesos, el shuffle del
     # dataloader y el data augmentation sean reproducibles entre ejecuciones.
     # Así, si el resultado cambia, sabemos que es por un cambio real y no por azar.
-
-    SEMILLA = 42
-    torch.manual_seed(SEMILLA)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(SEMILLA)
+    fijar_semilla(42)
 
     ruta_mejor_modelo = VARIABLES_GLOBALES["RUTA_MODELOS"] / \
         VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
@@ -128,10 +128,10 @@ def main() -> None:
         pesos_clase = calcular_pesos_clases(et_train)
         # Función que devuelve la puntuación(logits) de cada clase para cada imagen.
         func_loss_especie = nn.CrossEntropyLoss(label_smoothing=VARIABLES_GLOBALES["LABEL_SMOOTHING"],
-                                                )
-        weight=pesos_clase.to(VARIABLES_GLOBALES["DEVICE"])
+                                                weight=pesos_clase.to(VARIABLES_GLOBALES["DEVICE"]))
         func_loss_genero = nn.CrossEntropyLoss()
         print("Iniciando entrenamiento...")
+
 
         historial_perdida_train, historial_perdida_val, historial_precision_val, historial_macro_f1_val = entrenar_modelo(
             modelo, dataloader_train, dataloader_val, func_loss_especie, func_loss_genero, 

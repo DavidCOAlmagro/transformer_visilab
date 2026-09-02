@@ -58,6 +58,13 @@ def cargar_modelo() -> ClasificadorDiatomeas:
     
     ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
     pesos = torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"],weights_only=True)
+        
+    if not ruta_pesos.is_file():
+        raise FileNotFoundError(
+            f"No se encontró el modelo entrenado en: {ruta_pesos}\n"
+            "Entrena el modelo antes."
+        )
+    
     modelo.load_state_dict(pesos)
     modelo.eval()
 
@@ -70,12 +77,12 @@ def predecir(modelo: ClasificadorDiatomeas, embeddings: torch.Tensor) -> tuple[l
     Además, devuelve el indice del genero predicho y la probabilidad softmax(0-1)"""
     embeddings = embeddings.to(next(modelo.parameters()).device)
     logits_especie, logits_genero = modelo(embeddings)
+    _, indices_predichos_genero = torch.max(logits_genero, dim=1)
     # Calcula la probabilidad softmax de cada clase y obtiene la predicción
     probs_especie = F.softmax(logits_especie, dim=1)
     # Obtiene la confianza de la predicción
     confianza, indices_predichos = torch.max(probs_especie, 1)
-    _, indices_predichos = torch.max(logits_especie, 1)
-    return indices_predichos.cpu().tolist(),confianza.cpu().tolist(),indices_predichos.cpu().tolist()
+    return indices_predichos.cpu().tolist(),confianza.cpu().tolist(),indices_predichos_genero.cpu().tolist()
 
 
 def listar_errores(

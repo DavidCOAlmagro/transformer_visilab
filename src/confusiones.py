@@ -34,6 +34,13 @@ def cargar_modelo(num_clases: int, num_generos: int) -> ClasificadorDiatomeas:
     modelo = ClasificadorDiatomeas(num_clases, num_generos).to(VARIABLES_GLOBALES["DEVICE"])
     ruta_pesos = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
     pesos = torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"], weights_only=True)
+        
+    if not ruta_pesos.is_file():
+        raise FileNotFoundError(
+            f"No se encontró el modelo entrenado en: {ruta_pesos}\n"
+            "Entrena el modelo antes."
+        )
+        
     modelo.load_state_dict(pesos)
     modelo.eval()
     return modelo

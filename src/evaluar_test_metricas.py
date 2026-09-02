@@ -19,8 +19,7 @@ from dataset import MyDataset
 
 @torch.no_grad()
 def obtener_predicciones(
-        modelo: nn.Module, 
-        dataloader: DataLoader) -> tuple[list[int], list[int], list[int], list[float]]:
+        modelo: nn.Module, dataloader: DataLoader) -> tuple[list[int], list[int]]:
     """
     Pasa todos los batches de un dataloader por el modelo y devuelve tres listas
     paralelas: las etiquetas verdaderas de especie (y_true), las predichas de
@@ -34,21 +33,13 @@ def obtener_predicciones(
     y_true: list[int] = []
     y_pred: list[int] = []
     genero_pred: list[int] = []
-    confianzas_prediccion: list[float] = []
-    
+
     for batch_embeddings, batch_etiquetas in tqdm(dataloader, desc="Evaluando test"):
         batch_embeddings = batch_embeddings.to(next(modelo.parameters()).device)
 
 
         # Para cada embedding, el modelo devuelve un vector con las probabilidades/logits.
         logits_especie, logits_genero = modelo(batch_embeddings)
-        
-        # Para calcular el umbral de confianza, aplicamos softmax a los logits para 
-        # obtener probabilidades
-        probabilidades = torch.softmax(logits_especie, dim=1)  
-        confianzas, indices_predicciones = torch.max(probabilidades, dim=1)  
-        confianzas_prediccion.extend(confianzas.cpu().tolist())  
-        
         # Predicción final, devuelve el mayor logit y el indice
         _, indice_predicciones = torch.max(logits_especie, 1)
         _, indice_predicciones_genero = torch.max(logits_genero, 1)
@@ -57,48 +48,9 @@ def obtener_predicciones(
         y_pred.extend(indice_predicciones.cpu().tolist())
         genero_pred.extend(indice_predicciones_genero.cpu().tolist())
 
-    return y_true, y_pred,genero_pred, confianzas_prediccion
+    return y_true, y_pred,genero_pred
 
-def analizar_umbrales(y_true: list[int], y_pred: list[int], 
-                      confianzas_prediccion: list[float]) -> None:
-    """
-    Prueba distintos umbrales de confianza.
-    """
-    umbrales: list[float] = [0.50, 0.60, 0.70, 0.80, 0.90, 0.95]
-    total = len(y_true)
 
-    print("\n=== Análisis de umbrales de confianza ===")
-    print(f"{'Umbral':>8}  {'Cobertura':>10}  {'Accuracy aceptadas':>20}  "
-          f"{'Errores aceptados':>19}")
-
-    for umbral in umbrales:
-        aceptadas = [
-            (real, predicha)
-            for real, predicha, confianza in zip(y_true, y_pred, confianzas)
-            if confianza >= umbral
-        ]
-
-        num_aceptadas = len(aceptadas)
-        aciertos = sum(
-            real == predicha
-            for real, predicha in aceptadas
-        )
-        errores = num_aceptadas - aciertos
-
-        cobertura = num_aceptadas / total if total else 0.0
-        accuracy_aceptadas = (
-            aciertos / num_aceptadas
-            if num_aceptadas else 0.0
-        )
-
-        print(
-            f"{umbral:8.0%}  "
-            f"{cobertura:10.2%}  "
-            f"{accuracy_aceptadas:20.2%}  "
-            f"{errores:19d}"
-        )
-    
-    
 def matriz_confusion(y_true: list[int], y_pred: list[int],
                      nombres_clases: list[str], ruta_guardado: Path) -> None:
     """
@@ -174,19 +126,6 @@ def main() -> None:
         num_workers=VARIABLES_GLOBALES["NUM_WORKERS"],
         pin_memory=VARIABLES_GLOBALES["PIN_MEMORY"]
     )
-    datos_val = get_datos("val")
-    emb_val, et_val, _ = codificacion(datos_val)
-    dataset_val = MyDataset(emb_val, et_val)
-
-    dataloader_val = DataLoader(
-        dataset_val,
-        batch_size=VARIABLES_GLOBALES["BATCH_SIZE"],
-        shuffle=False,
-        num_workers=VARIABLES_GLOBALES["NUM_WORKERS"],
-        pin_memory=VARIABLES_GLOBALES["PIN_MEMORY"]
-    )
-
-    
 
     num_clases = len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
@@ -196,15 +135,17 @@ def main() -> None:
     # Carga los pesos del mejor modelo entrenado
     ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
     pesos = torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"],weights_only=True)
+    
+    if not ruta_pesos.is_file():
+        raise FileNotFoundError(
+            f"No se encontró el modelo entrenado en: {ruta_pesos}\n"
+            "Entrena el modelo antes de ejecutar la evaluación."
+        )
     # Carga los pesos en el modelo
     modelo.load_state_dict(pesos)
     modelo.eval()
 
-    y_true_val, y_pred_val, _, confianzas_val = obtener_predicciones(
-    modelo, dataloader_val
-    )
-    analizar_umbrales(y_true_val, y_pred_val, confianzas_val)
-    y_true, y_pred, y_pred_genero, _ = obtener_predicciones(modelo, dataloader_test)
+    y_true, y_pred, y_pred_genero = obtener_predicciones(modelo, dataloader_test)
     accuracy_genero = calcular_accuracy_genero(y_true, y_pred_genero, numero_especie, numero_genero)
     print(f"\nAccuracy del clasificador de género en test: {accuracy_genero:.2%}\n")
     # La lista de nombres de clases se ordena según el índice de especie

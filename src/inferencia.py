@@ -25,6 +25,12 @@ def cargar_modelo() -> tuple[ClasificadorDiatomeas, list[str]]:
     modelo = ClasificadorDiatomeas(num_clases, num_generos).to(VARIABLES_GLOBALES["DEVICE"])
 
     ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
+    if not ruta_pesos.is_file():
+        raise FileNotFoundError(
+            f"No se encontró el modelo entrenado en: {ruta_pesos}\n"
+            "Entrena el modelo antes de ejecutar la inferencia."
+        )
+    
     modelo.load_state_dict(torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"], weights_only=True))
     modelo.eval()
 
@@ -135,11 +141,11 @@ def inferir_carpeta(ruta_carpeta: str) -> None:
             print(f"No se encontraron imágenes en {ruta}")
             valid = False
 
-    except ValueError as e:
+    except FileNotFoundError as e:
         valid = False
         print(f"Error al procesar la carpeta: {e}")
     rows: list[dict[str, object]] = []
-    if valid:
+    if valid and imagenes:
         modelo, especies_ordenadas = cargar_modelo()
         processor, dinov2, device, augmentation = inicializar_dinov2()
 
@@ -162,15 +168,17 @@ def inferir_carpeta(ruta_carpeta: str) -> None:
                 "revisar":          "Revision" if resultado["revisar"] else "",
             })
 
-    # Generamos el Excel
-    df = pd.DataFrame(rows)
-    ruta_excel = ruta / "predicciones.xlsx"
-    df.to_excel(ruta_excel, index=False)
+        # Generamos el Excel
+        df = pd.DataFrame(rows)
+        ruta_excel = ruta / "predicciones.xlsx"
+        df.to_excel(ruta_excel, index=False)
 
-    total_revisar = sum(1 for f in rows if f["revisar"]) # si no es vacío, se suma 1 revision
-    print(f"\nExcel guardado en: {ruta_excel}")
-    print(f"Imágenes a revisar: {total_revisar}/{len(imagenes)}")
-
+        total_revisar = sum(1 for f in rows if f["revisar"]) # si no es vacío, se suma 1 revision
+        print(f"\nExcel guardado en: {ruta_excel}")
+        print(f"Imágenes a revisar: {total_revisar}/{len(imagenes)}")
+    else:
+        print("No se procesaron imágenes debido a errores previos.")
+        
 def main() -> None:
     """
     Punto de entrada por consola. Pregunta al usuario qué quiere hacer
