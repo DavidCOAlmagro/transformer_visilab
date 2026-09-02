@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report,accuracy_score,f1_score
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report,accuracy_score,f1_score,precision_recall_fscore_support
 import numpy as np
 from tqdm import tqdm
 from constantes import VARIABLES_GLOBALES
@@ -154,7 +154,10 @@ def main() -> dict[str, float]:
     ruta_matriz = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / \
         "matriz_confusion_test.png"
     matriz_confusion(y_true, y_pred, nombres_clases, ruta_matriz)
-
+    ruta_metricas_especie = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / \
+    "metricas_por_especie.png"
+    graficar_metricas_por_especie(y_true, y_pred, nombres_clases, ruta_metricas_especie)
+    
     reporte = generar_reporte_clasificacion(y_true, y_pred, nombres_clases)
     print("\nReporte de clasificación (test):\n")
     print(reporte)
@@ -211,7 +214,46 @@ def graficar_curvas_entrenamiento( perdida_train: list[float], perdida_val: list
     plt.close(fig)
 
     print(f"Curvas de entrenamiento guardadas en: {ruta_guardado}")
+def graficar_metricas_por_especie(
+        y_true: list[int], y_pred: list[int],
+        nombres_clases: list[str], ruta_guardado: Path) -> None:
+    """
+    Dibuja un gráfico de barras agrupadas con precision, recall y F1
+    de cada especie en test, ordenadas de menor a mayor F1. Sirve para
+    ver de un vistazo qué especies le cuestan más al modelo, útil para
+    informes y presentaciones.
+    """
+    precision, recall, f1, _soporte = precision_recall_fscore_support(
+        y_true, y_pred, labels=range(len(nombres_clases)), zero_division=0)
 
+    # Ordena los índices de especie de menor a mayor F1
+    orden = sorted(range(len(nombres_clases)), key=lambda i: f1[i])
+    especies_ordenadas = [nombres_clases[i] for i in orden]
+    precision_ordenada = [precision[i] for i in orden]
+    recall_ordenado = [recall[i] for i in orden]
+    f1_ordenado = [f1[i] for i in orden]
+
+    posiciones = np.arange(len(especies_ordenadas))
+    ancho_barra = 0.25
+
+    fig, eje = plt.subplots(figsize=(max(10, len(especies_ordenadas) * 0.5), 6))
+    eje.bar(posiciones - ancho_barra, precision_ordenada, ancho_barra, label="Precision")
+    eje.bar(posiciones, recall_ordenado, ancho_barra, label="Recall")
+    eje.bar(posiciones + ancho_barra, f1_ordenado, ancho_barra, label="F1")
+
+    eje.set_xticks(posiciones)
+    eje.set_xticklabels(especies_ordenadas, rotation=45, ha="right")
+    eje.set_ylim(0, 1.05)
+    eje.set_ylabel("Puntuación")
+    eje.set_title("Precision / Recall / F1 por especie (test), ordenado de peor a mejor F1")
+    eje.legend()
+
+    plt.tight_layout()
+    ruta_guardado.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(ruta_guardado, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+    print(f"Gráfico de métricas por especie guardado en: {ruta_guardado}")
 
 if __name__ == "__main__":
     main()
