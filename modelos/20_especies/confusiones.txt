@@ -1,0 +1,18 @@
+=== Confusiones con 5 o más casos ===
+Nitzschia_sp                        -> Nitzschia_inconspicua               : 31 veces
+Nitzschia_inconspicua               -> Nitzschia_sp                        : 27 veces
+Achnanthidium_pyrenaicum            -> Achnanthidium_sp                    : 22 veces
+Achnanthidium_sp                    -> Achnanthidium_pyrenaicum            : 19 veces
+Achnanthidium_sp                    -> Achnanthidium_rivulare              : 19 veces
+Fistulifera_saprophila              -> Mayamaea_permitis                   : 15 veces
+Navicula_sp                         -> Achnanthidium_pyrenaicum            : 14 veces
+Navicula_sp                         -> Navicula_cryptotenella              : 13 veces
+Mayamaea_permitis                   -> Fistulifera_saprophila              : 12 veces
+Nitzschia_sp                        -> Navicula_sp                         : 7 veces
+Nitzschia_sp                        -> Achnanthidium_sp                    : 6 veces
+Achnanthidium_pyrenaicum            -> Achnanthidium_rivulare              : 5 veces
+Achnanthidium_pyrenaicum            -> Nitzschia_sp                        : 5 veces
+Achnanthidium_rivulare              -> Achnanthidium_sp                    : 5 veces
+Navicula_cryptotenella              -> Achnanthidium_pyrenaicum            : 5 veces
+Navicula_cryptotenella              -> Navicula_sp                         : 5 veces
+Nitzschia_sp                        -> Gomphonema_pumilum                  : 5 veces
