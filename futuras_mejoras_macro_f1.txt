@@ -73,17 +73,6 @@ PRUEBAS FUTURAS ÚTILES (EN ESTE ORDEN)
    pero empeora “sp”, interpretar ese resultado junto con el solapamiento de
    etiquetas, no solo con el número global.
 
-3. Mejorar los datos de los pares difíciles.
-
-   Usar errores.py y confusiones.py para localizar ejemplos de:
-
-   - Achnanthidium_pyrenaicum <-> Achnanthidium_sp;
-   - Nitzschia_inconspicua <-> Nitzschia_sp;
-   - Fistulifera_saprophila <-> Mayamaea_permitis.
-
-   Revisar etiquetas y recortes, y añadir imágenes reales variadas de esos
-   pares si están disponibles. Es más probable que esto mejore el macro F1 que
-   seguir cambiando el sampler o el peso de género.
 
 4. Fine-tuning parcial de DINOv2 (solo si hay GPU y tiempo).
 
@@ -93,10 +82,4 @@ PRUEBAS FUTURAS ÚTILES (EN ESTE ORDEN)
    Probarla solo después de augmentation y center loss.
 
 
-REGLA PARA RETOMAR
-==================
-
-Hacer un cambio por experimento, conservar los mismos splits, guardar reporte,
-matriz de confusión y macro F1 de validación/test. Si el cambio no reduce las
-confusiones objetivo ni supera 0,84 de forma consistente, descartarlo.
 
