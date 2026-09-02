@@ -15,6 +15,7 @@ from constantes import VARIABLES_GLOBALES
 from clasificador import ClasificadorDiatomeas
 from preparar_datos import get_datos, codificacion, construir_numero_genero,etiquetas_a_generos
 from generar_leer_splits import leer_split
+from modelo import cargar_modelo_entrenado
 
 PARES_A_REVISAR: set[frozenset[str]] = {
     frozenset({"Nitzschia_inconspicua", "Nitzschia_sp"}),
@@ -47,28 +48,6 @@ def comprobar_orden(rutas: list[str], etiquetas_guardadas: list[str]) -> None:
         raise ValueError(
             "El orden de test.txt no coincide con el de embeddings_test.pt. "
             "Regenera los embeddings de test antes de usar este script.")
-
-
-def cargar_modelo() -> ClasificadorDiatomeas:
-    """Carga el modelo entrenado con los pesos guardados en disco."""
-    num_clases = len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
-    numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
-    num_generos = len(numero_genero)
-    modelo = ClasificadorDiatomeas(num_clases, num_generos).to(VARIABLES_GLOBALES["DEVICE"])
-    
-    ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
-    pesos = torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"],weights_only=True)
-        
-    if not ruta_pesos.is_file():
-        raise FileNotFoundError(
-            f"No se encontró el modelo entrenado en: {ruta_pesos}\n"
-            "Entrena el modelo antes."
-        )
-    
-    modelo.load_state_dict(pesos)
-    modelo.eval()
-
-    return modelo
 
 
 @torch.no_grad()
@@ -129,7 +108,7 @@ def main() -> None:
     numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     genero_true = etiquetas_a_generos(et_test, numero_especie, numero_genero).tolist()
     
-    modelo = cargar_modelo()
+    modelo, _ = cargar_modelo_entrenado()
     y_pred, confianzas, y_pred_genero = predecir(modelo, emb_test)
     y_true = et_test.tolist()
 

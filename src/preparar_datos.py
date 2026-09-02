@@ -13,6 +13,8 @@ from tqdm import tqdm
 import torch
 from constantes import VARIABLES_GLOBALES
 from pathlib import Path
+import json
+from datetime import datetime
 
 def get_datos(nombre_split: str) -> dict[str, torch.Tensor]:
     """
@@ -214,3 +216,30 @@ def fijar_semilla(semilla: int) -> None:
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     
+def guardar_resumen_entrenamiento(
+        ruta_modelo: Path,
+        historial_macro_f1_val: list[float],
+        metricas_test: dict[str, float]
+) -> None:
+    """Guarda las métricas principales del último entrenamiento."""
+    if not historial_macro_f1_val:
+        return
+
+    indice_mejor = max(
+        range(len(historial_macro_f1_val)),
+        key=lambda indice: historial_macro_f1_val[indice]
+    )
+
+    resumen = {
+        "fecha": datetime.now().isoformat(timespec="seconds"),
+        "mejor_epoca": indice_mejor + 1,
+        "mejor_macro_f1_validacion": historial_macro_f1_val[indice_mejor],
+        **metricas_test
+    }
+
+    ruta_resumen = ruta_modelo.parent / "resumen_entrenamiento.json"
+
+    with open(ruta_resumen, "w", encoding="utf-8") as archivo:
+        json.dump(resumen, archivo, indent=4, ensure_ascii=False)
+
+    print(f"Resumen guardado en: {ruta_resumen}")

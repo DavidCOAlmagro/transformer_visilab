@@ -28,7 +28,7 @@ def generar_split() -> None:
     )
     
     if especies_faltantes:
-        print(f"Advertencia: las siguientes especies filtradas no tienen imágenes: {especios_faltantes}")
+        print(f"Advertencia: las siguientes especies filtradas no tienen imágenes: {especies_faltantes}")
    
     for especie, cantidad in sorted(conteo_por_especie.items()):
         if cantidad < VARIABLES_GLOBALES["MINIMO_IMAGENES_POR_ESPECIE"]:

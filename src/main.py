@@ -14,7 +14,7 @@ import torch
 
 from torch import nn
 from constantes import VARIABLES_GLOBALES
-from preparar_datos import get_datos, codificacion, contar_clases_train, calcular_conteo_por_especie, calcular_copias_extra_por_especie,construir_numero_genero,etiquetas_a_generos,fijar_semilla
+from preparar_datos import get_datos, codificacion, contar_clases_train, calcular_conteo_por_especie, calcular_copias_extra_por_especie,construir_numero_genero,etiquetas_a_generos,fijar_semilla,guardar_resumen_entrenamiento
 from generar_leer_splits import leer_split, generar_split
 from embeddings import inicializar_dinov2, calcular_embeddings
 from clasificador import ClasificadorDiatomeas
@@ -149,7 +149,14 @@ def main() -> None:
 
     # Al terminar el entrenamiento (o si se ha saltado), evaluamos automáticamente en test ---
     print("\nEvaluando en el conjunto de test...")
-    evaluar_test()
+    metricas_test = evaluar_test()
+
+    if entrenar_de_nuevo:
+        guardar_resumen_entrenamiento(
+            ruta_mejor_modelo,
+            historial_macro_f1_val,
+            metricas_test
+        )
 
 
 def preparar_embeddings_splits() -> None:

@@ -9,11 +9,11 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report,accuracy_score,f1_score
 import numpy as np
 from tqdm import tqdm
 from constantes import VARIABLES_GLOBALES
-from clasificador import ClasificadorDiatomeas
+from modelo import cargar_modelo_entrenado
 from preparar_datos import get_datos, codificacion, construir_numero_genero, etiquetas_a_generos
 from dataset import MyDataset
 
@@ -110,7 +110,7 @@ def calcular_accuracy_genero(y_true_especie: list[int], gen_pred: list[int],
     accuracy : float = aciertos / len(genero_true) 
     return accuracy
 
-def main() -> None:                            
+def main() -> dict[str, float]:                            
     """
     Carga el modelo entrenado, evalúa el conjunto de test y genera
     la matriz de confusión + el reporte de clasificación.
@@ -127,10 +127,8 @@ def main() -> None:
         pin_memory=VARIABLES_GLOBALES["PIN_MEMORY"]
     )
 
-    num_clases = len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
-    num_generos = len(numero_genero)
-    modelo = ClasificadorDiatomeas(num_clases, num_generos).to(VARIABLES_GLOBALES["DEVICE"])
+    modelo, _ = cargar_modelo_entrenado()
 
     # Carga los pesos del mejor modelo entrenado
     ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
@@ -165,6 +163,12 @@ def main() -> None:
     with open(ruta_reporte, "w", encoding="utf-8") as archivo:
         archivo.write(reporte)
     print(f"Reporte guardado en: {ruta_reporte}")
+    
+    return {
+    "accuracy_test": accuracy_score(y_true, y_pred),
+    "macro_f1_test": f1_score(y_true,y_pred,average="macro",zero_division=0),
+    "accuracy_genero_test": accuracy_genero
+    }
 
 def graficar_curvas_entrenamiento( perdida_train: list[float], perdida_val: list[float],
         precision_val: list[float], macro_f1_val: list[float], ruta_guardado: Path) -> None:

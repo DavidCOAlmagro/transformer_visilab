@@ -7,10 +7,9 @@ import torch
 from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix
 from constantes import VARIABLES_GLOBALES
-from clasificador import ClasificadorDiatomeas
-from preparar_datos import get_datos, codificacion, construir_numero_genero
+from preparar_datos import get_datos, codificacion
 from dataset import MyDataset
-
+from modelo import cargar_modelo_entrenado
 
 @torch.no_grad()
 def obtener_predicciones(modelo, dataloader) -> tuple[list[int], list[int]]:
@@ -29,23 +28,6 @@ def obtener_predicciones(modelo, dataloader) -> tuple[list[int], list[int]]:
     return y_true, y_pred
 
 
-def cargar_modelo(num_clases: int, num_generos: int) -> ClasificadorDiatomeas:
-    """Carga el modelo entrenado con los pesos guardados en disco."""
-    modelo = ClasificadorDiatomeas(num_clases, num_generos).to(VARIABLES_GLOBALES["DEVICE"])
-    ruta_pesos = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
-    pesos = torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"], weights_only=True)
-        
-    if not ruta_pesos.is_file():
-        raise FileNotFoundError(
-            f"No se encontró el modelo entrenado en: {ruta_pesos}\n"
-            "Entrena el modelo antes."
-        )
-        
-    modelo.load_state_dict(pesos)
-    modelo.eval()
-    return modelo
-
-
 def main() -> None:
     """
     Carga el modelo, evalúa en test e imprime los pares de especies
@@ -59,10 +41,7 @@ def main() -> None:
     dataset_test = MyDataset(emb_test, et_test)
     dataloader_test = DataLoader(dataset_test, batch_size=VARIABLES_GLOBALES["BATCH_SIZE"])
 
-    num_clases = len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
-    numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
-    num_generos = len(numero_genero)
-    modelo = cargar_modelo(num_clases, num_generos)
+    modelo, _ = cargar_modelo_entrenado()
     y_true, y_pred = obtener_predicciones(modelo, dataloader_test)
 
     nombres_clases = sorted(numero_especie, key=numero_especie.get)

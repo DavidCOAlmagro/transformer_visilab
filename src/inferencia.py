@@ -8,33 +8,9 @@ Permite clasificar una imagen suelta o una carpeta entera y exportar los resulta
 from pathlib import Path
 import torch
 import pandas as pd
-from clasificador import ClasificadorDiatomeas
+from modelo import cargar_modelo_entrenado
 from constantes import VARIABLES_GLOBALES
 from embeddings import inicializar_dinov2, get_embedding
-from preparar_datos import construir_numero_genero
-
-def cargar_modelo() -> tuple[ClasificadorDiatomeas, list[str]]:
-    """
-    Carga el modelo entrenado desde disco y devuelve también la lista ordenada
-    de especies (índice 0 → especie 0, índice 1 → especie 1...).
-    """
-    especies_numero: list[str] = sorted(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
-    num_clases = len(especies_numero)
-    numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
-    num_generos = len(numero_genero)
-    modelo = ClasificadorDiatomeas(num_clases, num_generos).to(VARIABLES_GLOBALES["DEVICE"])
-
-    ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
-    if not ruta_pesos.is_file():
-        raise FileNotFoundError(
-            f"No se encontró el modelo entrenado en: {ruta_pesos}\n"
-            "Entrena el modelo antes de ejecutar la inferencia."
-        )
-    
-    modelo.load_state_dict(torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"], weights_only=True))
-    modelo.eval()
-
-    return modelo, especies_numero
 
 def calcular_embedding_imagen(ruta_imagen: str) -> torch.Tensor:
     """
@@ -50,7 +26,7 @@ def calcular_embedding_imagen(ruta_imagen: str) -> torch.Tensor:
     return embedding
 
 @torch.no_grad()
-def predecir_imagen(embedding: torch.Tensor,modelo: ClasificadorDiatomeas,
+def predecir_imagen(embedding: torch.Tensor,modelo: torch.nn.Module,
         especies_ordenadas: list[str],intervalo_confianza: float = VARIABLES_GLOBALES["UMBRAL_CONF"]) -> dict[str, object]:
     """
     Recibe el embedding de una imagen y devuelve un diccionario con:
@@ -110,7 +86,7 @@ def inferir_imagen_suelta(ruta_imagen: str) -> None:
     if valid:
         print(f"\nClasificando: {ruta.name}")
 
-        modelo, especies_ordenadas = cargar_modelo()
+        modelo, especies_ordenadas = cargar_modelo_entrenado()
         embedding = calcular_embedding_imagen(ruta_imagen)
         resultado = predecir_imagen(embedding, modelo, especies_ordenadas)
 
@@ -146,7 +122,7 @@ def inferir_carpeta(ruta_carpeta: str) -> None:
         print(f"Error al procesar la carpeta: {e}")
     rows: list[dict[str, object]] = []
     if valid and imagenes:
-        modelo, especies_ordenadas = cargar_modelo()
+        modelo, especies_ordenadas = cargar_modelo_entrenado()
         processor, dinov2, device, augmentation = inicializar_dinov2()
 
         for imagen in imagenes:
