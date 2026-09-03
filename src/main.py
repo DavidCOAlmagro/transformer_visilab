@@ -7,8 +7,7 @@ David Calzado Olmo
 
 import os
 import math
-import random
-import numpy as np
+import json
 from pathlib import Path
 import torch
 
@@ -82,9 +81,14 @@ def main() -> None:
             candidatos = {especie: conteo for especie, conteo in especies_numero.items() 
                           if conteo >= VARIABLES_GLOBALES["UMBRAL_IMAGENES"]}
             VARIABLES_GLOBALES["ESPECIES_FILTRADAS"] = set(candidatos.keys())
-            
+
         else:
             print("Usando filtro de especies filtradas.")
+            ruta_carpeta_modelo = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"]
+            ruta_carpeta_modelo.mkdir(parents=True, exist_ok=True)
+            with open(ruta_carpeta_modelo / "metadatos_modelo.json", "w", encoding="utf-8") as f:
+                json.dump({"especies_filtradas": sorted(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])},
+                        f, indent=2, ensure_ascii=False)
             
         print("Quieres regenerar splits de train/val/test? (s/n): ")
         resp_split = input().strip().lower()

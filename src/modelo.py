@@ -7,7 +7,7 @@ import torch
 
 from clasificador import ClasificadorDiatomeas
 from constantes import VARIABLES_GLOBALES
-from preparar_datos import construir_numero_genero
+from preparar_datos import construir_numero_genero,obtener_especies_activas
 
 
 def cargar_modelo_entrenado() -> tuple[ClasificadorDiatomeas, list[str]]:
@@ -15,9 +15,8 @@ def cargar_modelo_entrenado() -> tuple[ClasificadorDiatomeas, list[str]]:
     Carga el mejor modelo del experimento actual y devuelve también
     las especies ordenadas según sus índices de salida.
     """
-    especies_ordenadas = sorted(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
-    numero_genero = construir_numero_genero(
- VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
+    especies_ordenadas = sorted(obtener_especies_activas())
+    numero_genero = construir_numero_genero(obtener_especies_activas())
 
     modelo = ClasificadorDiatomeas(num_clases=len(especies_ordenadas),
         num_generos=len(numero_genero)).to(VARIABLES_GLOBALES["DEVICE"])

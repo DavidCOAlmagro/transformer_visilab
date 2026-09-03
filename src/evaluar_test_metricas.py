@@ -14,7 +14,7 @@ import numpy as np
 from tqdm import tqdm
 from constantes import VARIABLES_GLOBALES
 from modelo import cargar_modelo_entrenado
-from preparar_datos import get_datos, codificacion, construir_numero_genero, etiquetas_a_generos
+from preparar_datos import get_datos, codificacion, construir_numero_genero, etiquetas_a_generos,obtener_especies_activas
 from dataset import MyDataset
 
 @torch.no_grad()
@@ -127,7 +127,7 @@ def main() -> dict[str, float]:
         pin_memory=VARIABLES_GLOBALES["PIN_MEMORY"]
     )
 
-    numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
+    numero_genero = construir_numero_genero(obtener_especies_activas())
     modelo, _ = cargar_modelo_entrenado()
 
 
@@ -159,7 +159,7 @@ def main() -> dict[str, float]:
     "accuracy_test": accuracy_score(y_true, y_pred),
     "macro_f1_test": f1_score(y_true,y_pred,average="macro",zero_division=0),
     "accuracy_genero_test": accuracy_genero,
-    "num_especies" : len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
+    "num_especies" : len(obtener_especies_activas())
     }
 
 def graficar_curvas_entrenamiento( perdida_train: list[float], perdida_val: list[float],

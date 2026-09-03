@@ -7,7 +7,7 @@ cada vez que se ejecute el programa.
 """
 from pathlib import Path
 from sklearn.model_selection import train_test_split
-from preparar_datos import rutas_imagenes
+from preparar_datos import rutas_imagenes,obtener_especies_activas
 from collections import Counter
 from constantes import VARIABLES_GLOBALES
 
@@ -23,9 +23,7 @@ def generar_split() -> None:
     especies: list[str] = [especie for ruta, especie in imagenes]
     conteo_por_especie = Counter(especies)
 
-    especies_faltantes = sorted(
-        VARIABLES_GLOBALES["ESPECIES_FILTRADAS"] - set(conteo_por_especie)
-    )
+    especies_faltantes = sorted(sorted(obtener_especies_activas()) - set(conteo_por_especie))
     
     if especies_faltantes:
         print(f"Advertencia: las siguientes especies filtradas no tienen imágenes: {especies_faltantes}")

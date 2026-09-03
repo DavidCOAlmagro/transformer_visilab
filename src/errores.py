@@ -13,7 +13,7 @@ import torch
 import torch.nn.functional as F
 from constantes import VARIABLES_GLOBALES
 from clasificador import ClasificadorDiatomeas
-from preparar_datos import get_datos, codificacion, construir_numero_genero,etiquetas_a_generos
+from preparar_datos import get_datos, codificacion, construir_numero_genero,etiquetas_a_generos,obtener_especies_activas
 from generar_leer_splits import leer_split
 from modelo import cargar_modelo_entrenado
 
@@ -105,7 +105,7 @@ def main() -> None:
     comprobar_orden(rutas, datos_test["etiquetas"])
 
     emb_test, et_test, numero_especie = codificacion(datos_test)
-    numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
+    numero_genero = construir_numero_genero(obtener_especies_activas())
     genero_true = etiquetas_a_generos(et_test, numero_especie, numero_genero).tolist()
     
     modelo, _ = cargar_modelo_entrenado()

@@ -36,8 +36,7 @@ def codificacion(
     correlativos (0, 1, 2, ...). Devuelve los embeddings, las etiquetas numéricas y especie -> num.
     """
     # Mapeo especie -> número
-    especies_ordenadas: list[str] = sorted(
-        VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
+    especies_ordenadas: list[str] = sorted(sorted(obtener_especies_activas()))
     numero_especie: dict[str, int] = {}
     for i, especie in enumerate(especies_ordenadas):
         numero_especie[especie] = i
@@ -79,7 +78,7 @@ def rutas_imagenes(sin_filtro: bool = False) -> list[tuple[str, str]]:
                 especies = [ruta for ruta in ruta_grupo.iterdir() if ruta.is_dir()]
             else:
                 especies = [ruta for ruta in ruta_grupo.iterdir() if ruta.is_dir()
-                            and ruta.name in VARIABLES_GLOBALES["ESPECIES_FILTRADAS"]]
+                            and ruta.name in obtener_especies_activas()]
 
             for especie in tqdm(especies, desc=f"Recorriendo {grupo}"):
                 for archivo in especie.iterdir():
@@ -257,3 +256,17 @@ def guardar_resumen_entrenamiento(ruta_modelo: Path,historial_macro_f1_val: list
         json.dump(historial_resumenes, archivo, indent=4, ensure_ascii=False)
 
     print(f"Resumen guardado en: {ruta_resumen}")
+
+def obtener_especies_activas() -> set[str]:
+    """
+    Devuelve el conjunto de especies del experimento actual (PRUEBA).
+    Si ya existe metadatos_modelo.json para ese experimento, se usa esa
+    lista ESPECIES_FILTRADAS de constantes.py como valor por defecto.
+    """
+    ruta_metadatos = (VARIABLES_GLOBALES["RUTA_MODELOS"]
+                       / VARIABLES_GLOBALES["PRUEBA"] / "metadatos_modelo.json")
+    if ruta_metadatos.is_file():
+        with open(ruta_metadatos, "r", encoding="utf-8") as f:
+            metadatos = json.load(f)
+        return set(metadatos["especies_filtradas"])
+    return VARIABLES_GLOBALES["ESPECIES_FILTRADAS"]
