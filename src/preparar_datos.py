@@ -67,7 +67,7 @@ def rutas_imagenes(sin_filtro: bool = False) -> list[tuple[str, str]]:
     especies incluir en un experimento.
     """
     imagenes: list[tuple[str, str]] = []
-    grupos = VARIABLES_GLOBALES["GRUPOS_IMAGENES"]
+    grupos = VARIABLES_GLOBALES["GRUPOS_DATOS"]
 
     for grupo in grupos:
         ruta_grupo = VARIABLES_GLOBALES["RUTA_BASE"] / "imagenes_visilab(raw)" / grupo

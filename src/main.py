@@ -80,7 +80,7 @@ def main() -> None:
             print("Recuerda rehacer splits y embeddings")
             especies_numero: dict[str, int] = contar_especies_disponibles()
             candidatos = {especie: conteo for especie, conteo in especies_numero.items() 
-                          if conteo >= VARIABLES_GLOBALES["MINIMO_IMAGENES_POR_ESPECIE"]}
+                          if conteo >= VARIABLES_GLOBALES["UMBRAL_IMAGENES"]}
             VARIABLES_GLOBALES["ESPECIES_FILTRADAS"] = set(candidatos.keys())
             
         else:
