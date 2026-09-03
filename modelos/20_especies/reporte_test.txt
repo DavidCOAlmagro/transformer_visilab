@@ -1,26 +1,55 @@
-                                   precision    recall  f1-score   support
+                              precision    recall  f1-score   support
 
-       Achnanthidium_minutissimum       0.86      0.97      0.91        37
-         Achnanthidium_pyrenaicum       0.81      0.82      0.81       250
-           Achnanthidium_rivulare       0.72      0.82      0.77        85
-   Achnanthidium_rostropyrenaicum       1.00      0.75      0.86         4
-                 Achnanthidium_sp       0.85      0.80      0.82       267
-Cocconeis_placentula_var_euglypta       1.00      1.00      1.00        18
-                 Epithemia_adnata       1.00      1.00      1.00        11
-           Fistulifera_saprophila       0.55      0.57      0.56        40
-                    Fragilaria_sp       0.62      0.71      0.67        14
-               Gomphonema_pumilum       0.69      0.86      0.77        29
-             Gomphonema_rhombicum       1.00      1.00      1.00         9
-                    Halamphora_sp       0.65      0.87      0.74        23
-                Mayamaea_permitis       0.80      0.81      0.81        95
-                 Navicula_caterva       0.50      0.58      0.54        12
-           Navicula_cryptotenella       0.76      0.78      0.77        88
-                      Navicula_sp       0.92      0.84      0.88       251
-            Nitzschia_inconspicua       0.84      0.87      0.86       239
-        Nitzschia_palea_var_palea       1.00      1.00      1.00        12
-                     Nitzschia_sp       0.89      0.85      0.87       385
-               Seminavis_strigosa       0.89      0.98      0.93        49
+     Achnanthidium_atomoides       0.49      0.64      0.55       139
+        Achnanthidium_jackii       0.78      0.78      0.78       450
+    Achnanthidium_pyrenaicum       0.75      0.77      0.76       251
+      Achnanthidium_rivulare       0.66      0.67      0.67        85
+            Achnanthidium_sp       0.48      0.44      0.46       267
+         Amphora_indistincta       0.26      0.65      0.37        49
+           Amphora_pediculus       0.92      0.73      0.81       483
+       Aulacoseira_granulata       0.86      0.96      0.91        67
+        Cocconeis_placentula       0.97      0.97      0.97       274
+                Craticula_sp       0.86      0.90      0.88        48
+        Crenotia_rumrichorum       0.78      0.81      0.79        62
+           Cyclotella_atomus       0.41      0.72      0.53        64
+         Cyclotella_meduanae       0.51      0.78      0.62       141
+     Cyclotella_meneghiniana       0.92      0.89      0.90       149
+            Denticula_tenuis       0.95      0.94      0.94       115
+              Diatoma_tenuis       0.87      0.92      0.90        52
+Discostella_pseudostelligera       0.85      0.61      0.71       542
+           Encyonema_minutum       0.91      0.82      0.86        49
+         Fragilaria_deformis       0.83      0.90      0.86        48
+         Fragilaria_famelica       0.80      0.88      0.84        51
+        Gomphonella_olivacea       0.83      0.86      0.85       117
+         Gomphonema_micropus       0.86      0.82      0.84        78
+         Gomphonema_parvulum       0.71      0.69      0.70        67
+        Gyrosigma_acuminatum       0.95      1.00      0.97        70
+      Humidophila_contemnata       0.81      0.95      0.87        61
+     Luticola_frequentissima       0.89      0.97      0.93        74
+           Mayamaea_permitis       0.88      0.88      0.88        95
+            Melosira_varians       0.96      0.96      0.96        67
+          Meridion_circulare       0.93      0.92      0.93        61
+      Navicula_cryptotenella       0.71      0.70      0.71        87
+          Navicula_germainii       0.58      0.87      0.70        79
+           Navicula_gregaria       0.91      0.89      0.90       356
+         Navicula_lanceolata       0.95      0.95      0.95       353
+             Navicula_recens       0.44      0.54      0.48        54
+                 Navicula_sp       0.72      0.56      0.63       251
+        Navicula_tripunctata       0.84      0.85      0.84        54
+             Navicula_veneta       0.47      0.63      0.54        90
+         Nitzschia_dissipata       0.84      0.88      0.86       283
+       Nitzschia_inconspicua       0.69      0.65      0.67       239
+             Nitzschia_palea       0.60      0.78      0.68       141
+        Nitzschia_soratensis       0.70      0.70      0.70       324
+                Nitzschia_sp       0.80      0.59      0.68       385
+Planothidium_frequentissimum       0.77      0.75      0.76       222
+    Planothidium_lanceolatum       0.80      0.79      0.79       308
+    Rhoicosphenia_abbreviata       0.80      0.80      0.80       107
+            Sellaphora_nigri       0.62      0.64      0.63       143
+          Seminavis_strigosa       0.87      0.98      0.92        48
+    Stephanodiscus_lacustris       0.51      0.65      0.57       122
+       Surirella_brebissonii       0.96      0.96      0.96       100
 
-                         accuracy                           0.83      1918
-                        macro avg       0.82      0.84      0.83      1918
-                     weighted avg       0.84      0.83      0.84      1918
+                    accuracy                           0.76      7822
+                   macro avg       0.76      0.80      0.77      7822
+                weighted avg       0.78      0.76      0.77      7822
