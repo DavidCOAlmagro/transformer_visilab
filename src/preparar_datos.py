@@ -246,7 +246,8 @@ def guardar_resumen_entrenamiento(ruta_modelo: Path,historial_macro_f1_val: list
     ruta_resumen = ruta_modelo.parent / "resumen_entrenamiento.json"
     if ruta_resumen.is_file():
         with open(ruta_resumen, "r", encoding="utf-8") as archivo:
-            historial_resumenes: list[dict] = json.load(archivo)
+            contenido = json.load(archivo)
+        historial_resumenes = contenido if isinstance(contenido, list) else [contenido]
     else:
         historial_resumenes = []
 
