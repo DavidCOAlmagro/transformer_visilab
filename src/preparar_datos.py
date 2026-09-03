@@ -23,8 +23,8 @@ def get_datos(nombre_split: str) -> dict[str, torch.Tensor]:
     """
     ruta_embeddings = VARIABLES_GLOBALES["RUTA_EMBEDDINGS"] / \
         f"embeddings_{nombre_split}.pt"
-    datos: dict[str, torch.Tensor] = torch.load(
-        ruta_embeddings, weights_only=True)
+    datos: dict[str, torch.Tensor] = torch.load(ruta_embeddings, 
+                                                weights_only=True)
 
     return datos
 
@@ -58,32 +58,44 @@ def codificacion(
     return embeddings_tensor, etiquetas_tensor, numero_especie
 
 
-def rutas_imagenes() -> list[tuple[str, str]]:
+def rutas_imagenes(sin_filtro: bool = False) -> list[tuple[str, str]]:
     """
     Recorre las carpetas con las imágenes y devuelve una lista de tuplas (ruta_completa, especie).
-    Las funciones usadas en este metodo son de pathlib.Path
+    Por defecto, solo incluye las especies listadas en ESPECIES_FILTRADAS (comportamiento
+    original). Si sin_filtro=True, se ignora ESPECIES_FILTRADAS y se recorren TODAS las
+    carpetas de especie encontradas, útil para contar imágenes antes de decidir qué
+    especies incluir en un experimento.
     """
     imagenes: list[tuple[str, str]] = []
+    grupos = VARIABLES_GLOBALES["GRUPOS_IMAGENES"]
 
-    for grupo in VARIABLES_GLOBALES["GRUPOS_DATOS"]:
-        ruta_grupo = VARIABLES_GLOBALES["RUTA_BASE"] / \
-            "imagenes_visilab(raw)" / grupo
+    for grupo in grupos:
+        ruta_grupo = VARIABLES_GLOBALES["RUTA_BASE"] / "imagenes_visilab(raw)" / grupo
+            
         print(f"Recorriendo {ruta_grupo}...")
         if ruta_grupo.exists():
 
-            especies = [ruta for ruta in ruta_grupo.iterdir() if ruta.is_dir()
-                        and ruta.name in VARIABLES_GLOBALES["ESPECIES_FILTRADAS"]]
-            # Orden alfabetico para que sea determinista y reproducible
-            especies_alfabetico = sorted(especies, key=lambda x: x.name)
-            # tqdm es una librería que muestra una barra de progreso en la consola
-            for especie in tqdm(especies_alfabetico, desc=f"Recorriendo {grupo}"):
-                for archivo in sorted(especie.iterdir(), key=lambda y: y.name):
-                    # La funcion suffix() devuelve la extensión del archivo, incluyendo el punto
+            if sin_filtro:
+                especies = [ruta for ruta in ruta_grupo.iterdir() if ruta.is_dir()]
+            else:
+                especies = [ruta for ruta in ruta_grupo.iterdir() if ruta.is_dir()
+                            and ruta.name in VARIABLES_GLOBALES["ESPECIES_FILTRADAS"]]
+
+            for especie in tqdm(especies, desc=f"Recorriendo {grupo}"):
+                for archivo in especie.iterdir():
                     if archivo.suffix.lower() in VARIABLES_GLOBALES["EXTENSIONES_VALIDAS"]:
                         imagenes.append((archivo, especie.name))
 
     return imagenes
 
+def contar_especies_disponibles() -> dict[str, int]:
+    """
+    Cuenta cuántas imágenes hay de cada especie, sin aplicar ESPECIES_FILTRADAS,
+    recorriendo todas las fuentes disponibles (Visilab + UDE). Sirve de base
+    para decidir, desde main.py, qué especies incluir en un experimento.
+    """
+    imagenes = rutas_imagenes(sin_filtro=True)
+    return calcular_conteo_por_especie(imagenes)
 
 def contar_clases_train(et_train: torch.Tensor, numero_especie: dict[str, int]) -> None:
     """
@@ -216,19 +228,13 @@ def fijar_semilla(semilla: int) -> None:
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     
-def guardar_resumen_entrenamiento(
-        ruta_modelo: Path,
-        historial_macro_f1_val: list[float],
-        metricas_test: dict[str, float]
-) -> None:
+def guardar_resumen_entrenamiento(ruta_modelo: Path,historial_macro_f1_val: list[float],
+        metricas_test: dict[str, float]) -> None:
     """Guarda las métricas principales del último entrenamiento."""
     if not historial_macro_f1_val:
-        return
+        raise ValueError("El historial de macro F1 de validación está vacío. No se puede guardar el resumen.")
 
-    indice_mejor = max(
-        range(len(historial_macro_f1_val)),
-        key=lambda indice: historial_macro_f1_val[indice]
-    )
+    indice_mejor = max(range(len(historial_macro_f1_val)),key=lambda indice: historial_macro_f1_val[indice])
 
     resumen = {
         "fecha": datetime.now().isoformat(timespec="seconds"),
@@ -238,8 +244,15 @@ def guardar_resumen_entrenamiento(
     }
 
     ruta_resumen = ruta_modelo.parent / "resumen_entrenamiento.json"
+    if ruta_resumen.is_file():
+        with open(ruta_resumen, "r", encoding="utf-8") as archivo:
+            historial_resumenes: list[dict] = json.load(archivo)
+    else:
+        historial_resumenes = []
+
+    historial_resumenes.append(resumen)
 
     with open(ruta_resumen, "w", encoding="utf-8") as archivo:
-        json.dump(resumen, archivo, indent=4, ensure_ascii=False)
+        json.dump(historial_resumenes, archivo, indent=4, ensure_ascii=False)
 
     print(f"Resumen guardado en: {ruta_resumen}")

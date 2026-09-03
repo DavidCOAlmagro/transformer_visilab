@@ -130,18 +130,6 @@ def main() -> dict[str, float]:
     numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     modelo, _ = cargar_modelo_entrenado()
 
-    # Carga los pesos del mejor modelo entrenado
-    ruta_pesos=VARIABLES_GLOBALES["RUTA_MODELOS"]/VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
-    pesos = torch.load(ruta_pesos, map_location=VARIABLES_GLOBALES["DEVICE"],weights_only=True)
-    
-    if not ruta_pesos.is_file():
-        raise FileNotFoundError(
-            f"No se encontró el modelo entrenado en: {ruta_pesos}\n"
-            "Entrena el modelo antes de ejecutar la evaluación."
-        )
-    # Carga los pesos en el modelo
-    modelo.load_state_dict(pesos)
-    modelo.eval()
 
     y_true, y_pred, y_pred_genero = obtener_predicciones(modelo, dataloader_test)
     accuracy_genero = calcular_accuracy_genero(y_true, y_pred_genero, numero_especie, numero_genero)
@@ -170,7 +158,8 @@ def main() -> dict[str, float]:
     return {
     "accuracy_test": accuracy_score(y_true, y_pred),
     "macro_f1_test": f1_score(y_true,y_pred,average="macro",zero_division=0),
-    "accuracy_genero_test": accuracy_genero
+    "accuracy_genero_test": accuracy_genero,
+    "num_especies" : len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
     }
 
 def graficar_curvas_entrenamiento( perdida_train: list[float], perdida_val: list[float],

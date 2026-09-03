@@ -14,7 +14,7 @@ import torch
 
 from torch import nn
 from constantes import VARIABLES_GLOBALES
-from preparar_datos import get_datos, codificacion, contar_clases_train, calcular_conteo_por_especie, calcular_copias_extra_por_especie,construir_numero_genero,etiquetas_a_generos,fijar_semilla,guardar_resumen_entrenamiento
+from preparar_datos import get_datos, codificacion, contar_clases_train, calcular_conteo_por_especie, calcular_copias_extra_por_especie, construir_numero_genero, etiquetas_a_generos, contar_especies_disponibles,guardar_resumen_entrenamiento,fijar_semilla
 from generar_leer_splits import leer_split, generar_split
 from embeddings import inicializar_dinov2, calcular_embeddings
 from clasificador import ClasificadorDiatomeas
@@ -72,6 +72,20 @@ def main() -> None:
         entrenar_de_nuevo = respuesta == "s"
 
     if entrenar_de_nuevo:
+        print("¿Quieres usar el umbral? Si no, se usará el filtro de especies filtradas. (s/n): ")
+        resp_umbral = input().strip().lower()
+
+        if resp_umbral == "s":
+            print("Usando umbral...")
+            print("Recuerda rehacer splits y embeddings")
+            especies_numero: dict[str, int] = contar_especies_disponibles()
+            candidatos = {especie: conteo for especie, conteo in especies_numero.items() 
+                          if conteo >= VARIABLES_GLOBALES["MINIMO_IMAGENES_POR_ESPECIE"]}
+            VARIABLES_GLOBALES["ESPECIES_FILTRADAS"] = set(candidatos.keys())
+            
+        else:
+            print("Usando filtro de especies filtradas.")
+            
         print("Quieres regenerar splits de train/val/test? (s/n): ")
         resp_split = input().strip().lower()
 
