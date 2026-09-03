@@ -1,8 +1,19 @@
-{
-    "fecha": "2026-09-02T14:22:09",
-    "mejor_epoca": 37,
-    "mejor_macro_f1_validacion": 0.8071561279975951,
-    "accuracy_test": 0.8342022940563086,
-    "macro_f1_test": 0.8279664128077817,
-    "accuracy_genero_test": 0.9264859228362878
-}
+[
+    {
+        "fecha": "2026-09-02T14:22:09",
+        "mejor_epoca": 37,
+        "mejor_macro_f1_validacion": 0.8071561279975951,
+        "accuracy_test": 0.8342022940563086,
+        "macro_f1_test": 0.8279664128077817,
+        "accuracy_genero_test": 0.9264859228362878
+    },
+    {
+        "fecha": "2026-09-03T14:33:08",
+        "mejor_epoca": 18,
+        "mejor_macro_f1_validacion": 0.7972043930873874,
+        "accuracy_test": 0.8112617309697602,
+        "macro_f1_test": 0.8033676769226952,
+        "accuracy_genero_test": 0.9113660062565172,
+        "num_especies": 20
+    }
+]

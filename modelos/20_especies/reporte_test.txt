@@ -1,0 +1,26 @@
+                                   precision    recall  f1-score   support
+
+       Achnanthidium_minutissimum       0.87      0.92      0.89        37
+         Achnanthidium_pyrenaicum       0.80      0.80      0.80       250
+           Achnanthidium_rivulare       0.65      0.81      0.72        85
+   Achnanthidium_rostropyrenaicum       0.50      0.75      0.60         4
+                 Achnanthidium_sp       0.86      0.74      0.79       267
+Cocconeis_placentula_var_euglypta       1.00      1.00      1.00        18
+                 Epithemia_adnata       1.00      1.00      1.00        11
+           Fistulifera_saprophila       0.57      0.78      0.66        40
+                    Fragilaria_sp       0.73      0.57      0.64        14
+               Gomphonema_pumilum       0.81      0.72      0.76        29
+             Gomphonema_rhombicum       1.00      1.00      1.00         9
+                    Halamphora_sp       0.76      0.70      0.73        23
+                Mayamaea_permitis       0.84      0.74      0.79        95
+                 Navicula_caterva       0.32      0.67      0.43        12
+           Navicula_cryptotenella       0.73      0.77      0.75        88
+                      Navicula_sp       0.84      0.83      0.84       251
+            Nitzschia_inconspicua       0.81      0.88      0.85       239
+        Nitzschia_palea_var_palea       1.00      1.00      1.00        12
+                     Nitzschia_sp       0.85      0.81      0.83       385
+               Seminavis_strigosa       0.96      1.00      0.98        49
+
+                         accuracy                           0.81      1918
+                        macro avg       0.80      0.82      0.80      1918
+                     weighted avg       0.82      0.81      0.81      1918
