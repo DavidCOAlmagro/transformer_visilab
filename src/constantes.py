@@ -6,19 +6,21 @@ import os
 from pathlib import Path
 import torch
 
+# -------------------------
+# NOMBRE DE PRUEBA
+# -------------------------
+PRUEBA: str = "UMBRAL"
+
 VARIABLES_GLOBALES: dict[str, object] = {
     
-    # -------------------------
-    # NOMBRE DE PRUEBA
-    # -------------------------
-    "PRUEBA": "UMBRAL",
-    
+
+    "PRUEBA": PRUEBA,
     # -------------------------
     # Rutas principales
     # -------------------------
     "RUTA_BASE": Path(__file__).resolve().parent.parent / "data",
-    "RUTA_SPLITS": Path(__file__).resolve().parent.parent / "data" / "splits",
-    "RUTA_EMBEDDINGS": Path(__file__).resolve().parent.parent / "data" / "embeddings_procesado",
+    "RUTA_SPLITS": Path(__file__).resolve().parent.parent / "data" / "splits" / PRUEBA,
+    "RUTA_EMBEDDINGS": Path(__file__).resolve().parent.parent / "data" / "embeddings_procesado" / PRUEBA,
     "RUTA_MODELOS": Path(__file__).resolve().parent.parent / "modelos",
 
     # -------------------------
