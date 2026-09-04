@@ -76,6 +76,7 @@ VARIABLES_GLOBALES: dict[str, object] = {
     "PESO_GENERO": 0.3, # Rango típico 0.1-0.5. Cuanto más alto, más importancia a la pérdida de género.
     "MINIMO_IMAGENES_POR_ESPECIE": 5,
     "UMBRAL_IMAGENES": 300, 
+    "EXPONENTE_PESO_CLASE": 0.5, # Cuanto más alto, más importancia a las clases minoritarias. Rango 0.3-1.0
     # -------------------------
     # Clasificador
     # -------------------------

@@ -54,7 +54,7 @@ def calcular_pesos_muestras(etiquetas: torch.Tensor) -> torch.Tensor:
     conteo_por_clase: torch.Tensor = torch.bincount(etiquetas)
 
     # Peso de cada clase = 1 / número de muestras de esa clase.
-    peso_por_clase: torch.Tensor = 1.0 / torch.sqrt(conteo_por_clase.float())
+    peso_por_clase: torch.Tensor = 1.0 / torch.pow(conteo_por_clase.float(), VARIABLES_GLOBALES["EXPONENTE_PESO_CLASE"])
 
     # Le asigna a cada muestra el peso de la clase a la que pertenece
     pesos_muestras: torch.Tensor = peso_por_clase[etiquetas]
@@ -67,6 +67,6 @@ def calcular_pesos_clases(etiquetas: torch.Tensor) -> torch.Tensor:
     para que los errores en clases minoritarias penalicen más.
     """
     conteo_por_clase: torch.Tensor = torch.bincount(etiquetas)
-    peso_por_clase: torch.Tensor = 1.0 / torch.sqrt(conteo_por_clase.float())
+    peso_por_clase: torch.Tensor = 1.0 / torch.pow(conteo_por_clase.float(), VARIABLES_GLOBALES["EXPONENTE_PESO_CLASE"])
 
     return peso_por_clase.to(VARIABLES_GLOBALES["DEVICE"])

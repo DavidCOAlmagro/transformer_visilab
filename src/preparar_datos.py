@@ -131,7 +131,7 @@ def calcular_conteo_por_especie(imagenes: list[tuple[Path, str]]) -> dict[str, i
 
 
 def calcular_copias_extra_por_especie(
-        conteo_por_especie: dict[str, int], max_copias: int = 5) -> dict[str, int]:
+        conteo_por_especie: dict[str, int], max_copias: int = 3) -> dict[str, int]:
     """
     Calcula cuántas copias extra de augmentation le corresponden a cada especie,
     de forma continua según su frecuencia relativa respecto la mediana de todas las
