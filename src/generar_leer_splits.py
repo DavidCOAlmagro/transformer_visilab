@@ -23,7 +23,7 @@ def generar_split() -> None:
     especies: list[str] = [especie for ruta, especie in imagenes]
     conteo_por_especie = Counter(especies)
 
-    especies_faltantes = sorted(sorted(obtener_especies_activas()) - set(conteo_por_especie))
+    especies_faltantes = sorted(obtener_especies_activas() - set(conteo_por_especie))
     
     if especies_faltantes:
         print(f"Advertencia: las siguientes especies filtradas no tienen imágenes: {especies_faltantes}")
