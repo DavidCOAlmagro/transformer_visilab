@@ -48,7 +48,7 @@ def generar_split() -> None:
         random_state=42
     )
 
-    ruta_splits = Path(__file__).resolve().parent.parent / "data" / "splits"
+    ruta_splits = VARIABLES_GLOBALES["RUTA_SPLITS"]
     ruta_splits.mkdir(parents=True, exist_ok=True)
 
     guardar_split(rutas_train, ruta_splits / "train.txt")
