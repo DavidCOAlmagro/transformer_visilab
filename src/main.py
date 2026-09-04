@@ -185,6 +185,7 @@ def preparar_embeddings_splits() -> None:
     """
     ruta_splits: Path = VARIABLES_GLOBALES["RUTA_SPLITS"]
     ruta_embeddings: Path = VARIABLES_GLOBALES["RUTA_EMBEDDINGS"]
+    ruta_embeddings.mkdir(parents=True, exist_ok=True)
     # Solo train tiene augmentation:
     configuracion: dict[str, bool] = {
         "train": True,
