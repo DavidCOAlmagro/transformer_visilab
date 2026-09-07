@@ -155,7 +155,7 @@ def main() -> None:
 
 
         historial_perdida_train, historial_perdida_val, historial_precision_val, historial_macro_f1_val = entrenar_modelo(
-            modelo, dataloader_train, dataloader_val, func_loss_especie, func_loss_genero, 
+            modelo, dataloader_train, dataloader_val, func_loss_especie, func_loss_genero, func_loss_center,
             optimizador, scheduler,
             ruta_mejor_modelo, num_epocas_total, paciencia=VARIABLES_GLOBALES["PACIENCIA"])
 
