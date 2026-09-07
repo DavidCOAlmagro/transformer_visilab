@@ -36,6 +36,7 @@ class ClasificadorDiatomeas(nn.Module):
             nn.init.zeros_(capa.bias)
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        """Devuelve logits globales de especie y logits de género."""
+        """Devuelve logits globales de especie, logits de género y el embedding
+        del tronco para center loss."""
         embedding = self.tronco(x)
-        return self.cabeza_especie(embedding), self.cabeza_genero(embedding)
+        return self.cabeza_especie(embedding), self.cabeza_genero(embedding), embedding

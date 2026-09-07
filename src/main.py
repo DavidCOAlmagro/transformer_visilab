@@ -20,7 +20,7 @@ from clasificador import ClasificadorDiatomeas
 from dataloader import crear_dataloaders, calcular_pesos_clases
 from entrenamiento import entrenar_modelo
 from evaluar_test_metricas import main as evaluar_test, graficar_curvas_entrenamiento
-
+from CenterLoss import center_loss
 
 def limpiar_pantalla() -> None:
     """Limpia la consola de forma compatible con Windows y Unix."""
@@ -128,13 +128,6 @@ def main() -> None:
         modelo = ClasificadorDiatomeas(num_clases, num_generos).to(
             VARIABLES_GLOBALES["DEVICE"])
         
-        # El optimizador es el encargado de actualizar los pesos de la red neuronal para que aprenda
-        # modelo.parameters() devuelve los pesos y sesgos de la red neuronal entrenables.
-        # Learning rate 0.0003 es un valor pequeño para no oscilar demasiado.
-        # AdamW con weight decay 0.0001 ayuda a regularizar el modelo y evitar overfitting.
-        optimizador = torch.optim.AdamW(
-            modelo.parameters(), lr=VARIABLES_GLOBALES["LEARNING_RATE"],
-            weight_decay=VARIABLES_GLOBALES["WEIGHT_DECAY"])
 
         num_epocas_total = VARIABLES_GLOBALES["num_epocas"]
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizador, lr_lambda)
@@ -148,6 +141,16 @@ def main() -> None:
         func_loss_especie = nn.CrossEntropyLoss(label_smoothing=VARIABLES_GLOBALES["LABEL_SMOOTHING"],
                                                 weight=pesos_clase.to(VARIABLES_GLOBALES["DEVICE"]))
         func_loss_genero = nn.CrossEntropyLoss()
+        func_loss_center = center_loss(num_clases, VARIABLES_GLOBALES["DIM_CAPA_2"], VARIABLES_GLOBALES["DEVICE"])
+        
+        # El optimizador es el encargado de actualizar los pesos de la red neuronal para que aprenda
+        # modelo.parameters() devuelve los pesos y sesgos de la red neuronal entrenables.
+        # Learning rate 0.0003 es un valor pequeño para no oscilar demasiado.
+        # AdamW con weight decay 0.0001 ayuda a regularizar el modelo y evitar overfitting.
+        optimizador = torch.optim.AdamW(list(modelo.parameters()) + list(func_loss_center.parameters()), 
+                                        lr=VARIABLES_GLOBALES["LEARNING_RATE"],
+                                        weight_decay=VARIABLES_GLOBALES["WEIGHT_DECAY"])
+        
         print("Iniciando entrenamiento...")
 
 

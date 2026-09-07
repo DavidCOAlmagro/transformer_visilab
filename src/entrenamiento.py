@@ -14,7 +14,8 @@ from constantes import VARIABLES_GLOBALES
 
 @torch.no_grad()
 def validacion(modelo, dataloader, func_loss_especie,
-               func_loss_genero, peso_genero: float = VARIABLES_GLOBALES["PESO_GENERO"]) -> tuple[float, float, float]:
+               func_loss_genero, func_loss_center,
+               peso_genero: float = VARIABLES_GLOBALES["PESO_GENERO"]) -> tuple[float, float, float]:
     """
     Igual que entrenar_epoca pero sin actualizar pesos. Las métricas
     (precisión, macro F1) se calculan solo sobre la predicción de especie,
@@ -30,11 +31,13 @@ def validacion(modelo, dataloader, func_loss_especie,
         batch_etiquetas = batch_etiquetas.to(device)
         batch_etiquetas_genero = batch_etiquetas_genero.to(device)
 
-        logits_especie, logits_genero = modelo(batch_embeddings)
+
+        logits_especie, logits_genero, tronco_embedding = modelo(batch_embeddings)
 
         perdida_especie= func_loss_especie(logits_especie, batch_etiquetas)
         perdida_genero = func_loss_genero(logits_genero, batch_etiquetas_genero)
-        perdida: torch.Tensor = perdida_especie + peso_genero * perdida_genero
+        perdida_center = func_loss_center(tronco_embedding, batch_etiquetas)
+        perdida: torch.Tensor = perdida_especie + peso_genero * perdida_genero + VARIABLES_GLOBALES["LAMBDA_CENTER_LOSS"] * perdida_center
         perdida_acumulada += perdida.item()
 
         # Calcula el número de aciertos en este batch
@@ -53,7 +56,7 @@ def validacion(modelo, dataloader, func_loss_especie,
     return perdida_media, precision, macro_f1
 
 def entrenar_epoca(modelo: nn.Module,dataloader: DataLoader,func_loss_especie: nn.Module,
-    func_loss_genero: nn.Module, optimizador: torch.optim.Optimizer,
+    func_loss_genero: nn.Module,func_loss_center: nn.Module, optimizador: torch.optim.Optimizer,
     peso_genero: float = VARIABLES_GLOBALES["PESO_GENERO"]) -> float:
     """
     Entrena el modelo durante una época completa. La pérdida total es la
@@ -76,12 +79,13 @@ def entrenar_epoca(modelo: nn.Module,dataloader: DataLoader,func_loss_especie: n
         # Limpia los gradientes de la GPU para que no se acumulen de un batch a otro.
         optimizador.zero_grad()
         # El modelo ahora devuelve DOS salidas: logits de especie y de género(forward)
-        logits_especie, logits_genero = modelo(batch_embeddings)
+        logits_especie, logits_genero,tronco_embedding = modelo(batch_embeddings)
         
         perdida_especie: torch.Tensor = func_loss_especie(logits_especie, batch_etiquetas)
         perdida_genero: torch.Tensor = func_loss_genero(logits_genero, batch_etiquetas_genero)
+        perdida_center: torch.Tensor = func_loss_center(tronco_embedding, batch_etiquetas)
         # La pérdida total es la suma de ambas, multiplicando la de género
-        perdida: torch.Tensor = perdida_especie + peso_genero * perdida_genero
+        perdida: torch.Tensor = perdida_especie + peso_genero * perdida_genero + VARIABLES_GLOBALES["LAMBDA_CENTER_LOSS"] * perdida_center
 
         # Calcula los gradientes de la pérdida con respecto a los pesos(como mejorar)
         perdida.backward()
