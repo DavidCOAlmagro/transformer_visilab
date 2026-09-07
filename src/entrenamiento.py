@@ -101,7 +101,7 @@ def entrenar_epoca(modelo: nn.Module,dataloader: DataLoader,func_loss_especie: n
 
 def entrenar_modelo(
         modelo: nn.Module, dataloader_train: DataLoader, dataloader_val: DataLoader,
-        func_loss_especie: nn.Module, func_loss_genero: nn.Module, 
+        func_loss_especie: nn.Module, func_loss_genero: nn.Module, func_loss_center: nn.Module,
         optimizador: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler.LRScheduler, ruta_mejor_modelo: Path,
         num_epocas: int, paciencia: int, peso_genero: float = VARIABLES_GLOBALES["PESO_GENERO"]
@@ -127,9 +127,8 @@ def entrenar_modelo(
     for epoca in range(num_epocas):
         if valid:
             if contador_no_mejora < paciencia:
-                perdida_train = entrenar_epoca(modelo, dataloader_train, func_loss_especie, func_loss_genero, optimizador, peso_genero)
-                perdida_val, precision_val, macro_f1_val = validacion(modelo,
-                                                                      dataloader_val, func_loss_especie, func_loss_genero, peso_genero)
+                perdida_train = entrenar_epoca(modelo, dataloader_train, func_loss_especie, func_loss_genero,func_loss_center, optimizador, peso_genero)
+                perdida_val, precision_val, macro_f1_val = validacion(modelo,dataloader_val, func_loss_especie, func_loss_genero, peso_genero)
 
                 scheduler.step()  # avanza el learning rate según el schedule
 
