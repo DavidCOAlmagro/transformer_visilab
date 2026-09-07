@@ -130,7 +130,6 @@ def main() -> None:
         
 
         num_epocas_total = VARIABLES_GLOBALES["num_epocas"]
-        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizador, lr_lambda)
 
         print("Creando dataloaders...")
         dataloader_train, dataloader_val = crear_dataloaders(
@@ -150,6 +149,7 @@ def main() -> None:
         optimizador = torch.optim.AdamW(list(modelo.parameters()) + list(func_loss_center.parameters()), 
                                         lr=VARIABLES_GLOBALES["LEARNING_RATE"],
                                         weight_decay=VARIABLES_GLOBALES["WEIGHT_DECAY"])
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizador, lr_lambda)
         
         print("Iniciando entrenamiento...")
 
