@@ -84,11 +84,11 @@ def main() -> None:
 
         else:
             print("Usando filtro de especies filtradas.")
-            ruta_carpeta_modelo = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"]
-            ruta_carpeta_modelo.mkdir(parents=True, exist_ok=True)
-            with open(ruta_carpeta_modelo / "metadatos_modelo.json", "w", encoding="utf-8") as f:
-                json.dump({"especies_filtradas": sorted(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])},
-                        f, indent=2, ensure_ascii=False)
+        ruta_carpeta_modelo = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"]
+        ruta_carpeta_modelo.mkdir(parents=True, exist_ok=True)
+        with open(ruta_carpeta_modelo / "metadatos_modelo.json", "w", encoding="utf-8") as f:
+            json.dump({"especies_filtradas": sorted(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])},
+                    f, indent=2, ensure_ascii=False)
             
         print("Quieres regenerar splits de train/val/test? (s/n): ")
         resp_split = input().strip().lower()

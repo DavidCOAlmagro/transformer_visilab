@@ -128,7 +128,7 @@ def entrenar_modelo(
         if valid:
             if contador_no_mejora < paciencia:
                 perdida_train = entrenar_epoca(modelo, dataloader_train, func_loss_especie, func_loss_genero,func_loss_center, optimizador, peso_genero)
-                perdida_val, precision_val, macro_f1_val = validacion(modelo,dataloader_val, func_loss_especie, func_loss_genero, peso_genero)
+                perdida_val, precision_val, macro_f1_val = validacion(modelo,dataloader_val, func_loss_especie, func_loss_genero,func_loss_center, peso_genero)
 
                 scheduler.step()  # avanza el learning rate según el schedule
 
