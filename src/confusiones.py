@@ -23,7 +23,7 @@ def obtener_predicciones(modelo, dataloader) -> tuple[list[int], list[int]]:
     for batch_embeddings, batch_etiquetas in dataloader:
         batch_embeddings = batch_embeddings.to(
             next(modelo.parameters()).device)
-        logits_especie, _ = modelo(batch_embeddings)
+        logits_especie, _, _ = modelo(batch_embeddings)
         _, indice_predicciones = torch.max(logits_especie, 1)
         y_true.extend(batch_etiquetas.tolist())
         y_pred.extend(indice_predicciones.cpu().tolist())

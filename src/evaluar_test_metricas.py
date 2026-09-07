@@ -39,7 +39,7 @@ def obtener_predicciones(
 
 
         # Para cada embedding, el modelo devuelve un vector con las probabilidades/logits.
-        logits_especie, logits_genero = modelo(batch_embeddings)
+        logits_especie, logits_genero, logits_center = modelo(batch_embeddings)
         # Predicción final, devuelve el mayor logit y el indice
         _, indice_predicciones = torch.max(logits_especie, 1)
         _, indice_predicciones_genero = torch.max(logits_genero, 1)
