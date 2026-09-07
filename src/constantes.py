@@ -9,7 +9,7 @@ import torch
 # -------------------------
 # NOMBRE DE PRUEBA
 # -------------------------
-PRUEBA: str = "UMBRAL"
+PRUEBA: str = "20_especies"  
 
 VARIABLES_GLOBALES: dict[str, object] = {
     
@@ -37,55 +37,26 @@ VARIABLES_GLOBALES: dict[str, object] = {
     # Especies filtradas
     # -------------------------
     "ESPECIES_FILTRADAS": {
-    "Achnanthidium_atomoides",
-    "Achnanthidium_jackii",
-    "Achnanthidium_pyrenaicum",
-    "Achnanthidium_rivulare",
-    "Achnanthidium_sp",
-    "Amphora_indistincta",
-    "Amphora_pediculus",
-    "Aulacoseira_granulata",
-    "Cocconeis_placentula",
-    "Craticula_sp",
-    "Crenotia_rumrichorum",
-    "Cyclotella_atomus",
-    "Cyclotella_meduanae",
-    "Cyclotella_meneghiniana",
-    "Denticula_tenuis",
-    "Diatoma_tenuis",
-    "Discostella_pseudostelligera",
-    "Encyonema_minutum",
-    "Fragilaria_deformis",
-    "Fragilaria_famelica",
-    "Gomphonella_olivacea",
-    "Gomphonema_micropus",
-    "Gomphonema_parvulum",
-    "Gyrosigma_acuminatum",
-    "Humidophila_contemnata",
-    "Luticola_frequentissima",
-    "Mayamaea_permitis",
-    "Melosira_varians",
-    "Meridion_circulare",
-    "Navicula_cryptotenella",
-    "Navicula_germainii",
-    "Navicula_gregaria",
-    "Navicula_lanceolata",
-    "Navicula_recens",
-    "Navicula_sp",
-    "Navicula_tripunctata",
-    "Navicula_veneta",
-    "Nitzschia_dissipata",
-    "Nitzschia_inconspicua",
-    "Nitzschia_palea",
-    "Nitzschia_soratensis",
-    "Nitzschia_sp",
-    "Planothidium_frequentissimum",
-    "Planothidium_lanceolatum",
-    "Rhoicosphenia_abbreviata",
-    "Sellaphora_nigri",
-    "Seminavis_strigosa",
-    "Stephanodiscus_lacustris",
-    "Surirella_brebissonii"
+          "Achnanthidium_minutissimum",
+        "Nitzschia_inconspicua",
+        "Cocconeis_placentula_var_euglypta",
+        "Achnanthidium_pyrenaicum",
+        "Fistulifera_saprophila",
+        "Achnanthidium_sp",
+        "Nitzschia_sp",
+        "Navicula_caterva",
+        "Achnanthidium_rivulare",
+        "Gomphonema_pumilum",
+        "Seminavis_strigosa",
+        "Achnanthidium_rostropyrenaicum",
+        "Fragilaria_sp",
+        "Gomphonema_rhombicum",
+        "Nitzschia_palea_var_palea",
+        "Halamphora_sp",
+        "Navicula_sp",
+        "Navicula_cryptotenella",
+        "Epithemia_adnata",
+        "Mayamaea_permitis"
     },
  # De las 20 especies más enviadas en el excel:
  # - Eunotia exigua solo 6 imágenes en dataset, insuficiente para entrenar.
@@ -108,10 +79,10 @@ VARIABLES_GLOBALES: dict[str, object] = {
     "LEARNING_RATE": 0.0003,
     "WEIGHT_DECAY": 0.0001,
     "LABEL_SMOOTHING": 0.05, # No confia mucho en sus predicciones.
-    "PESO_GENERO": 0.3, # Rango típico 0.1-0.5. Cuanto más alto, más importancia a la pérdida de género.
+    "PESO_GENERO": 0.4, # Rango típico 0.1-0.5. Cuanto más alto, más importancia a la pérdida de género.
     "MINIMO_IMAGENES_POR_ESPECIE": 5,
     "UMBRAL_IMAGENES": 300, 
-    "EXPONENTE_PESO_CLASE": 0.5, # Cuanto más alto, más importancia a las clases minoritarias. Rango 0.3-1.0
+    "EXPONENTE_PESO_CLASE": 0.3, # Cuanto más alto, más importancia a las clases minoritarias. Rango 0.3-1.0
     "LAMBDA_CENTER_LOSS": 0.01, # Cuanto más alto, más importancia a la pérdida de center loss. Rango 0.001-0.1
     # -------------------------
     # Clasificador
