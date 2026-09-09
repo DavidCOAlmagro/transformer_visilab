@@ -61,10 +61,6 @@ def codificacion(
 def rutas_imagenes() -> list[tuple[str, str]]:
     """
     Recorre las carpetas con las imágenes y devuelve una lista de tuplas (ruta_completa, especie).
-    Por defecto, solo incluye las especies listadas en ESPECIES_FILTRADAS (comportamiento
-    original). Si sin_filtro=True, se ignora ESPECIES_FILTRADAS y se recorren TODAS las
-    carpetas de especie encontradas, útil para contar imágenes antes de decidir qué
-    especies incluir en un experimento.
     """
     imagenes: list[tuple[str, str]] = []
     ruta_imagenes: Path = VARIABLES_GLOBALES["RUTA_BASE"] / "imagenes_visilab(raw)"

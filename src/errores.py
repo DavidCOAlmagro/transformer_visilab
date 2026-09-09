@@ -55,7 +55,7 @@ def predecir(modelo: ClasificadorDiatomeas, embeddings: torch.Tensor) -> tuple[l
     """Pasa todos los embeddings por el modelo y devuelve el índice predicho de cada uno.
     Además, devuelve el indice del genero predicho y la probabilidad softmax(0-1)"""
     embeddings = embeddings.to(next(modelo.parameters()).device)
-    logits_especie, logits_genero = modelo(embeddings)
+    logits_especie, logits_genero,_ = modelo(embeddings)
     _, indices_predichos_genero = torch.max(logits_genero, dim=1)
     # Calcula la probabilidad softmax de cada clase y obtiene la predicción
     probs_especie = F.softmax(logits_especie, dim=1)

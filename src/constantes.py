@@ -81,7 +81,6 @@ VARIABLES_GLOBALES: dict[str, object] = {
     "LABEL_SMOOTHING": 0.05, # No confia mucho en sus predicciones.
     "PESO_GENERO": 0.4, # Rango típico 0.1-0.5. Cuanto más alto, más importancia a la pérdida de género.
     "MINIMO_IMAGENES_POR_ESPECIE": 5,
-    "UMBRAL_IMAGENES": 300, 
     "EXPONENTE_PESO_CLASE": 0.3, # Cuanto más alto, más importancia a las clases minoritarias. Rango 0.3-1.0
     "LAMBDA_CENTER_LOSS": 0.01, # Cuanto más alto, más importancia a la pérdida de center loss. Rango 0.001-0.1
     # -------------------------
