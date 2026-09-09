@@ -12,7 +12,6 @@ from pathlib import Path
 import torch
 
 from torch import nn
-import argparse
 from constantes import VARIABLES_GLOBALES
 from preparar_datos import get_datos, codificacion, contar_clases_train, calcular_conteo_por_especie, calcular_copias_extra_por_especie, construir_numero_genero, etiquetas_a_generos, parsear_argumentos,guardar_resumen_entrenamiento,fijar_semilla, preguntas_si_no
 from generar_leer_splits import leer_split, generar_split
@@ -199,12 +198,6 @@ def preparar_embeddings_splits() -> None:
             todos_existen = False
 
     regenerar_todo = False
-
-    if todos_existen:
-        respuesta = input(
-            "Ya existen embeddings de train, val y test.\n"
-            "¿Quieres regenerarlos los 3 desde cero? (s/n): ").strip().lower()
-        regenerar_todo = respuesta == "s"
 
     processor, model, device, augmentation = inicializar_dinov2()
     # Bucle sobre cada split (train, val, test) y calcula los embeddings si no existen
