@@ -12,8 +12,9 @@ from pathlib import Path
 import torch
 
 from torch import nn
+from transformers.convert_slow_tokenizers_checkpoints_to_fast import args
 from constantes import VARIABLES_GLOBALES
-from preparar_datos import get_datos, codificacion, contar_clases_train, calcular_conteo_por_especie, calcular_copias_extra_por_especie, construir_numero_genero, etiquetas_a_generos, contar_especies_disponibles,guardar_resumen_entrenamiento,fijar_semilla
+from preparar_datos import get_datos, codificacion, contar_clases_train, calcular_conteo_por_especie, calcular_copias_extra_por_especie, construir_numero_genero, etiquetas_a_generos, parsear_argumentos,guardar_resumen_entrenamiento,fijar_semilla, preguntas_si_no
 from generar_leer_splits import leer_split, generar_split
 from embeddings import inicializar_dinov2, calcular_embeddings
 from clasificador import ClasificadorDiatomeas
@@ -45,6 +46,16 @@ def lr_lambda(epoca_actual: int) -> float:
         max(1, num_epocas_total - epocas_warmup)
     return 0.5 * (1 + math.cos(math.pi * progreso))
 
+def resolver_si_no(valor_flag: str | None, pregunta: str) -> bool:
+    """
+    Si se pasó la flag por línea de comandos, la usa directamente sin preguntar.
+    Si no, cae al modo interactivo de siempre.
+    """
+    if valor_flag is not None:
+        valor_flag == "s"
+    else:
+        valor_flag= preguntas_si_no(pregunta)
+    return valor_flag 
     
 
 def main() -> None:
@@ -52,6 +63,9 @@ def main() -> None:
     Función trabajo principal
     """
     limpiar_pantalla()
+    args = parsear_argumentos()
+    if args.prueba:
+        VARIABLES_GLOBALES["PRUEBA"] = args.prueba
     print(f"\n Iniciando prueba: {VARIABLES_GLOBALES['PRUEBA'].upper()}\n")
     # Semilla fija para que la inicialización de pesos, el shuffle del
     # dataloader y el data augmentation sean reproducibles entre ejecuciones.
@@ -65,13 +79,10 @@ def main() -> None:
     # o usar directamente el que ya está guardado en disco
     entrenar_de_nuevo = True
     if ruta_mejor_modelo.exists():
-        respuesta = input(
-            "Ya existe un modelo entrenado (mejor_modelo.pth).\n"
-            "¿Quieres entrenar uno nuevo? (s/n): ").strip().lower()
-        entrenar_de_nuevo = respuesta == "s"
+        print("Ya existe un modelo entrenado (mejor_modelo.pth).\n")
+        entrenar_de_nuevo = resolver_si_no(args.reentrenar, "¿Quieres reentrenar el modelo? (s/n): ")
 
     if entrenar_de_nuevo:
-
         print("Usando especies filtradas de constantes.py. Recuerda cambiadlas si es necesario.")
         if not VARIABLES_GLOBALES["ESPECIES_FILTRADAS"]:
             raise ValueError("ERROR: ESPECIES_FILTRADAS está vacío en constantes.py Añade al menos una especie antes de entrenar.")
@@ -82,24 +93,13 @@ def main() -> None:
             json.dump({"especies_filtradas": sorted(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])},
                     f, indent=2, ensure_ascii=False)
             
-        print("Quieres regenerar splits de train/val/test? (s/n): ")
-        resp_split = input().strip().lower()
-
-        if resp_split == "s":
-            print("Regenerando splits...")
+        resp_split = resolver_si_no(args.regenerar_splits, "¿Regenerar splits de train/val/test?")
+        resp_emb = resolver_si_no(args.recalcular_embeddings, "¿Recalcular embeddings?")
+        if resp_split:
             generar_split()
-        else:
-            print("Usando splits ya existentes.")
-
-        print("¿Quieres recalcular embeddings? (s/n): ")
-        resp_emb = input().strip().lower()
-
-        if resp_emb == "s":
-            print("Recalculando embeddings...")
+        if resp_emb:
             preparar_embeddings_splits()
-        else:
-            print("Usando embeddings ya existentes.")
-
+            
         print("Cargando datos...")
         datos_train = get_datos("train")
         datos_val = get_datos("val")

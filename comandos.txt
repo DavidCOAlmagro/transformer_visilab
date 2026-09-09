@@ -1,0 +1,23 @@
+Cada posibilidad de comando segun se quiera hacer
+
+Con PRUEBA: "20_especies"
+
+python3 main.py --reentrenar s --regenerar-splits s --recalcular-embeddings s --prueba "20_especies"
+python3 main.py --reentrenar s --regenerar-splits s --recalcular-embeddings n --prueba "20_especies"
+python3 main.py --reentrenar s --regenerar-splits n --recalcular-embeddings s --prueba "20_especies"
+python3 main.py --reentrenar s --regenerar-splits n --recalcular-embeddings n --prueba "20_especies"
+python3 main.py --reentrenar n --regenerar-splits s --recalcular-embeddings s --prueba "20_especies"
+python3 main.py --reentrenar n --regenerar-splits s --recalcular-embeddings n --prueba "20_especies"
+python3 main.py --reentrenar n --regenerar-splits n --recalcular-embeddings s --prueba "20_especies"
+python3 main.py --reentrenar n --regenerar-splits n --recalcular-embeddings n --prueba "20_especies"
+
+Con PRUEBA: "UMBRAL"
+
+python3 main.py --reentrenar s --regenerar-splits s --recalcular-embeddings s --prueba "UMBRAL"
+python3 main.py --reentrenar s --regenerar-splits s --recalcular-embeddings n --prueba "UMBRAL"
+python3 main.py --reentrenar s --regenerar-splits n --recalcular-embeddings s --prueba "UMBRAL"
+python3 main.py --reentrenar s --regenerar-splits n --recalcular-embeddings n --prueba "UMBRAL"
+python3 main.py --reentrenar n --regenerar-splits s --recalcular-embeddings s --prueba "UMBRAL"
+python3 main.py --reentrenar n --regenerar-splits s --recalcular-embeddings n --prueba "UMBRAL"
+python3 main.py --reentrenar n --regenerar-splits n --recalcular-embeddings s --prueba "UMBRAL"
+python3 main.py --reentrenar n --regenerar-splits n --recalcular-embeddings n --prueba "UMBRAL"

@@ -15,6 +15,7 @@ from constantes import VARIABLES_GLOBALES
 from pathlib import Path
 import json
 from datetime import datetime
+import argparse
 
 def get_datos(nombre_split: str) -> dict[str, torch.Tensor]:
     """
@@ -271,3 +272,29 @@ def obtener_especies_activas() -> set[str]:
             metadatos = json.load(f)
         return set(metadatos["especies_filtradas"])
     return VARIABLES_GLOBALES["ESPECIES_FILTRADAS"]
+
+def parsear_argumentos() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Entrena y evalúa el clasificador de diatomeas (DINOv2 + MLP).")
+    parser.add_argument("--reentrenar", choices=["s", "n"], default=None,
+                        help="¿Entrenar un modelo nuevo? Si no se indica, se pregunta interactivamente.")
+    parser.add_argument("--regenerar-splits", choices=["s", "n"], default=None,
+                        help="¿Regenerar splits train/val/test?")
+    parser.add_argument("--recalcular-embeddings", choices=["s", "n"], default=None,
+                        help="¿Recalcular embeddings?")
+    parser.add_argument("--prueba", type=str, default=None,
+                        help="Nombre del experimento (sobreescribe PRUEBA de constantes.py).")
+    return parser.parse_args()
+
+def preguntas_si_no(mensaje: str) -> bool:
+    """
+    Pregunta al usuario una respuesta sí/no y devuelve True/False.
+    """
+    valid = True
+    while valid:
+        respuesta = input(f"{mensaje} (s/n): ").strip().lower()
+        if respuesta in {"s", "n"}:
+            valid = False
+            return respuesta == "s"
+        else:
+            print("Respuesta inválida. Por favor, ingrese 's' para sí o 'n' para no.")
+            

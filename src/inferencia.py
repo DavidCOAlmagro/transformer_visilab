@@ -11,6 +11,37 @@ import pandas as pd
 from modelo import cargar_modelo_entrenado
 from constantes import VARIABLES_GLOBALES
 from embeddings import inicializar_dinov2, get_embedding
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename, askdirectory
+
+def elegir_archivo() -> str:
+    try:
+        root = Tk()
+        root.withdraw()  # oculta la ventana principal, solo queremos el diálogo
+        ruta = askopenfilename(
+            title="Selecciona una imagen",
+            filetypes=[("Imágenes", "*.jpg *.jpeg *.png *.bmp *.tif *.tiff")]
+        )
+        root.destroy()
+        return ruta
+    
+    except Exception as e:
+        print(f"Error al seleccionar archivo: {e}")
+        print("Asegúrate de que tkinter esté correctamente instalado.(sudo apt install python3-tk)")
+        return input("Inserta la ruta de la imagen manualmente: ").strip()
+
+def elegir_carpeta() -> str:
+    try:    
+        root = Tk()
+        root.withdraw()
+        ruta = askdirectory(title="Selecciona una carpeta de imágenes")
+        root.destroy()
+        return ruta
+    
+    except Exception as e:
+        print(f"Error al seleccionar archivo: {e}")
+        print("Asegúrate de que tkinter esté correctamente instalado.(sudo apt install python3-tk)")
+        return input("Inserta la ruta de la imagen manualmente: ").strip()
 
 def calcular_embedding_imagen(ruta_imagen: str) -> torch.Tensor:
     """
@@ -165,17 +196,26 @@ def main() -> None:
     print("2. Clasificar una carpeta entera")
 
     opcion = input("\nElige una opción (1/2): ").strip()
+    valid = True
+    while valid:
+        if opcion == "1":
+            ruta = elegir_archivo()
+            if not ruta:
+                print("No se seleccionó ninguna imagen.")
+            else:
+                inferir_imagen_suelta(ruta)
+            valid = False
+            
+        elif opcion == "2":
+            ruta = elegir_carpeta()
+            if not ruta:
+                print("No se seleccionó ninguna carpeta.")
+            else:
+                inferir_carpeta(ruta)
+            valid = False
 
-    if opcion == "1":
-        ruta = input("Ruta de la imagen: ").strip()
-        inferir_imagen_suelta(ruta)
-
-    elif opcion == "2":
-        ruta = input("Ruta de la carpeta: ").strip()
-        inferir_carpeta(ruta)
-
-    else:
-        print("Opción no válida. Escribe 1 o 2.")
+        else:
+            print("Opción no válida. Escribe 1 o 2.")
 
 
 if __name__ == "__main__":
