@@ -170,63 +170,50 @@ def main() -> None:
             metricas_test
         )
 
-
 def preparar_embeddings_splits() -> None:
     """
     Calcula y guarda los embeddings de train/val/test a partir de los splits
     guardados en data/splits/. Aplica augmentation solo al conjunto de train.
-    Si los embeddings ya existen en disco, no se recalculan.
+    Si esta función se llama, se regeneran los 3 splits sin preguntar,
+    sobreescribiendo lo que hubiera antes.
     """
     ruta_splits: Path = VARIABLES_GLOBALES["RUTA_SPLITS"]
     ruta_embeddings: Path = VARIABLES_GLOBALES["RUTA_EMBEDDINGS"]
     ruta_embeddings.mkdir(parents=True, exist_ok=True)
-    # Solo train tiene augmentation:
+
     configuracion: dict[str, bool] = {
         "train": True,
         "val": False,
         "test": False,
     }
 
-    # Comprobamos si YA existen los 3 archivos de embeddings antes de nada
     rutas_destino = {
         nombre_split: ruta_embeddings / f"embeddings_{nombre_split}.pt"
         for nombre_split in configuracion
     }
-    todos_existen = True
-    for ruta in rutas_destino.values():
-        if not ruta.exists():
-            todos_existen = False
-
-    regenerar_todo = False
 
     processor, model, device, augmentation = inicializar_dinov2()
-    # Bucle sobre cada split (train, val, test) y calcula los embeddings si no existen
+
     for nombre_split, is_train in configuracion.items():
         ruta_destino = rutas_destino[nombre_split]
+        ruta_split_txt = ruta_splits / f"{nombre_split}.txt"
+        imagenes = leer_split(ruta_split_txt)
+        print(f"Calculando embeddings de {nombre_split} ({len(imagenes)} imágenes)...")
 
-        if not ruta_destino.exists() or regenerar_todo:
-            ruta_split_txt = ruta_splits / f"{nombre_split}.txt"
-            imagenes = leer_split(ruta_split_txt)
-            print(
-                f"Calculando embeddings de {nombre_split} ({len(imagenes)} imágenes)...")
+        copias_por_especie: dict[str, int] | None = None
+        if is_train:
+            conteo_por_especie = calcular_conteo_por_especie(imagenes)
+            copias_por_especie = calcular_copias_extra_por_especie(conteo_por_especie)
+            print("Copias extra por especie (train):")
+            for especie, copias in sorted(copias_por_especie.items()):
+                if copias > 0:
+                    print(f"  {especie:40s} +{copias} copias extra")
 
-            copias_por_especie: dict[str, int] | None = None
-            if is_train:
-                conteo_por_especie = calcular_conteo_por_especie(imagenes)
-                copias_por_especie = calcular_copias_extra_por_especie(
-                    conteo_por_especie)
-                print("Copias extra por especie (train):")
-                # Recorre las especies en orden alfabético y
-                # muestra cuántas copias extra le corresponden a cada una
-                for especie, copias in sorted(copias_por_especie.items()):
-                    if copias > 0:
-                        print(f"  {especie:40s} +{copias} copias extra")
-
-            datos = calcular_embeddings(imagenes, processor, model, device,
-                                        augmentation, is_train=is_train,
-                                        copias_por_especie=copias_por_especie)
-            torch.save(datos, ruta_destino)
-            print(f"Guardado en {ruta_destino}")
+        datos = calcular_embeddings(imagenes, processor, model, device,
+                                    augmentation, is_train=is_train,
+                                    copias_por_especie=copias_por_especie)
+        torch.save(datos, ruta_destino)
+        print(f"Guardado en {ruta_destino}")
 
 
 if __name__ == "__main__":
