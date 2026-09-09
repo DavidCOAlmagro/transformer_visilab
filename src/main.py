@@ -52,7 +52,7 @@ def resolver_si_no(valor_flag: str | None, pregunta: str) -> bool:
     Si no, cae al modo interactivo de siempre.
     """
     if valor_flag is not None:
-        valor_flag == "s"
+        valor_flag = valor_flag == "s"
     else:
         valor_flag= preguntas_si_no(pregunta)
     return valor_flag 
