@@ -11,11 +11,13 @@ import pandas as pd
 from modelo import cargar_modelo_entrenado
 from constantes import VARIABLES_GLOBALES
 from embeddings import inicializar_dinov2, get_embedding
-from tkinter import Tk
-from tkinter.filedialog import askopenfilename, askdirectory
+
 
 def elegir_archivo() -> str:
     try:
+        from tkinter import Tk
+        from tkinter.filedialog import askopenfilename
+        
         root = Tk()
         root.withdraw()  # oculta la ventana principal, solo queremos el diálogo
         ruta = askopenfilename(
@@ -32,6 +34,9 @@ def elegir_archivo() -> str:
 
 def elegir_carpeta() -> str:
     try:    
+        from tkinter import Tk
+        from tkinter.filedialog import askdirectory
+        
         root = Tk()
         root.withdraw()
         ruta = askdirectory(title="Selecciona una carpeta de imágenes")
@@ -69,7 +74,7 @@ def predecir_imagen(embedding: torch.Tensor,modelo: torch.nn.Module,
     embedding = embedding.to(VARIABLES_GLOBALES["DEVICE"])
 
     # logits → probabilidades con softmax
-    logits_especie, _ = modelo(embedding)                    # [1, n_clases]
+    logits_especie, _,_ = modelo(embedding)                    # [1, n_clases]
     probs: torch.Tensor = torch.softmax(logits_especie, dim=1)          # [1, n_clases]
 
     # especie con mayor probabilidad y su confianza
