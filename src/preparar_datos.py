@@ -57,7 +57,7 @@ def codificacion(
     return embeddings_tensor, etiquetas_tensor, numero_especie
 
 
-def rutas_imagenes(sin_filtro: bool = False) -> list[tuple[str, str]]:
+def rutas_imagenes() -> list[tuple[str, str]]:
     """
     Recorre las carpetas con las imágenes y devuelve una lista de tuplas (ruta_completa, especie).
     Por defecto, solo incluye las especies listadas en ESPECIES_FILTRADAS (comportamiento
@@ -66,35 +66,36 @@ def rutas_imagenes(sin_filtro: bool = False) -> list[tuple[str, str]]:
     especies incluir en un experimento.
     """
     imagenes: list[tuple[str, str]] = []
-    grupos = VARIABLES_GLOBALES["GRUPOS_DATOS"]
-
+    ruta_imagenes: Path = VARIABLES_GLOBALES["RUTA_BASE"] / "imagenes_visilab(raw)"
+    
+    if not ruta_imagenes.exists():
+        raise FileNotFoundError(f"No se encontró la carpeta de imágenes: {ruta_imagenes}")
+    grupos = []
+    
+    for p in ruta_imagenes.iterdir():
+        if p.is_dir():
+            grupos.append(p.name)
+    grupos.sort()  
+    
+    if not grupos:
+        raise FileNotFoundError(f"No se encontraron subcarpetas de grupo en: {ruta_imagenes}")
+    
     for grupo in grupos:
-        ruta_grupo = VARIABLES_GLOBALES["RUTA_BASE"] / "imagenes_visilab(raw)" / grupo
+        ruta_grupo = ruta_imagenes / grupo
             
         print(f"Recorriendo {ruta_grupo}...")
         if ruta_grupo.exists():
 
-            if sin_filtro:
-                especies = [ruta for ruta in ruta_grupo.iterdir() if ruta.is_dir()]
-            else:
-                especies = [ruta for ruta in ruta_grupo.iterdir() if ruta.is_dir()
+            especies = [ruta for ruta in ruta_grupo.iterdir() if ruta.is_dir()
                             and ruta.name in obtener_especies_activas()]
 
-            for especie in tqdm(especies, desc=f"Recorriendo {grupo}"):
+            for especie in especies:
                 for archivo in especie.iterdir():
                     if archivo.suffix.lower() in VARIABLES_GLOBALES["EXTENSIONES_VALIDAS"]:
                         imagenes.append((archivo, especie.name))
 
     return imagenes
 
-def contar_especies_disponibles() -> dict[str, int]:
-    """
-    Cuenta cuántas imágenes hay de cada especie, sin aplicar ESPECIES_FILTRADAS,
-    recorriendo todas las fuentes disponibles (Visilab + UDE). Sirve de base
-    para decidir, desde main.py, qué especies incluir en un experimento.
-    """
-    imagenes = rutas_imagenes(sin_filtro=True)
-    return calcular_conteo_por_especie(imagenes)
 
 def contar_clases_train(et_train: torch.Tensor, numero_especie: dict[str, int]) -> None:
     """

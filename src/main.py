@@ -52,7 +52,7 @@ def main() -> None:
     Función trabajo principal
     """
     limpiar_pantalla()
-
+    print(f"\n Iniciando prueba: {VARIABLES_GLOBALES['PRUEBA'].upper()}\n")
     # Semilla fija para que la inicialización de pesos, el shuffle del
     # dataloader y el data augmentation sean reproducibles entre ejecuciones.
     # Así, si el resultado cambia, sabemos que es por un cambio real y no por azar.
@@ -71,19 +71,11 @@ def main() -> None:
         entrenar_de_nuevo = respuesta == "s"
 
     if entrenar_de_nuevo:
-        print("¿Quieres usar el umbral? Si no, se usará el filtro de especies filtradas. (s/n): ")
-        resp_umbral = input().strip().lower()
 
-        if resp_umbral == "s":
-            print("Usando umbral...")
-            print("Recuerda rehacer splits y embeddings")
-            especies_numero: dict[str, int] = contar_especies_disponibles()
-            candidatos = {especie: conteo for especie, conteo in especies_numero.items() 
-                          if conteo >= VARIABLES_GLOBALES["UMBRAL_IMAGENES"]}
-            VARIABLES_GLOBALES["ESPECIES_FILTRADAS"] = set(candidatos.keys())
+        print("Usando especies filtradas de constantes.py. Recuerda cambiadlas si es necesario.")
+        if not VARIABLES_GLOBALES["ESPECIES_FILTRADAS"]:
+            raise ValueError("ERROR: ESPECIES_FILTRADAS está vacío en constantes.py Añade al menos una especie antes de entrenar.")
 
-        else:
-            print("Usando filtro de especies filtradas.")
         ruta_carpeta_modelo = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"]
         ruta_carpeta_modelo.mkdir(parents=True, exist_ok=True)
         with open(ruta_carpeta_modelo / "metadatos_modelo.json", "w", encoding="utf-8") as f:
