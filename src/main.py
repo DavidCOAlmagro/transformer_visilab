@@ -12,7 +12,7 @@ from pathlib import Path
 import torch
 
 from torch import nn
-from transformers.convert_slow_tokenizers_checkpoints_to_fast import args
+import argparse
 from constantes import VARIABLES_GLOBALES
 from preparar_datos import get_datos, codificacion, contar_clases_train, calcular_conteo_por_especie, calcular_copias_extra_por_especie, construir_numero_genero, etiquetas_a_generos, parsear_argumentos,guardar_resumen_entrenamiento,fijar_semilla, preguntas_si_no
 from generar_leer_splits import leer_split, generar_split
