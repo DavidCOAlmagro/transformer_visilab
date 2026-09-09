@@ -39,9 +39,9 @@ def elegir_carpeta() -> str:
         return ruta
     
     except Exception as e:
-        print(f"Error al seleccionar archivo: {e}")
+        print(f"Error al seleccionar carpeta: {e}")
         print("Asegúrate de que tkinter esté correctamente instalado.(sudo apt install python3-tk)")
-        return input("Inserta la ruta de la imagen manualmente: ").strip()
+        return input("Inserta la ruta de la carpeta manualmente: ").strip()
 
 def calcular_embedding_imagen(ruta_imagen: str) -> torch.Tensor:
     """
@@ -195,14 +195,16 @@ def main() -> None:
     print("1. Clasificar una imagen suelta")
     print("2. Clasificar una carpeta entera")
 
-    opcion = input("\nElige una opción (1/2): ").strip()
     valid = True
     while valid:
+        opcion = input("\nElige una opción (1/2): ").strip()
+    
         if opcion == "1":
             ruta = elegir_archivo()
             if not ruta:
                 print("No se seleccionó ninguna imagen.")
             else:
+                print(f"Imagen seleccionada: {ruta}")
                 inferir_imagen_suelta(ruta)
             valid = False
             
@@ -211,6 +213,7 @@ def main() -> None:
             if not ruta:
                 print("No se seleccionó ninguna carpeta.")
             else:
+                print(f"Carpeta seleccionada: {ruta}")
                 inferir_carpeta(ruta)
             valid = False
 
