@@ -9,7 +9,8 @@ El modelo realiza dos predicciones a la vez: especie (tarea principal) y género
 ```text
 proyecto_transformer_v2/
 ├── requirements.txt
-├── setup.sh                            # Instala el entorno automáticamente
+├── manual_de_uso.txt                            
+├── readme.md                           
 ├── data/
 │   ├── imagenes_visilab(raw)/          # Carpetas de especies (cualquier subcarpeta se detecta sola)
 │   ├── splits/<PRUEBA>/                # train.txt, val.txt y test.txt por experimento

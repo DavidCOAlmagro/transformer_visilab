@@ -267,9 +267,11 @@ def obtener_especies_activas() -> set[str]:
     """
     ruta_metadatos = (VARIABLES_GLOBALES["RUTA_MODELOS"]
                        / VARIABLES_GLOBALES["PRUEBA"] / "metadatos_modelo.json")
-    if ruta_metadatos.is_file():
-        with open(ruta_metadatos, "r", encoding="utf-8") as f:
-            metadatos = json.load(f)
+    if not ruta_metadatos.is_file():
+        raise FileNotFoundError(f"No se encontró el archivo de metadatos en: modelos/{VARIABLES_GLOBALES['PRUEBA']}/")
+    
+    with open(ruta_metadatos, "r", encoding="utf-8") as f:
+        metadatos = json.load(f)
         return set(metadatos["especies_filtradas"])
     return VARIABLES_GLOBALES["ESPECIES_FILTRADAS"]
 
@@ -297,4 +299,25 @@ def preguntas_si_no(mensaje: str) -> bool:
             return respuesta == "s"
         else:
             print("Respuesta inválida. Por favor, ingrese 's' para sí o 'n' para no.")
-            
+
+def verificar_especies_consistentes() -> None:
+    """
+    Si la PRUEBA actual ya tiene metadatos_modelo.json, comprueba que las
+    especies coinciden con las de ESPECIES_FILTRADAS. Si no, lanza error en
+    vez de sobreescribir en silencio (los splits/embeddings en disco serían
+    del conjunto de especies antiguo).
+    """
+    ruta_metadatos = (VARIABLES_GLOBALES["RUTA_MODELOS"]
+                       / VARIABLES_GLOBALES["PRUEBA"] / "metadatos_modelo.json")
+    if not ruta_metadatos.is_file():
+        return
+
+    with open(ruta_metadatos, "r", encoding="utf-8") as f:
+        especies_guardadas = set(json.load(f)["especies_filtradas"])
+
+    if especies_guardadas != VARIABLES_GLOBALES["ESPECIES_FILTRADAS"]:
+        raise ValueError(
+            f"La prueba '{VARIABLES_GLOBALES['PRUEBA']}' ya existe con otras especies. "
+            "Usa otro --prueba o borra su carpeta en modelos/, data/splits/ y "
+            "data/embeddings_procesado/ antes de reentrenar."
+        )

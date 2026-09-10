@@ -9,7 +9,7 @@ import torch
 # -------------------------
 # NOMBRE DE PRUEBA
 # -------------------------
-PRUEBA: str = "20_especies"  
+PRUEBA: str = "UMBRAL"  
 
 VARIABLES_GLOBALES: dict[str, object] = {
     
@@ -37,26 +37,55 @@ VARIABLES_GLOBALES: dict[str, object] = {
     # Especies filtradas
     # -------------------------
     "ESPECIES_FILTRADAS": {
-          "Achnanthidium_minutissimum",
-        "Nitzschia_inconspicua",
-        "Cocconeis_placentula_var_euglypta",
-        "Achnanthidium_pyrenaicum",
-        "Fistulifera_saprophila",
-        "Achnanthidium_sp",
-        "Nitzschia_sp",
-        "Navicula_caterva",
-        "Achnanthidium_rivulare",
-        "Gomphonema_pumilum",
-        "Seminavis_strigosa",
-        "Achnanthidium_rostropyrenaicum",
-        "Fragilaria_sp",
-        "Gomphonema_rhombicum",
-        "Nitzschia_palea_var_palea",
-        "Halamphora_sp",
-        "Navicula_sp",
-        "Navicula_cryptotenella",
-        "Epithemia_adnata",
-        "Mayamaea_permitis"
+    "Achnanthidium_atomoides",
+    "Achnanthidium_jackii",
+    "Achnanthidium_pyrenaicum",
+    "Achnanthidium_rivulare",
+    "Achnanthidium_sp",
+    "Amphora_indistincta",
+    "Amphora_pediculus",
+    "Aulacoseira_granulata",
+    "Cocconeis_placentula",
+    "Craticula_sp",
+    "Crenotia_rumrichorum",
+    "Cyclotella_atomus",
+    "Cyclotella_meduanae",
+    "Cyclotella_meneghiniana",
+    "Denticula_tenuis",
+    "Diatoma_tenuis",
+    "Discostella_pseudostelligera",
+    "Encyonema_minutum",
+    "Fragilaria_deformis",
+    "Fragilaria_famelica",
+    "Gomphonella_olivacea",
+    "Gomphonema_micropus",
+    "Gomphonema_parvulum",
+    "Gyrosigma_acuminatum",
+    "Humidophila_contemnata",
+    "Luticola_frequentissima",
+    "Mayamaea_permitis",
+    "Melosira_varians",
+    "Meridion_circulare",
+    "Navicula_cryptotenella",
+    "Navicula_germainii",
+    "Navicula_gregaria",
+    "Navicula_lanceolata",
+    "Navicula_recens",
+    "Navicula_sp",
+    "Navicula_tripunctata",
+    "Navicula_veneta",
+    "Nitzschia_dissipata",
+    "Nitzschia_inconspicua",
+    "Nitzschia_palea",
+    "Nitzschia_soratensis",
+    "Nitzschia_sp",
+    "Planothidium_frequentissimum",
+    "Planothidium_lanceolatum",
+    "Rhoicosphenia_abbreviata",
+    "Sellaphora_nigri",
+    "Seminavis_strigosa",
+    "Stephanodiscus_lacustris",
+    "Surirella_brebissonii"
     },
  # De las 20 especies más enviadas en el excel:
  # - Eunotia exigua solo 6 imágenes en dataset, insuficiente para entrenar.

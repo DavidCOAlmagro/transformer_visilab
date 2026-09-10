@@ -48,19 +48,6 @@ def elegir_carpeta() -> str:
         print("Asegúrate de que tkinter esté correctamente instalado.(sudo apt install python3-tk)")
         return input("Inserta la ruta de la carpeta manualmente: ").strip()
 
-def calcular_embedding_imagen(ruta_imagen: str) -> torch.Tensor:
-    """
-    Dado la ruta de una imagen nueva (no del dataset), inicializa DINOv2,
-    extrae su embedding y lo devuelve listo para pasarlo al clasificador.
-    Sin augmentation porque es inferencia, no entrenamiento.
-    """
-
-    procesador, modelo_dino, device, augmentation = inicializar_dinov2()
-    embedding = get_embedding(ruta_imagen, procesador, modelo_dino, device, augmentation,
-                              is_train = False)
-
-    return embedding
-
 @torch.no_grad()
 def predecir_imagen(embedding: torch.Tensor,modelo: torch.nn.Module,
         especies_ordenadas: list[str],intervalo_confianza: float = VARIABLES_GLOBALES["UMBRAL_CONF"]) -> dict[str, object]:
@@ -99,8 +86,28 @@ def predecir_imagen(embedding: torch.Tensor,modelo: torch.nn.Module,
         "top3":             top3,
         "revisar":          confianza < (intervalo_confianza * 100)
     }
+def guardar_resultado_txt(ruta_imagen: Path, resultado: dict[str, object]) -> Path:
+    """Guarda el resultado de una imagen suelta en un .txt junto a ella."""
+    ruta_txt = ruta_imagen.with_name(f"{ruta_imagen.stem}_prediccion.txt")
+    lineas = [
+        f"Imagen: {ruta_imagen.name}",
+        f"Especie predicha: {resultado['especie_predicha']}",
+        f"Confianza: {resultado['confianza']}%",
+        "Top-3:",
+    ]
+    for i, (especie, prob) in enumerate(resultado["top3"], start=1):
+        lineas.append(f"  {i}. {especie:40s} {prob}%")
+    if resultado["revisar"]:
+        lineas.append("Confianza baja: revisar manualmente")
 
-def inferir_imagen_suelta(ruta_imagen: str) -> None:
+    lineas.append("")
+
+    ruta_txt.write_text("\n".join(lineas) + "\n", encoding="utf-8")
+    return ruta_txt
+
+def inferir_imagen_suelta(ruta_imagen: str,modelo: torch.nn.Module, especies_ordenadas: list[str],
+                          procesador: torch.nn.Module,dinov2: torch.nn.Module,device: torch.device,
+                          augmentation: bool) -> None:
     """
     Modo consola: clasifica una sola imagen y muestra el resultado por pantalla.
     Uso: python inferencia.py imagen.jpg
@@ -122,8 +129,7 @@ def inferir_imagen_suelta(ruta_imagen: str) -> None:
     if valid:
         print(f"\nClasificando: {ruta.name}")
 
-        modelo, especies_ordenadas = cargar_modelo_entrenado()
-        embedding = calcular_embedding_imagen(ruta_imagen)
+        embedding = get_embedding(ruta_imagen, procesador, dinov2, device, augmentation, is_train=False)
         resultado = predecir_imagen(embedding, modelo, especies_ordenadas)
 
         # Mostramos el resultado por consola
@@ -136,8 +142,12 @@ def inferir_imagen_suelta(ruta_imagen: str) -> None:
         if resultado["revisar"]:
             print("Confianza baja — revisar manualmente")
         print(f"{'='*50}\n")
+        ruta_txt = guardar_resultado_txt(ruta, resultado)
+        print(f"Resultado guardado en: {ruta_txt}")
 
-def inferir_carpeta(ruta_carpeta: str) -> None:
+def inferir_carpeta(ruta_carpeta: str, modelo: torch.nn.Module, especies_ordenadas: list[str],
+                    processor: torch.nn.Module, dinov2: torch.nn.Module, device: torch.device,
+                    augmentation: bool) -> None:
     """
     Clasifica todas las imágenes de una carpeta y guarda
     los resultados en un Excel dentro de la misma carpeta.
@@ -158,8 +168,6 @@ def inferir_carpeta(ruta_carpeta: str) -> None:
         print(f"Error al procesar la carpeta: {e}")
     rows: list[dict[str, object]] = []
     if valid and imagenes:
-        modelo, especies_ordenadas = cargar_modelo_entrenado()
-        processor, dinov2, device, augmentation = inicializar_dinov2()
 
         for imagen in imagenes:
             print(f"  Procesando: {imagen.name}")
@@ -196,6 +204,14 @@ def main() -> None:
     Punto de entrada por consola. Pregunta al usuario qué quiere hacer
     y ejecuta el modo correspondiente.
     """
+    try:
+        modelo, especies_ordenadas = cargar_modelo_entrenado()
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        
+    print("Cargando DINOv2 (solo una vez)...")
+    processor, dinov2, device, augmentation = inicializar_dinov2()
+    
     print("=== Inferencia de diatomeas ===\n")
     print("1. Clasificar una imagen suelta")
     print("2. Clasificar una carpeta entera")
@@ -210,7 +226,7 @@ def main() -> None:
                 print("No se seleccionó ninguna imagen.")
             else:
                 print(f"Imagen seleccionada: {ruta}")
-                inferir_imagen_suelta(ruta)
+                inferir_imagen_suelta(ruta, modelo, especies_ordenadas, processor, dinov2, device, augmentation)
             valid = False
             
         elif opcion == "2":
@@ -219,7 +235,7 @@ def main() -> None:
                 print("No se seleccionó ninguna carpeta.")
             else:
                 print(f"Carpeta seleccionada: {ruta}")
-                inferir_carpeta(ruta)
+                inferir_carpeta(ruta, modelo, especies_ordenadas, processor, dinov2, device, augmentation)
             valid = False
 
         else:

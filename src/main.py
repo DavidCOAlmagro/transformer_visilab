@@ -13,7 +13,12 @@ import torch
 
 from torch import nn
 from constantes import VARIABLES_GLOBALES
-from preparar_datos import get_datos, codificacion, contar_clases_train, calcular_conteo_por_especie, calcular_copias_extra_por_especie, construir_numero_genero, etiquetas_a_generos, parsear_argumentos,guardar_resumen_entrenamiento,fijar_semilla, preguntas_si_no
+from preparar_datos import (
+    get_datos, codificacion, contar_clases_train, calcular_conteo_por_especie,
+    calcular_copias_extra_por_especie, construir_numero_genero, etiquetas_a_generos,
+    parsear_argumentos, guardar_resumen_entrenamiento, fijar_semilla, preguntas_si_no,
+    verificar_especies_consistentes    
+)
 from generar_leer_splits import leer_split, generar_split
 from embeddings import inicializar_dinov2, calcular_embeddings
 from clasificador import ClasificadorDiatomeas
@@ -85,9 +90,12 @@ def main() -> None:
         print("Usando especies filtradas de constantes.py. Recuerda cambiadlas si es necesario.")
         if not VARIABLES_GLOBALES["ESPECIES_FILTRADAS"]:
             raise ValueError("ERROR: ESPECIES_FILTRADAS está vacío en constantes.py Añade al menos una especie antes de entrenar.")
+        
+        verificar_especies_consistentes()
 
         ruta_carpeta_modelo = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"]
         ruta_carpeta_modelo.mkdir(parents=True, exist_ok=True)
+        
         with open(ruta_carpeta_modelo / "metadatos_modelo.json", "w", encoding="utf-8") as f:
             json.dump({"especies_filtradas": sorted(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])},
                     f, indent=2, ensure_ascii=False)

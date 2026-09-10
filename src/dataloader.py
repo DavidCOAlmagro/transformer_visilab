@@ -51,7 +51,7 @@ def calcular_pesos_muestras(etiquetas: torch.Tensor) -> torch.Tensor:
     más frecuencia y compensar así el desbalance entre especies.
     """
     # Cuenta cuántas muestras hay de cada clase (0, 1, 2, ...)
-    conteo_por_clase: torch.Tensor = torch.bincount(etiquetas)
+    conteo_por_clase: torch.Tensor = torch.bincount(etiquetas,)
 
     # Peso de cada clase = 1 / número de muestras de esa clase.
     peso_por_clase: torch.Tensor = 1.0 / torch.pow(conteo_por_clase.float(), VARIABLES_GLOBALES["EXPONENTE_PESO_CLASE"])
