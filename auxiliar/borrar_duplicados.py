@@ -23,7 +23,9 @@ carpetas_a_comparar = [
     Path(__file__).resolve().parent.parent / "data" / "imagenes_visilab(raw)" / "Common_species",
     Path(__file__).resolve().parent.parent / "data" / "imagenes_visilab(raw)" / "dataset_aq_dbo5_agrupado",
     Path(__file__).resolve().parent.parent / "data" / "imagenes_visilab(raw)" / "Unique_species",
-]
+    Path(__file__).resolve().parent.parent / "data" / "imagenes_visilab(raw)" / "dataset_aq_dbo5_last_agrupado",
+    
+]   
 
 CARPETA_PREFERIDA = "dataset_aq_dbo5_agrupado"
 
