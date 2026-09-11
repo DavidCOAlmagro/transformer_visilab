@@ -5,13 +5,7 @@ from pathlib import Path
 extensiones = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
 
 base_dir = Path(__file__).resolve().parent.parent
-dataset_roots = [
-    base_dir / "data" /"imagenes_visilab(raw)" / "dataset_aq_dbo5",
-    base_dir / "data" /"imagenes_visilab(raw)" / "Common_Species",
-    base_dir / "data" /"imagenes_visilab(raw)" / "Seleccion_5_especies_por_especie",
-    base_dir / "data" /"imagenes_visilab(raw)" / "UDE_Diatoms_84k_normalizadas_reinhard",
-    base_dir / "data" /"imagenes_visilab(raw)" / "Unique_Species"
-]
+dataset_root = base_dir / "data" / "imagenes_visilab(raw)"
 
 
 def normalizar_especie(nombre: str) -> str:
@@ -26,8 +20,8 @@ def contar_imagenes_en_carpeta(carpeta: Path) -> int:
     )
 
 
-def iterar_carpetas_especie(dataset_root: Path):
-    for carpeta_principal in sorted((p for p in dataset_root.iterdir() if p.is_dir()), key=lambda p: p.name.lower()):
+def iterar_carpetas_especie(conjunto_root: Path):
+    for carpeta_principal in sorted((p for p in conjunto_root.iterdir() if p.is_dir()), key=lambda p: p.name.lower()):
         subcarpetas = [p for p in carpeta_principal.iterdir() if p.is_dir()]
         if subcarpetas:
             for especie_dir in sorted(subcarpetas, key=lambda p: p.name.lower()):
@@ -38,13 +32,16 @@ def iterar_carpetas_especie(dataset_root: Path):
 
 conteo_por_especie = Counter()
 
-for dataset_root in dataset_roots:
-    if not dataset_root.exists():
-        raise FileNotFoundError(f"No existe la carpeta: {dataset_root}")
+if not dataset_root.exists():
+    raise FileNotFoundError(f"No existe la carpeta: {dataset_root}")
 
-    for especie_dir in iterar_carpetas_especie(dataset_root):
-        especie = normalizar_especie(especie_dir.name)
-        cantidad = contar_imagenes_en_carpeta(especie_dir)
+for conjunto_dir in sorted(
+    (p for p in dataset_root.iterdir() if p.is_dir()),
+    key=lambda p: p.name.lower(),
+):
+    for carpeta_especie in iterar_carpetas_especie(conjunto_dir):
+        especie = normalizar_especie(carpeta_especie.name)
+        cantidad = contar_imagenes_en_carpeta(carpeta_especie)
         if cantidad:
             conteo_por_especie[especie] += cantidad
 

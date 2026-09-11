@@ -1,0 +1,164 @@
+=== Common_species ===
+Achnanthidium rivulare: 305
+Nitzschia inconspicua: 255
+Achnanthidium catenatum: 187
+Cymbella parva: 177
+Denticula tenuis: 176
+Achnanthidium minutissimum: 165
+Gomphonema minusculum: 158
+Skeletonema potamos: 155
+Encyonema reichardtii: 152
+Melosira varians: 146
+Navicula cryptotenella: 136
+Diatoma moniliformis: 134
+Luticola goeppertiana: 133
+Achnanthidium atomoides: 129
+Achnanthidium jackii: 125
+Nitzschia amphibia: 124
+Nitzschia capitellata: 123
+Encyonema minutum: 120
+Amphora pediculus: 117
+Gomphonema micropus: 117
+Aulacoseira subarctica: 113
+Planothidium frequentissimum: 111
+Encyonema silesiacum: 108
+Navicula cryptotenelloides: 107
+Nitzschia soratensis: 106
+Planothidium lanceolatum: 106
+Humidophila contenta: 105
+Encyonema ventricosum: 101
+Achnanthidium pyrenaicum: 99
+Cyclotella atomus: 99
+Navicula tripunctata: 99
+Achnanthidium exile: 98
+Aulacoseira granulata: 98
+Achnanthidium eutrophilum: 97
+Nitzschia paleacea: 94
+Rhoicosphenia abbreviata: 94
+Staurosira binodis: 94
+Achnanthidium druartii: 93
+Gomphonema minutum: 93
+Puncticulata radiosa: 92
+Reimeria sinuata: 92
+Nitzschia umbonata: 91
+Encyonopsis minuta: 89
+Diatoma vulgaris: 88
+Staurosira venter: 87
+Craticula accomoda: 86
+Gomphonema angustatum: 86
+Cyclostephanos dubius: 85
+Epithemia sorex: 85
+Discostella pseudostelligera: 82
+Fragilaria vaucheriae: 77
+Navicula lanceolata: 77
+Staurosirella pinnata: 77
+Navicula notha: 76
+Nitzschia fossilis: 76
+Fragilaria pararumpens: 74
+Stephanodiscus hantzschii: 74
+Epithemia adnata: 72
+Thalassiosira pseudonana: 70
+Nitzschia fonticola: 69
+Gomphonema rhombicum: 64
+Tabellaria flocculosa: 60
+Gomphonema angustivalva: 55
+Fragilaria gracilis: 54
+Navicula gregaria: 50
+Cocconeis pediculus: 49
+Fragilaria rumpens: 49
+Navicula capitatoradiata: 46
+Mayamaea permitis: 40
+Total: 7221
+
+=== dataset_aq_dbo5_agrupado ===
+Achnanthidium rivulare: 947
+Gomphonema fp: 902
+Achnanthidium fp: 856
+Denticula tenuis: 510
+Achnanthidium pyrenaicum: 463
+Achnanthidium atomoides: 455
+Achnanthidium eutrophilum: 438
+Cymbella excisiformis var excisiformis: 438
+Achnanthidium druartii: 431
+Navicula cryptotenella: 429
+Encyonema reichardtii: 400
+Achnanthidium catenatum: 394
+Encyonema minutum: 392
+Amphora pediculus: 386
+Cocconeis placentula var euglypta: 386
+Cymbella parva: 371
+Humidophila contenta: 361
+Encyonema ventricosum: 354
+Melosira varians: 353
+Cyclotella atomus: 348
+Aulacoseira granulata: 345
+Diatoma vulgaris: 325
+Craticula accomoda: 320
+Encyonopsis minuta: 320
+Karayevia clevei var clevei: 317
+Cocconeis lineata: 310
+Achnanthidium minutissimum: 287
+Diatoma moniliformis: 282
+Fistulifera saprophila: 270
+Gomphonema parvulum f saprophilum: 250
+Navicula gregaria: 246
+Discostella pseudostelligera: 242
+Navicula capitatoradiata: 238
+Fragilaria pararumpens: 230
+Achnanthidium exile: 227
+Navicula cryptotenelloides: 224
+Encyonema silesiacum: 221
+Gomphonema minutum: 216
+Epithemia adnata: 198
+Achnanthidium caravelense: 189
+Gomphonema pumilum var elegans: 185
+Fragilaria vaucheriae: 161
+Navicula lanceolata: 155
+Mayamaea permitis: 154
+Fragilaria perminuta: 144
+Gomphonema angustivalva: 133
+Fragilaria fp: 106
+Gomphonema minusculum: 106
+Cocconeis pediculus: 102
+Epithemia fp: 93
+Melosira fp: 93
+Gomphonema rhombicum: 71
+Encyonema fp: 65
+Encyonopsis fp: 9
+Total: 16448
+
+=== Unique_species ===
+Cymbella excisa var excisa: 241
+Nitzschia frustulum var frustulum: 226
+Eolimna minima: 174
+Cymbella excisiformis var excisiformis: 142
+Eolimna rhombelliptica: 132
+Gomphonema pumilum var elegans: 128
+Achnanthes subhudsonis: 123
+Cocconeis placentula var euglypta: 117
+Diatoma mesodon: 115
+Pseudostaurosira subsalina: 108
+Encyonopsis alpina: 106
+Cyclotella meneghiniana: 103
+Debris: 100
+Eolimna subminuscula: 94
+Epithemia turgida: 93
+Fragilaria arcus: 93
+Fragilaria perminuta: 89
+Gomphonema insigniforme: 89
+Gomphonema micropumilum: 89
+Fragments: 88
+Nitzschia dissipata var dissipata: 86
+Pseudostaurosira elliptica: 86
+Karayevia clevei var clevei: 84
+Nitzschia palea var palea: 82
+Cocconeis lineata: 81
+Nitzschia dissipata var media: 81
+Cymbella excisa var angusta: 79
+Stephanodiscus neoastraea: 75
+Nitzschia costei: 72
+Nitzschia desertorum: 71
+Nitzschia tropica: 65
+Achnanthidium caravelense: 59
+Gomphonema parvulum f saprophilum: 52
+Total: 3423

@@ -1,117 +1,108 @@
-Discostella pseudostelligera: 3955
-Amphora pediculus: 3768
+Achnanthidium minutissimum: 16108
+Discostella pseudostelligera: 3851
+Amphora pediculus: 3602
 Achnanthidium jackii: 3000
-Navicula gregaria: 2726
-Nitzschia inconspicua: 2609
-Navicula lanceolata: 2582
+Navicula gregaria: 2620
 Nitzschia sp: 2567
-Planothidium lanceolatum: 2552
-Nitzschia soratensis: 2473
-Achnanthidium pyrenaicum: 2182
-Planothidium frequentissimum: 2016
+Navicula lanceolata: 2506
+Nitzschia soratensis: 2161
+Achnanthidium pyrenaicum: 2131
+Planothidium lanceolatum: 2048
 Nitzschia dissipata: 1886
 Cocconeis placentula: 1822
 Achnanthidium sp: 1776
 Navicula sp: 1674
-Achnanthidium rivulare: 1618
-Denticula tenuis: 1494
-Achnanthidium atomoides: 1432
-Gomphonema fp: 1289
-Navicula cryptotenella: 1195
-Rhoicosphenia abbreviata: 1195
-Nitzschia frustulum var frustulum: 1104
+Nitzschia inconspicua: 1593
+Achnanthidium rivulare: 1513
+Planothidium frequentissimum: 1480
+Achnanthidium atomoides: 1382
+Denticula tenuis: 1275
+Navicula cryptotenella: 1011
 Cyclotella meneghiniana: 994
-Melosira varians: 952
-Achnanthidium fp: 951
 Sellaphora nigri: 951
-Aulacoseira granulata: 944
 Cyclotella meduanae: 941
 Nitzschia palea: 937
-Cyclotella atomus: 924
-Encyonema minutum: 888
-Mayamaea permitis: 853
+Gomphonema fp: 902
+Achnanthidium fp: 856
 Stephanodiscus lacustris: 808
+Melosira varians: 800
+Aulacoseira granulata: 795
+Mayamaea permitis: 786
 Gomphonella olivacea: 781
-Cymbella excisiformis var excisiformis: 769
-Humidophila contenta: 756
-Encyonema ventricosum: 726
-Encyonema reichardtii: 724
-Achnanthidium eutrophilum: 716
-Cymbella parva: 714
-Cocconeis placentula var euglypta: 669
+Cyclotella atomus: 774
+Encyonema minutum: 719
+Rhoicosphenia abbreviata: 711
+Achnanthidium eutrophilum: 668
 Surirella brebissonii: 663
-Nitzschia paleacea: 662
-Navicula tripunctata: 659
-Fistulifera saprophila: 654
-Encyonopsis minuta: 649
-Nitzschia fonticola: 648
-Diatoma moniliformis: 644
-Diatoma vulgaris: 643
-Achnanthidium catenatum: 637
-Nitzschia amphibia: 629
-Stephanodiscus hantzschii: 606
+Humidophila contenta: 601
 Navicula veneta: 599
-Achnanthidium druartii: 589
-Staurosira venter: 587
-Encyonema silesiacum: 586
-Reimeria sinuata: 576
-Achnanthidium minutissimum: 567
-Craticula accomoda: 552
-Navicula cryptotenelloides: 541
-Karayevia clevei var clevei: 537
+Achnanthidium catenatum: 593
+Cymbella excisiformis var excisiformis: 580
+Encyonema ventricosum: 574
+Cymbella parva: 554
+Encyonema reichardtii: 552
+Achnanthidium druartii: 541
+Fistulifera saprophila: 538
 Navicula germainii: 531
-Cocconeis lineata: 524
 Gomphonema micropus: 524
-Gomphonema minutum: 521
-Navicula notha: 510
-Nitzschia capitellata: 508
-Fragilaria vaucheriae: 506
+Diatoma moniliformis: 523
+Encyonopsis minuta: 511
+Cocconeis placentula var euglypta: 503
+Diatoma vulgaris: 503
 Luticola frequentissima: 493
-Nitzschia desertorum: 488
+Encyonema silesiacum: 490
 Gyrosigma acuminatum: 468
 Gomphonema parvulum: 451
-Navicula capitatoradiata: 437
-Fragilaria pararumpens: 423
+Navicula cryptotenelloides: 444
+Fragilaria vaucheriae: 436
+Gomphonema minutum: 428
 Crenotia rumrichorum: 417
-Gomphonema parvulum f saprophilum: 410
+Craticula accomoda: 414
 Humidophila contemnata: 410
 Meridion circulare: 409
-Achnanthidium exile: 398
-Gomphonema pumilum var elegans: 393
-Gomphonema minusculum: 380
+Karayevia clevei var clevei: 401
+Cocconeis lineata: 391
+Achnanthidium exile: 373
 Navicula recens: 361
-Epithemia adnata: 356
-Cocconeis pediculus: 352
+Navicula tripunctata: 361
 Diatoma tenuis: 347
 Fragilaria famelica: 339
+Gomphonema minusculum: 334
+Navicula capitatoradiata: 334
 Amphora indistincta: 330
-Nitzschia palea var palea: 328
 Fragilaria deformis: 324
 Seminavis strigosa: 324
+Fragilaria pararumpens: 323
 Craticula sp: 320
-Fragilaria perminuta: 296
+Gomphonema pumilum var elegans: 313
+Cocconeis pediculus: 307
+Gomphonema parvulum f saprophilum: 302
 Achnanthidium saprophilum: 287
 Achnanthidium lineare: 280
 Amphora sp: 270
-Achnanthidium caravelense: 269
-Gomphonema angustivalva: 258
+Epithemia adnata: 270
 Fragilaria rinoi: 255
+Achnanthidium caravelense: 248
 Cocconeis sp: 248
 Cymbella excisa var excisa: 241
 Nitzschia frustulum: 240
 Planothidium sp: 240
-Tabellaria flocculosa: 235
+Nitzschia fonticola: 238
 Cyclostephanos invisitatus: 234
 Humidophila aerophila: 234
+Fragilaria perminuta: 233
 Sp: 229
+Nitzschia frustulum var frustulum: 226
 Navicula rostellata: 225
 Cyclostephanos dubius: 217
 Surirella minuta: 216
 Navicula cryptocephala: 214
 Gomphonema sp 1: 211
-Tabellaria fp: 211
+Reimeria sinuata: 210
 Navicula antonii: 209
+Nitzschia amphibia: 204
 Amphora inariensis: 201
+Gomphonema angustivalva: 200
 Thalassiosira sp: 199
 Sellaphora crassulexigua: 197
 Gomphonema pumilum: 192
@@ -120,25 +111,24 @@ Nitzschia adamata: 191
 Nitzschia sociabilis: 191
 Navicula metareichardtiana: 190
 Humidophila simplex: 188
+Stephanodiscus hantzschii: 183
+Nitzschia paleacea: 179
 Eolimna minima: 174
 Skeletonema potamos: 174
 Sellaphora pupula: 169
-Gomphonema rhombicum: 166
 Conticribra weissflogii: 165
 Stephanodiscus parvus: 165
 Nitzschia supralitorea: 162
-Nitzschia fp: 158
 Sellaphora sp: 156
 Reimeria uniseriata: 155
 Achnanthidium straubianum: 153
-Fragilaria fp: 152
 Halamphora sp: 152
 Ulnaria ulna: 151
 Achnanthidium subatomus: 148
 Gomphonema calcifugum: 144
 Luticola goeppertiana: 139
-Melosira fp: 134
-Epithemia fp: 133
+Nitzschia capitellata: 138
+Gomphonema rhombicum: 135
 Eolimna rhombelliptica: 132
 Navicula upsaliensis: 132
 Nitzschia vermicularis: 132
@@ -148,8 +138,8 @@ Caloneis lancettula: 126
 Tabularia fasciculata: 124
 Achnanthes subhudsonis: 123
 Pantocsekiella Pantocksekiella ocellata: 123
-Reimeria sp: 123
 Staurosirella pinnata: 122
+Staurosira venter: 121
 Thalassiosira pseudonana: 119
 Diatoma mesodon: 115
 Gomphonema elegantissimum: 115
@@ -162,6 +152,7 @@ Encyonema sp: 108
 Pseudostaurosira subsalina: 108
 Navicula simulata: 107
 Encyonopsis alpina: 106
+Fragilaria fp: 106
 Epithemia sorex: 105
 Navicymbula pusilla: 105
 Gomphonema angustatum: 101
@@ -173,12 +164,13 @@ Fragilaria gracilis: 96
 Fragilaria rumpens: 96
 Nitzschia recta: 96
 Fragilaria sp: 95
-Encyonema fp: 94
 Eolimna subminuscula: 94
 Navicula amphiceropsis: 94
+Epithemia fp: 93
 Epithemia turgida: 93
 Fragilaria arcus: 93
 Gomphonema utae: 93
+Melosira fp: 93
 Puncticulata radiosa: 93
 Nitzschia umbonata: 92
 Gomphonema insigniforme: 89
@@ -187,7 +179,9 @@ Fragments: 88
 Nitzschia dissipata var dissipata: 86
 Pseudostaurosira elliptica: 86
 Planothidium caputium: 84
+Nitzschia palea var palea: 82
 Navicula caterva: 81
+Navicula notha: 81
 Nitzschia dissipata var media: 81
 Achnanthidium kranzii: 80
 Nitzschia acicularis: 80
@@ -205,9 +199,11 @@ Nitzschia costei: 72
 Bacillaria paxillifera: 71
 Craticula subminuscula: 71
 Halamphora montana: 71
+Nitzschia desertorum: 71
 Luticola mutica: 70
 Rhopalodia operculata: 70
 Rhoicosphenia lacustris: 67
+Encyonema fp: 65
 Nitzschia agnita: 65
 Nitzschia tropica: 65
 Diatoma sp: 63
@@ -215,6 +211,7 @@ Cyclotella distinguenda: 62
 Fistulifera sp: 62
 Lemnicola hungarica: 62
 Aulacoseira ambigua: 61
+Tabellaria flocculosa: 61
 Entomoneis paludosa: 58
 Asterionella formosa: 57
 Fragilaria capucina: 57
@@ -325,12 +322,10 @@ Navicula viridulacalcis: 16
 Psammothidium sp: 16
 Tryblionella calida: 16
 Astartiella bahusiensis: 15
-Planothidium fp: 15
 Cocconeis euglypta: 14
 Fallacia pygmaea: 14
 Navicula radiosa: 14
 Encyonema caespitosum: 13
-Encyonopsis fp: 13
 Sellaphora stroemii: 13
 Stauroneis smithii: 13
 Berkeleya rutilans: 12
@@ -339,6 +334,7 @@ Luticola muticoides: 12
 Navicula cincta: 12
 Parlibellus sp: 12
 Psammothidium helveticum: 12
+Reimeria sp: 12
 Sellaphora utermoehlii: 12
 Diploneis oblongellopsis: 11
 Diploneis sp: 11
@@ -358,6 +354,7 @@ Achnanthidium caledonicum: 9
 Actinocyclus normanii: 9
 Cyclotella costei: 9
 Diploneis oculata: 9
+Encyonopsis fp: 9
 Gomphonema pseudobohemicum: 9
 Gomphonema sphenovertex: 9
 Gyrosigma macrum: 9
