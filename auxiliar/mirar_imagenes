@@ -1,0 +1,33 @@
+from pathlib import Path
+from PIL import Image, ImageDraw, ImageFont
+
+# Pon aquí las rutas que quieras comparar, en el orden que prefieras
+rutas = [
+    ("Achnanthidium_sp", "/home/visilab/Escritorio/david/transformer_visilab/data/imagenes_visilab(raw)/UDE_Diatoms_84k_normalizadas_reinhard/Achnanthidium_sp/HF_Sava_000456a_20220613_60x.x_13550.y_36467.png"),
+    ("Achnanthidium_pyrenaicum", "/home/visilab/Escritorio/david/transformer_visilab/data/imagenes_visilab(raw)/UDE_Diatoms_84k_normalizadas_reinhard/Achnanthidium_pyrenaicum/HF_Tisa_000445a_20220608_Naphrax_60x.x_31491.y_4678.png"),
+    
+]
+
+TAM_MINIATURA = (300, 300)
+COLUMNAS = 4
+
+miniaturas = []
+for etiqueta, ruta in rutas:
+    img = Image.open(ruta).convert("RGB")
+    img.thumbnail(TAM_MINIATURA)
+    miniaturas.append((etiqueta, img))
+
+filas = (len(miniaturas) + COLUMNAS - 1) // COLUMNAS
+ancho_celda, alto_celda = TAM_MINIATURA[0], TAM_MINIATURA[1] + 25  # espacio para la etiqueta
+
+hoja = Image.new("RGB", (ancho_celda * COLUMNAS, alto_celda * filas), "white")
+draw = ImageDraw.Draw(hoja)
+
+for i, (etiqueta, img) in enumerate(miniaturas):
+    x = (i % COLUMNAS) * ancho_celda
+    y = (i // COLUMNAS) * alto_celda
+    hoja.paste(img, (x, y))
+    draw.text((x + 5, y + TAM_MINIATURA[1] + 5), etiqueta, fill="black")
+
+hoja.save("comparacion_confusiones.png")
+print("Guardado en comparacion_confusiones.png")
