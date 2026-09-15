@@ -34,10 +34,10 @@ VARIABLES_GLOBALES: dict[str, object] = {
     "HF_TOKEN": os.environ.get("HF_TOKEN", "") or None,
 
 # -------------------------
-    # Especies filtradas
+    # Especies filtradas "Planothidium_fp" solo tiene 3 imágenes, insuficiente para entrenar. 
     # -------------------------
     "ESPECIES_FILTRADAS": {
-    "Achnanthidium_atomoides",
+      "Achnanthidium_atomoides",
     "Achnanthidium_jackii",
     "Achnanthidium_pyrenaicum",
     "Achnanthidium_rivulare",
@@ -51,12 +51,14 @@ VARIABLES_GLOBALES: dict[str, object] = {
     "Cyclotella_atomus",
     "Cyclotella_meduanae",
     "Cyclotella_meneghiniana",
+    "Debris",
     "Denticula_tenuis",
     "Diatoma_tenuis",
     "Discostella_pseudostelligera",
     "Encyonema_minutum",
     "Fragilaria_deformis",
     "Fragilaria_famelica",
+    "Fragments",
     "Gomphonella_olivacea",
     "Gomphonema_micropus",
     "Gomphonema_parvulum",
@@ -85,7 +87,7 @@ VARIABLES_GLOBALES: dict[str, object] = {
     "Sellaphora_nigri",
     "Seminavis_strigosa",
     "Stephanodiscus_lacustris",
-    "Surirella_brebissonii"
+    "Surirella_brebissonii",
     },
  # De las 20 especies más enviadas en el excel:
  # - Eunotia exigua solo 6 imágenes en dataset, insuficiente para entrenar.
