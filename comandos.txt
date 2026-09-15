@@ -21,3 +21,14 @@ python3 main.py --reentrenar n --regenerar-splits s --recalcular-embeddings s --
 python3 main.py --reentrenar n --regenerar-splits s --recalcular-embeddings n --prueba "UMBRAL"
 python3 main.py --reentrenar n --regenerar-splits n --recalcular-embeddings s --prueba "UMBRAL"
 python3 main.py --reentrenar n --regenerar-splits n --recalcular-embeddings n --prueba "UMBRAL"
+
+Con PRUEBA: "75_objetivo"
+
+python3 main.py --reentrenar s --regenerar-splits s --recalcular-embeddings s --prueba "75_objetivo"
+python3 main.py --reentrenar s --regenerar-splits s --recalcular-embeddings n --prueba "75_objetivo"
+python3 main.py --reentrenar s --regenerar-splits n --recalcular-embeddings s --prueba "75_objetivo"
+python3 main.py --reentrenar s --regenerar-splits n --recalcular-embeddings n --prueba "75_objetivo"
+python3 main.py --reentrenar n --regenerar-splits s --recalcular-embeddings s --prueba "75_objetivo"
+python3 main.py --reentrenar n --regenerar-splits s --recalcular-embeddings n --prueba "75_objetivo"
+python3 main.py --reentrenar n --regenerar-splits n --recalcular-embeddings s --prueba "75_objetivo"
+python3 main.py --reentrenar n --regenerar-splits n --recalcular-embeddings n --prueba "75_objetivo"
