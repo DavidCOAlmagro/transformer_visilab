@@ -24,7 +24,7 @@ def cargar_modelo_entrenado() -> tuple[ClasificadorDiatomeas, list[str]]:
     ruta_pesos = (
         VARIABLES_GLOBALES["RUTA_MODELOS"]
         / VARIABLES_GLOBALES["PRUEBA"]
-        / "mejor_modelo.pth"
+        / f"modelo_{VARIABLES_GLOBALES['PRUEBA']}.pth"
     )
 
     if not ruta_pesos.is_file():

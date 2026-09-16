@@ -144,7 +144,7 @@ def main() -> dict[str, float]:
 
 
 
-    y_true, y_pred, y_pred_genero, probs_especie = obtener_predicciones(modelo, dataloader_test)
+    y_true, y_pred, y_pred_genero, probs_especie = obtener_predicciones_eval(modelo, dataloader_test)
     accuracy_genero = calcular_accuracy_genero(y_true, y_pred_genero, numero_especie, numero_genero)
     top3_accuracy = calcular_top3_accuracy(y_true, probs_especie, len(nombres_clases))
     print(f"Top-3 accuracy en test: {top3_accuracy:.2%}\n")
