@@ -77,13 +77,13 @@ def main() -> None:
     fijar_semilla(42)
 
     ruta_mejor_modelo = VARIABLES_GLOBALES["RUTA_MODELOS"] / \
-        VARIABLES_GLOBALES["PRUEBA"] / "mejor_modelo.pth"
+        VARIABLES_GLOBALES["PRUEBA"] / f"modelo_{VARIABLES_GLOBALES['PRUEBA']}.pth"
 
     # Si ya existe un modelo entrenado, preguntamos si se quiere reentrenar
     # o usar directamente el que ya está guardado en disco
     entrenar_de_nuevo = True
     if ruta_mejor_modelo.exists():
-        print("Ya existe un modelo entrenado (mejor_modelo.pth).\n")
+        print(f"Ya existe un modelo entrenado (modelo_{VARIABLES_GLOBALES['PRUEBA']}.pth).\n")
         entrenar_de_nuevo = resolver_si_no(args.reentrenar, "¿Quieres reentrenar el modelo? (s/n): ")
 
     if entrenar_de_nuevo:
@@ -96,7 +96,7 @@ def main() -> None:
         ruta_carpeta_modelo = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"]
         ruta_carpeta_modelo.mkdir(parents=True, exist_ok=True)
         
-        with open(ruta_carpeta_modelo / "metadatos_modelo.json", "w", encoding="utf-8") as f:
+        with open(ruta_carpeta_modelo / f"metadatos_modelo_{VARIABLES_GLOBALES['PRUEBA']}.json", "w", encoding="utf-8") as f:
             json.dump({"especies_filtradas": sorted(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])},
                     f, indent=2, ensure_ascii=False)
             
@@ -160,7 +160,7 @@ def main() -> None:
 
         # Graficamos la evolución de pérdida y precisión de todas las épocas entrenadas
         ruta_curvas = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / \
-            "curvas_entrenamiento.png"
+            f"curvas_entrenamiento_{VARIABLES_GLOBALES['PRUEBA']}.png"
         graficar_curvas_entrenamiento(
             historial_perdida_train, historial_perdida_val,
             historial_precision_val, historial_macro_f1_val, ruta_curvas)

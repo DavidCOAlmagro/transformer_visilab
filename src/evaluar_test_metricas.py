@@ -140,10 +140,10 @@ def main() -> dict[str, float]:
 
 
     ruta_matriz = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / \
-        "matriz_confusion_test.png"
+        f"matriz_confusion_test_{VARIABLES_GLOBALES['PRUEBA']}.png"
     matriz_confusion(y_true, y_pred, nombres_clases, ruta_matriz)
     ruta_metricas_especie = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / \
-    "metricas_por_especie.png"
+        f"metricas_por_especie_{VARIABLES_GLOBALES['PRUEBA']}.png"
     graficar_metricas_por_especie(y_true, y_pred, nombres_clases, ruta_metricas_especie)
     
     reporte = generar_reporte_clasificacion(y_true, y_pred, nombres_clases)

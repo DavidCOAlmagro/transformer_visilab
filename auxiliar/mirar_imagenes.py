@@ -1,11 +1,9 @@
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
-
-# Pon aquí las rutas que quieras comparar, en el orden que prefieras
 rutas = [
-    ("Achnanthidium_sp", "/home/visilab/Escritorio/david/transformer_visilab/data/imagenes_visilab(raw)/UDE_Diatoms_84k_normalizadas_reinhard/Achnanthidium_sp/HF_Sava_000456a_20220613_60x.x_13550.y_36467.png"),
-    ("Achnanthidium_pyrenaicum", "/home/visilab/Escritorio/david/transformer_visilab/data/imagenes_visilab(raw)/UDE_Diatoms_84k_normalizadas_reinhard/Achnanthidium_pyrenaicum/HF_Tisa_000445a_20220608_Naphrax_60x.x_31491.y_4678.png"),
-    
+("Navicula_cryptotenella", "/home/visilab/Escritorio/david/transformer_visilab/data/imagenes_visilab(raw)/UDE_Diatoms_84k_normalizadas_reinhard/Navicula_cryptotenella/HF_Tisa_000449a_20220607_Naphrax_60x.x_18820.y_32374.png"),
+    ("Navicula_sp", "/home/visilab/Escritorio/david/transformer_visilab/data/imagenes_visilab(raw)/UDE_Diatoms_84k_normalizadas_reinhard/Navicula_sp/Israel_IADA_S01_20220501.x_14746.y_39723.png"),
+    ("Navicula_sp", "/home/visilab/Escritorio/david/transformer_visilab/data/imagenes_visilab(raw)/UDE_Diatoms_84k_normalizadas_reinhard/Navicula_sp/DV_Sava_SL1_489a_20230418.x_2415.y_2398.png"),
 ]
 
 TAM_MINIATURA = (300, 300)
@@ -29,5 +27,5 @@ for i, (etiqueta, img) in enumerate(miniaturas):
     hoja.paste(img, (x, y))
     draw.text((x + 5, y + TAM_MINIATURA[1] + 5), etiqueta, fill="black")
 
-hoja.save("comparacion_confusiones.png")
-print("Guardado en comparacion_confusiones.png")
+hoja.save("comparacion_imagenes.png")
+print("Guardado en comparacion_imagenes.png")

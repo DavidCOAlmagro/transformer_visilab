@@ -115,7 +115,7 @@ def main() -> None:
     errores = listar_errores(rutas, y_true, y_pred, numero_especie, confianzas, genero_true, y_pred_genero,pares_a_revisar=PARES_A_REVISAR)
 
 # Ruta de salida del .txt, dentro de la carpeta del experimento actual
-    ruta_salida = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / "errores_a_revisar.txt"
+    ruta_salida = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / f"errores_a_revisar_{VARIABLES_GLOBALES['PRUEBA']}.txt"
     ruta_salida.parent.mkdir(parents=True, exist_ok=True)
 
     with open(ruta_salida, "w", encoding="utf-8") as archivo:

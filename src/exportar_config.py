@@ -33,7 +33,7 @@ def exportar_config() -> None:
         "especies": sorted(especies),
     }
 
-    ruta_salida = ruta_carpeta / "config_modelo.json"
+    ruta_salida = ruta_carpeta / f"config_modelo_{VARIABLES_GLOBALES['PRUEBA']}.json"
     with open(ruta_salida, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2, ensure_ascii=False)
 

@@ -62,7 +62,7 @@ def main() -> None:
     confusiones.sort(key=lambda tupla: tupla[2], reverse=True)
 
     ruta_salida: Path = VARIABLES_GLOBALES["RUTA_MODELOS"] / \
-        VARIABLES_GLOBALES["PRUEBA"] / "confusiones.txt"
+        VARIABLES_GLOBALES["PRUEBA"] / f"confusiones_{VARIABLES_GLOBALES['PRUEBA']}.txt"
     ruta_salida.parent.mkdir(parents=True, exist_ok=True)
 
     lineas: list[str] = [
