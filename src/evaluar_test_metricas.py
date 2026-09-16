@@ -146,12 +146,12 @@ def main() -> dict[str, float]:
 
     y_true, y_pred, y_pred_genero, probs_especie = obtener_predicciones_eval(modelo, dataloader_test)
     accuracy_genero = calcular_accuracy_genero(y_true, y_pred_genero, numero_especie, numero_genero)
-    top3_accuracy = calcular_top3_accuracy(y_true, probs_especie, len(nombres_clases))
-    print(f"Top-3 accuracy en test: {top3_accuracy:.2%}\n")
     print(f"\nAccuracy del clasificador de género en test: {accuracy_genero:.2%}\n")
     # La lista de nombres de clases se ordena según el índice de especie
     # para que coincida con las etiquetas
     nombres_clases = sorted(numero_especie, key=numero_especie.get)
+    top3_accuracy = calcular_top3_accuracy(y_true, probs_especie, len(nombres_clases))
+    print(f"Top-3 accuracy en test: {top3_accuracy:.2%}\n")
 
 
     ruta_matriz = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"] / \
