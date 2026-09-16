@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report,accuracy_score,f1_score,precision_recall_fscore_support
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report,accuracy_score,f1_score,precision_recall_fscore_support,top_k_accuracy_score
 import numpy as np
 from tqdm import tqdm
 from constantes import VARIABLES_GLOBALES
@@ -18,8 +18,7 @@ from preparar_datos import get_datos, codificacion, construir_numero_genero, eti
 from dataset import MyDataset
 
 @torch.no_grad()
-def obtener_predicciones(
-        modelo: nn.Module, dataloader: DataLoader) -> tuple[list[int], list[int]]:
+def obtener_predicciones_eval(modelo: nn.Module, dataloader: DataLoader) -> tuple[list[int], list[int]]:
     """
     Pasa todos los batches de un dataloader por el modelo y devuelve tres listas
     paralelas: las etiquetas verdaderas de especie (y_true), las predichas de
@@ -33,13 +32,15 @@ def obtener_predicciones(
     y_true: list[int] = []
     y_pred: list[int] = []
     genero_pred: list[int] = []
-
+    probs_especie_todas: list[list[float]] = []
+    
     for batch_embeddings, batch_etiquetas in tqdm(dataloader, desc="Evaluando test"):
         batch_embeddings = batch_embeddings.to(next(modelo.parameters()).device)
 
 
         # Para cada embedding, el modelo devuelve un vector con las probabilidades/logits.
         logits_especie, logits_genero, logits_center = modelo(batch_embeddings)
+        probs_especie = nn.functional.softmax(logits_especie, dim=1)
         # Predicción final, devuelve el mayor logit y el indice
         _, indice_predicciones = torch.max(logits_especie, 1)
         _, indice_predicciones_genero = torch.max(logits_genero, 1)
@@ -47,8 +48,19 @@ def obtener_predicciones(
         y_true.extend(batch_etiquetas.tolist())
         y_pred.extend(indice_predicciones.cpu().tolist())
         genero_pred.extend(indice_predicciones_genero.cpu().tolist())
+        probs_especie_todas.extend(probs_especie.cpu().tolist())
 
-    return y_true, y_pred,genero_pred
+    return y_true, y_pred,genero_pred, probs_especie_todas
+
+def calcular_top3_accuracy(y_true: list[int], probs_especie: list[list[float]], num_clases: int) -> float:
+    """
+    Calcula el porcentaje de muestras de test
+    cuya especie verdadera está entre las 3 predicciones más probables del
+    modelo. Esto es útil para ver si el modelo "casi acierta" aunque falle
+    la predicción final.
+    """
+    top3_accuracy = top_k_accuracy_score(y_true, probs_especie, k=3, labels=list(range(num_clases)))
+    return top3_accuracy
 
 
 def matriz_confusion(y_true: list[int], y_pred: list[int],
@@ -131,8 +143,11 @@ def main() -> dict[str, float]:
     modelo, _ = cargar_modelo_entrenado()
 
 
-    y_true, y_pred, y_pred_genero = obtener_predicciones(modelo, dataloader_test)
+
+    y_true, y_pred, y_pred_genero, probs_especie = obtener_predicciones(modelo, dataloader_test)
     accuracy_genero = calcular_accuracy_genero(y_true, y_pred_genero, numero_especie, numero_genero)
+    top3_accuracy = calcular_top3_accuracy(y_true, probs_especie, len(nombres_clases))
+    print(f"Top-3 accuracy en test: {top3_accuracy:.2%}\n")
     print(f"\nAccuracy del clasificador de género en test: {accuracy_genero:.2%}\n")
     # La lista de nombres de clases se ordena según el índice de especie
     # para que coincida con las etiquetas
@@ -159,6 +174,7 @@ def main() -> dict[str, float]:
     "accuracy_test": accuracy_score(y_true, y_pred),
     "macro_f1_test": f1_score(y_true,y_pred,average="macro",zero_division=0),
     "accuracy_genero_test": accuracy_genero,
+    "top3_accuracy_test": calcular_top3_accuracy(y_true, probs_especie, len(nombres_clases)),
     "num_especies" : len(obtener_especies_activas())
     }
 

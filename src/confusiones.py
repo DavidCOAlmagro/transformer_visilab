@@ -14,15 +14,14 @@ from modelo import cargar_modelo_entrenado
 
 
 @torch.no_grad()
-def obtener_predicciones(modelo, dataloader) -> tuple[list[int], list[int]]:
+def obtener_predicciones_confusion(modelo, dataloader) -> tuple[list[int], list[int]]:
     """Pasa todo el dataloader por el modelo y devuelve (y_true, y_pred)."""
     modelo.eval()
     y_true: list[int] = []
     y_pred: list[int] = []
 
     for batch_embeddings, batch_etiquetas in dataloader:
-        batch_embeddings = batch_embeddings.to(
-            next(modelo.parameters()).device)
+        batch_embeddings = batch_embeddings.to(next(modelo.parameters()).device)
         logits_especie, _, _ = modelo(batch_embeddings)
         _, indice_predicciones = torch.max(logits_especie, 1)
         y_true.extend(batch_etiquetas.tolist())
@@ -46,7 +45,7 @@ def main() -> None:
         dataset_test, batch_size=VARIABLES_GLOBALES["BATCH_SIZE"])
 
     modelo, _ = cargar_modelo_entrenado()
-    y_true, y_pred = obtener_predicciones(modelo, dataloader_test)
+    y_true, y_pred = obtener_predicciones_confusion(modelo, dataloader_test)
 
     nombres_clases = sorted(numero_especie, key=numero_especie.get)
     matriz = confusion_matrix(y_true, y_pred)
