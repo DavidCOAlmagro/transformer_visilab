@@ -11,22 +11,23 @@ from constantes import VARIABLES_GLOBALES
 
 
 def crear_dataloaders(
-        emb_train: torch.Tensor, et_train: torch.Tensor, 
-        et_train_genero: torch.Tensor, emb_val: torch.Tensor,
-        et_val: torch.Tensor, et_val_genero: torch.Tensor) -> tuple[DataLoader, DataLoader]:
+    emb_train: torch.Tensor, et_train: torch.Tensor,
+    et_train_genero: torch.Tensor, emb_val: torch.Tensor,
+        et_val: torch.Tensor, et_val_genero: torch.Tensor,
+        num_clases: int) -> tuple[DataLoader, DataLoader]:
     """
     Crea los DataLoaders para entrenamiento y validación.
     """
 
     dataset_train = MyDataset(emb_train, et_train, et_train_genero)
     dataset_val = MyDataset(emb_val, et_val, et_val_genero)
-    
+
     # WeightedRandomSampler balancea las clases minoritarias
-    pesos_muestras = calcular_pesos_muestras(et_train)
+    pesos_muestras = calcular_pesos_muestras(et_train, num_clases)
     sampler_train = WeightedRandomSampler(
-    weights=pesos_muestras,
-    num_samples=len(pesos_muestras),
-    replacement=True 
+        weights=pesos_muestras,
+        num_samples=len(pesos_muestras),
+        replacement=True
     )
 
     dataloader_train = DataLoader(dataset_train,
@@ -43,7 +44,8 @@ def crear_dataloaders(
 
     return dataloader_train, dataloader_val
 
-def calcular_pesos_muestras(etiquetas: torch.Tensor) -> torch.Tensor:
+
+def calcular_pesos_muestras(etiquetas: torch.Tensor, num_clases: int) -> torch.Tensor:
     """
     Calcula un peso por cada muestra de train, inversamente proporcional
     a la frecuencia de su clase. Las clases con pocas imágenes obtienen
@@ -51,22 +53,29 @@ def calcular_pesos_muestras(etiquetas: torch.Tensor) -> torch.Tensor:
     más frecuencia y compensar así el desbalance entre especies.
     """
     # Cuenta cuántas muestras hay de cada clase (0, 1, 2, ...)
-    conteo_por_clase: torch.Tensor = torch.bincount(etiquetas,minlength=VARIABLES_GLOBALES["NUM_CLASES"])
+    conteo_por_clase: torch.Tensor = torch.bincount(
+        etiquetas, minlength=num_clases)
 
     # Peso de cada clase = 1 / número de muestras de esa clase.
-    peso_por_clase: torch.Tensor = 1.0 / torch.pow(conteo_por_clase.float(), VARIABLES_GLOBALES["EXPONENTE_PESO_CLASE"])
+    peso_por_clase: torch.Tensor = 1.0 / \
+        torch.pow(conteo_por_clase.float(),
+                  VARIABLES_GLOBALES["EXPONENTE_PESO_CLASE"])
 
     # Le asigna a cada muestra el peso de la clase a la que pertenece
     pesos_muestras: torch.Tensor = peso_por_clase[etiquetas]
     return pesos_muestras
 
-def calcular_pesos_clases(etiquetas: torch.Tensor) -> torch.Tensor:
+
+def calcular_pesos_clases(etiquetas: torch.Tensor, num_clases: int) -> torch.Tensor:
     """
     Calcula un peso por cada clase (no por muestra), inversamente
     proporcional a su frecuencia en train. Se usa en CrossEntropyLoss
     para que los errores en clases minoritarias penalicen más.
     """
-    conteo_por_clase: torch.Tensor = torch.bincount(etiquetas,minlength=VARIABLES_GLOBALES["NUM_CLASES"])
-    peso_por_clase: torch.Tensor = 1.0 / torch.pow(conteo_por_clase.float(), VARIABLES_GLOBALES["EXPONENTE_PESO_CLASE"])
+    conteo_por_clase: torch.Tensor = torch.bincount(
+        etiquetas, minlength=num_clases)
+    peso_por_clase: torch.Tensor = 1.0 / \
+        torch.pow(conteo_por_clase.float(),
+                  VARIABLES_GLOBALES["EXPONENTE_PESO_CLASE"])
 
     return peso_por_clase.to(VARIABLES_GLOBALES["DEVICE"])

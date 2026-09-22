@@ -17,6 +17,7 @@ import json
 from datetime import datetime
 import argparse
 
+
 def get_datos(nombre_split: str) -> dict[str, torch.Tensor]:
     """
     Devuelve los embeddings y las etiquetas de las imágenes,
@@ -24,7 +25,7 @@ def get_datos(nombre_split: str) -> dict[str, torch.Tensor]:
     """
     ruta_embeddings = VARIABLES_GLOBALES["RUTA_EMBEDDINGS"] / \
         f"embeddings_{nombre_split}.pt"
-    datos: dict[str, torch.Tensor] = torch.load(ruta_embeddings, 
+    datos: dict[str, torch.Tensor] = torch.load(ruta_embeddings,
                                                 weights_only=True)
 
     return datos
@@ -58,33 +59,38 @@ def codificacion(
     return embeddings_tensor, etiquetas_tensor, numero_especie
 
 
-def rutas_imagenes() -> list[tuple[str, str]]:
+def rutas_imagenes(incluir_todas: bool = False) -> list[tuple[str, str]]:
     """
     Recorre las carpetas con las imágenes y devuelve una lista de tuplas (ruta_completa, especie).
     """
     imagenes: list[tuple[str, str]] = []
-    ruta_imagenes: Path = VARIABLES_GLOBALES["RUTA_BASE"] / "imagenes_visilab(raw)"
-    
+    ruta_imagenes: Path = VARIABLES_GLOBALES["RUTA_BASE"] / \
+        "imagenes_visilab(raw)"
+
     if not ruta_imagenes.exists():
-        raise FileNotFoundError(f"No se encontró la carpeta de imágenes: {ruta_imagenes}")
+        raise FileNotFoundError(
+            f"No se encontró la carpeta de imágenes: {ruta_imagenes}")
     grupos = []
-    
+
     for p in ruta_imagenes.iterdir():
         if p.is_dir():
             grupos.append(p.name)
-    grupos.sort()  
-    
+    grupos.sort()
+
     if not grupos:
-        raise FileNotFoundError(f"No se encontraron subcarpetas de grupo en: {ruta_imagenes}")
-    
+        raise FileNotFoundError(
+            f"No se encontraron subcarpetas de grupo en: {ruta_imagenes}")
+
+    especies_activas = None if incluir_todas else obtener_especies_activas()
+
     for grupo in grupos:
         ruta_grupo = ruta_imagenes / grupo
-            
+
         print(f"Recorriendo {ruta_grupo}...")
         if ruta_grupo.exists():
 
             especies = [ruta for ruta in ruta_grupo.iterdir() if ruta.is_dir()
-                            and ruta.name in obtener_especies_activas()]
+                        and (especies_activas is None or ruta.name in especies_activas)]
 
             for especie in especies:
                 for archivo in especie.iterdir():
@@ -193,6 +199,7 @@ def etiquetas_a_generos(
 
     return etiquetas_genero_tensor
 
+
 def construir_especies_por_genero(
         numero_especie: dict[str, int], numero_genero: dict[str, int]) -> dict[int, list[int]]:
     """
@@ -207,10 +214,12 @@ def construir_especies_por_genero(
     for especie, indice_especie in numero_especie.items():
         genero: str = obtener_genero(especie)
         indice_genero: int = numero_genero[genero]
-        # Si clave no existe, se crea la lista y se guarda en el diccionario. Y luego se 
+        # Si clave no existe, se crea la lista y se guarda en el diccionario. Y luego se
         # añade el índice de especie a la lista correspondiente.
-        especies_por_genero.setdefault(indice_genero, []).append(indice_especie)
+        especies_por_genero.setdefault(
+            indice_genero, []).append(indice_especie)
     return especies_por_genero
+
 
 def fijar_semilla(semilla: int) -> None:
     """
@@ -224,14 +233,17 @@ def fijar_semilla(semilla: int) -> None:
     # Evita que la inicialización de pesos y el shuffle del dataloader sean aleatorios
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    
-def guardar_resumen_entrenamiento(ruta_modelo: Path,historial_macro_f1_val: list[float],
-        metricas_test: dict[str, float]) -> None:
+
+
+def guardar_resumen_entrenamiento(ruta_modelo: Path, historial_macro_f1_val: list[float],
+                                  metricas_test: dict[str, float]) -> None:
     """Guarda las métricas principales del último entrenamiento."""
     if not historial_macro_f1_val:
-        raise ValueError("El historial de macro F1 de validación está vacío. No se puede guardar el resumen.")
+        raise ValueError(
+            "El historial de macro F1 de validación está vacío. No se puede guardar el resumen.")
 
-    indice_mejor = max(range(len(historial_macro_f1_val)),key=lambda indice: historial_macro_f1_val[indice])
+    indice_mejor = max(range(len(historial_macro_f1_val)),
+                       key=lambda indice: historial_macro_f1_val[indice])
 
     resumen = {
         "fecha": datetime.now().isoformat(timespec="seconds"),
@@ -244,7 +256,8 @@ def guardar_resumen_entrenamiento(ruta_modelo: Path,historial_macro_f1_val: list
     if ruta_resumen.is_file():
         with open(ruta_resumen, "r", encoding="utf-8") as archivo:
             contenido = json.load(archivo)
-        historial_resumenes = contenido if isinstance(contenido, list) else [contenido]
+        historial_resumenes = contenido if isinstance(
+            contenido, list) else [contenido]
     else:
         historial_resumenes = []
 
@@ -255,6 +268,7 @@ def guardar_resumen_entrenamiento(ruta_modelo: Path,historial_macro_f1_val: list
 
     print(f"Resumen guardado en: {ruta_resumen}")
 
+
 def obtener_especies_activas() -> set[str]:
     """
     Devuelve el conjunto de especies del experimento actual (PRUEBA).
@@ -262,17 +276,20 @@ def obtener_especies_activas() -> set[str]:
     lista ESPECIES_FILTRADAS de constantes.py como valor por defecto.
     """
     ruta_metadatos = (VARIABLES_GLOBALES["RUTA_MODELOS"]
-                       / VARIABLES_GLOBALES["PRUEBA"] / "metadatos_modelo.json")
+                      / VARIABLES_GLOBALES["PRUEBA"] / "metadatos_modelo.json")
     if not ruta_metadatos.is_file():
-        raise FileNotFoundError(f"No se encontró el archivo de metadatos en: modelos/{VARIABLES_GLOBALES['PRUEBA']}/")
-    
+        raise FileNotFoundError(
+            f"No se encontró el archivo de metadatos en: modelos/{VARIABLES_GLOBALES['PRUEBA']}/")
+
     with open(ruta_metadatos, "r", encoding="utf-8") as f:
         metadatos = json.load(f)
         return set(metadatos["especies_filtradas"])
     return VARIABLES_GLOBALES["ESPECIES_FILTRADAS"]
 
+
 def parsear_argumentos() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Entrena y evalúa el clasificador de diatomeas (DINOv2 + MLP).")
+    parser = argparse.ArgumentParser(
+        description="Entrena y evalúa el clasificador de diatomeas (DINOv2 + MLP).")
     parser.add_argument("--reentrenar", choices=["s", "n"], default=None,
                         help="¿Entrenar un modelo nuevo? Si no se indica, se pregunta interactivamente.")
     parser.add_argument("--regenerar-splits", choices=["s", "n"], default=None,
@@ -282,6 +299,7 @@ def parsear_argumentos() -> argparse.Namespace:
     parser.add_argument("--prueba", type=str, default=None,
                         help="Nombre del experimento (sobreescribe PRUEBA de constantes.py).")
     return parser.parse_args()
+
 
 def preguntas_si_no(mensaje: str) -> bool:
     """
@@ -296,6 +314,7 @@ def preguntas_si_no(mensaje: str) -> bool:
         else:
             print("Respuesta inválida. Por favor, ingrese 's' para sí o 'n' para no.")
 
+
 def verificar_especies_consistentes() -> None:
     """
     Si la PRUEBA actual ya tiene metadatos_modelo.json, comprueba que las
@@ -304,7 +323,7 @@ def verificar_especies_consistentes() -> None:
     del conjunto de especies antiguo).
     """
     ruta_metadatos = (VARIABLES_GLOBALES["RUTA_MODELOS"]
-                       / VARIABLES_GLOBALES["PRUEBA"] / "metadatos_modelo.json")
+                      / VARIABLES_GLOBALES["PRUEBA"] / "metadatos_modelo.json")
     if not ruta_metadatos.is_file():
         return
 

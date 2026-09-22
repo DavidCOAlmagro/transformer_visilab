@@ -12,6 +12,7 @@ from tqdm import tqdm
 from sklearn.metrics import f1_score
 from constantes import VARIABLES_GLOBALES
 
+
 @torch.no_grad()
 def validacion(modelo, dataloader, func_loss_especie,
                func_loss_genero, func_loss_center,
@@ -31,17 +32,20 @@ def validacion(modelo, dataloader, func_loss_especie,
         batch_etiquetas = batch_etiquetas.to(device)
         batch_etiquetas_genero = batch_etiquetas_genero.to(device)
 
+        logits_especie, logits_genero, tronco_embedding = modelo(
+            batch_embeddings)
 
-        logits_especie, logits_genero, tronco_embedding = modelo(batch_embeddings)
-
-        perdida_especie= func_loss_especie(logits_especie, batch_etiquetas)
-        perdida_genero = func_loss_genero(logits_genero, batch_etiquetas_genero)
+        perdida_especie = func_loss_especie(logits_especie, batch_etiquetas)
+        perdida_genero = func_loss_genero(
+            logits_genero, batch_etiquetas_genero)
         perdida_center = func_loss_center(tronco_embedding, batch_etiquetas)
-        perdida: torch.Tensor = perdida_especie + peso_genero * perdida_genero + VARIABLES_GLOBALES["LAMBDA_CENTER_LOSS"] * perdida_center
+        perdida: torch.Tensor = perdida_especie + peso_genero * perdida_genero + \
+            VARIABLES_GLOBALES["LAMBDA_CENTER_LOSS"] * perdida_center
         perdida_acumulada += perdida.item()
 
         # Calcula el número de aciertos en este batch
-        _, indice_predicciones = torch.max(logits_especie, 1) # devuelve valor max e indice(especie)
+        # devuelve valor max e indice(especie)
+        _, indice_predicciones = torch.max(logits_especie, 1)
         # Añade las etiquetas verdaderas y predichas a las listas correspondientes
         y_true.extend(batch_etiquetas.cpu().tolist())
         y_pred.extend(indice_predicciones.cpu().tolist())
@@ -55,21 +59,22 @@ def validacion(modelo, dataloader, func_loss_especie,
 
     return perdida_media, precision, macro_f1
 
-def entrenar_epoca(modelo: nn.Module,dataloader: DataLoader,func_loss_especie: nn.Module,
-    func_loss_genero: nn.Module,func_loss_center: nn.Module, optimizador: torch.optim.Optimizer,
-    peso_genero: float = VARIABLES_GLOBALES["PESO_GENERO"]) -> float:
+
+def entrenar_epoca(modelo: nn.Module, dataloader: DataLoader, func_loss_especie: nn.Module,
+                   func_loss_genero: nn.Module, func_loss_center: nn.Module, optimizador: torch.optim.Optimizer,
+                   peso_genero: float = VARIABLES_GLOBALES["PESO_GENERO"]) -> float:
     """
     Entrena el modelo durante una época completa. La pérdida total es la
     suma de la pérdida de especie (la que importa) más la pérdida de
     género ponderada por peso_genero (tarea auxiliar, ayuda a entrenar
     mejor el tronco compartido). Devuelve la pérdida media de la época.
     """
-    
+
     modelo.train()
     perdida_acumulada: float = 0.0
 
     # Itera sobre todos los batches del dataloader
-    for batch_embeddings, batch_etiquetas,batch_etiquetas_genero in tqdm(dataloader, desc="Entrenando",leave=False):
+    for batch_embeddings, batch_etiquetas, batch_etiquetas_genero in tqdm(dataloader, desc="Entrenando", leave=False):
         # Mueve los tensores a la GPU si el modelo está en GPU
         device = next(modelo.parameters()).device
         batch_embeddings = batch_embeddings.to(device)
@@ -79,13 +84,18 @@ def entrenar_epoca(modelo: nn.Module,dataloader: DataLoader,func_loss_especie: n
         # Limpia los gradientes de la GPU para que no se acumulen de un batch a otro.
         optimizador.zero_grad()
         # El modelo ahora devuelve DOS salidas: logits de especie y de género(forward)
-        logits_especie, logits_genero,tronco_embedding = modelo(batch_embeddings)
-        
-        perdida_especie: torch.Tensor = func_loss_especie(logits_especie, batch_etiquetas)
-        perdida_genero: torch.Tensor = func_loss_genero(logits_genero, batch_etiquetas_genero)
-        perdida_center: torch.Tensor = func_loss_center(tronco_embedding, batch_etiquetas)
+        logits_especie, logits_genero, tronco_embedding = modelo(
+            batch_embeddings)
+
+        perdida_especie: torch.Tensor = func_loss_especie(
+            logits_especie, batch_etiquetas)
+        perdida_genero: torch.Tensor = func_loss_genero(
+            logits_genero, batch_etiquetas_genero)
+        perdida_center: torch.Tensor = func_loss_center(
+            tronco_embedding, batch_etiquetas)
         # La pérdida total es la suma de ambas, multiplicando la de género
-        perdida: torch.Tensor = perdida_especie + peso_genero * perdida_genero + VARIABLES_GLOBALES["LAMBDA_CENTER_LOSS"] * perdida_center
+        perdida: torch.Tensor = perdida_especie + peso_genero * perdida_genero + \
+            VARIABLES_GLOBALES["LAMBDA_CENTER_LOSS"] * perdida_center
 
         # Calcula los gradientes de la pérdida con respecto a los pesos(como mejorar)
         perdida.backward()
@@ -99,13 +109,14 @@ def entrenar_epoca(modelo: nn.Module,dataloader: DataLoader,func_loss_especie: n
     perdida_media: float = perdida_acumulada / len(dataloader)
     return perdida_media
 
+
 def entrenar_modelo(
         modelo: nn.Module, dataloader_train: DataLoader, dataloader_val: DataLoader,
         func_loss_especie: nn.Module, func_loss_genero: nn.Module, func_loss_center: nn.Module,
         optimizador: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler.LRScheduler, ruta_mejor_modelo: Path,
         num_epocas: int, paciencia: int, peso_genero: float = VARIABLES_GLOBALES["PESO_GENERO"]
-        ) -> tuple[list[float], list[float], list[float], list[float]]:
+) -> tuple[list[float], list[float], list[float], list[float], torch.Tensor | None]:
     """
     Bucle completo de entrenamiento por épocas: entrena, valida, actualiza
     el learning rate con el scheduler, aplica early stopping y guarda el
@@ -120,6 +131,7 @@ def entrenar_modelo(
     # Si no mejora en macrof1 'paciencia' épocas consecutivas,
     # se detiene el entrenamiento (early stopping)
     mejor_macro_f1 = -1.0
+    mejores_centros: torch.Tensor | None = None
     contador_no_mejora = 0
     # Crea directorio si no existe
     ruta_mejor_modelo.parent.mkdir(parents=True, exist_ok=True)
@@ -127,8 +139,10 @@ def entrenar_modelo(
     for epoca in range(num_epocas):
         if valid:
             if contador_no_mejora < paciencia:
-                perdida_train = entrenar_epoca(modelo, dataloader_train, func_loss_especie, func_loss_genero,func_loss_center, optimizador, peso_genero)
-                perdida_val, precision_val, macro_f1_val = validacion(modelo,dataloader_val, func_loss_especie, func_loss_genero,func_loss_center, peso_genero)
+                perdida_train = entrenar_epoca(
+                    modelo, dataloader_train, func_loss_especie, func_loss_genero, func_loss_center, optimizador, peso_genero)
+                perdida_val, precision_val, macro_f1_val = validacion(
+                    modelo, dataloader_val, func_loss_especie, func_loss_genero, func_loss_center, peso_genero)
 
                 scheduler.step()  # avanza el learning rate según el schedule
 
@@ -139,16 +153,17 @@ def entrenar_modelo(
                 historial_macro_f1_val.append(macro_f1_val)
 
                 print(f"Época {epoca + 1}/{num_epocas} — "
-                    f"loss train: {perdida_train:.4f} — "
-                    f"loss val: {perdida_val:.4f} — "
-                    f"precisión val: {precision_val:.2%} — "
-                    f"macro F1 val: {macro_f1_val:.4f} — "
-                    f"lr: {scheduler.get_last_lr()[0]:.6f}")
+                      f"loss train: {perdida_train:.4f} — "
+                      f"loss val: {perdida_val:.4f} — "
+                      f"precisión val: {precision_val:.2%} — "
+                      f"macro F1 val: {macro_f1_val:.4f} — "
+                      f"lr: {scheduler.get_last_lr()[0]:.6f}")
 
                 if macro_f1_val > mejor_macro_f1:
                     mejor_macro_f1 = macro_f1_val
                     contador_no_mejora = 0
                     torch.save(modelo.state_dict(), ruta_mejor_modelo)
+                    mejores_centros = func_loss_center.centros.detach().clone().cpu()
 
                 else:
                     contador_no_mejora += 1
@@ -157,5 +172,5 @@ def entrenar_modelo(
                 print("Early stopping: no hay mejora en validación.")
                 valid = False
 
-
-    return historial_perdida_train, historial_perdida_val, historial_precision_val, historial_macro_f1_val
+    return (historial_perdida_train, historial_perdida_val,
+            historial_precision_val, historial_macro_f1_val, mejores_centros)

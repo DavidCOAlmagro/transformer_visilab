@@ -7,7 +7,7 @@ import torch
 
 from clasificador import ClasificadorDiatomeas
 from constantes import VARIABLES_GLOBALES
-from preparar_datos import construir_numero_genero,obtener_especies_activas
+from preparar_datos import construir_numero_genero, obtener_especies_activas
 
 
 def cargar_modelo_entrenado() -> tuple[ClasificadorDiatomeas, list[str]]:
@@ -19,7 +19,7 @@ def cargar_modelo_entrenado() -> tuple[ClasificadorDiatomeas, list[str]]:
     numero_genero = construir_numero_genero(obtener_especies_activas())
 
     modelo = ClasificadorDiatomeas(num_clases=len(especies_ordenadas),
-        num_generos=len(numero_genero)).to(VARIABLES_GLOBALES["DEVICE"])
+                                   num_generos=len(numero_genero)).to(VARIABLES_GLOBALES["DEVICE"])
 
     ruta_pesos = (
         VARIABLES_GLOBALES["RUTA_MODELOS"]
@@ -29,12 +29,16 @@ def cargar_modelo_entrenado() -> tuple[ClasificadorDiatomeas, list[str]]:
 
     if not ruta_pesos.is_file():
         raise FileNotFoundError(f"No se encontró el modelo entrenado en: {ruta_pesos}\n"
-            "Entrena el modelo antes de continuar."
-        )
+                                "Entrena el modelo antes de continuar."
+                                )
 
     pesos = torch.load(ruta_pesos,
-        map_location=VARIABLES_GLOBALES["DEVICE"], weights_only=True)
-    modelo.load_state_dict(pesos)
+                       map_location=VARIABLES_GLOBALES["DEVICE"], weights_only=True)
+    resultado_carga = modelo.load_state_dict(pesos, strict=False)
+    if resultado_carga.missing_keys:
+        print(f"Aviso: este modelo no tiene centroides calibrados todavía "
+              f"({resultado_carga.missing_keys}). No se rechazará ninguna "
+              "imagen por distancia hasta recalibrar.")
     modelo.eval()
 
     return modelo, especies_ordenadas

@@ -17,7 +17,7 @@ from preparar_datos import (
     get_datos, codificacion, contar_clases_train, calcular_conteo_por_especie,
     calcular_copias_extra_por_especie, construir_numero_genero, etiquetas_a_generos,
     parsear_argumentos, guardar_resumen_entrenamiento, fijar_semilla, preguntas_si_no,
-    verificar_especies_consistentes    
+    verificar_especies_consistentes
 )
 from generar_leer_splits import leer_split, generar_split
 from embeddings import inicializar_dinov2, calcular_embeddings
@@ -26,6 +26,9 @@ from dataloader import crear_dataloaders, calcular_pesos_clases
 from entrenamiento import entrenar_modelo
 from evaluar_test_metricas import main as evaluar_test, graficar_curvas_entrenamiento
 from CenterLoss import center_loss
+from calibracion_confianza import calibrar_pesos
+from modelo import cargar_modelo_entrenado
+
 
 def limpiar_pantalla() -> None:
     """Limpia la consola de forma compatible con Windows y Unix."""
@@ -50,6 +53,7 @@ def lr_lambda(epoca_actual: int) -> float:
         max(1, num_epocas_total - epocas_warmup)
     return 0.5 * (1 + math.cos(math.pi * progreso))
 
+
 def resolver_si_no(valor_flag: str | None, pregunta: str) -> bool:
     """
     Si se pasó la flag por línea de comandos, la usa directamente sin preguntar.
@@ -58,9 +62,9 @@ def resolver_si_no(valor_flag: str | None, pregunta: str) -> bool:
     if valor_flag is not None:
         valor_flag = valor_flag == "s"
     else:
-        valor_flag= preguntas_si_no(pregunta)
-    return valor_flag 
-    
+        valor_flag = preguntas_si_no(pregunta)
+    return valor_flag
+
 
 def main() -> None:
     """
@@ -70,6 +74,11 @@ def main() -> None:
     args = parsear_argumentos()
     if args.prueba:
         VARIABLES_GLOBALES["PRUEBA"] = args.prueba
+    VARIABLES_GLOBALES["RUTA_SPLITS"] = (
+        VARIABLES_GLOBALES["RUTA_BASE"] / "splits" / VARIABLES_GLOBALES["PRUEBA"])
+    VARIABLES_GLOBALES["RUTA_EMBEDDINGS"] = (
+        VARIABLES_GLOBALES["RUTA_BASE"] / "embeddings_procesado" /
+        VARIABLES_GLOBALES["PRUEBA"])
     print(f"\n Iniciando prueba: {VARIABLES_GLOBALES['PRUEBA'].upper()}\n")
     # Semilla fija para que la inicialización de pesos, el shuffle del
     # dataloader y el data augmentation sean reproducibles entre ejecuciones.
@@ -77,36 +86,43 @@ def main() -> None:
     fijar_semilla(42)
 
     ruta_mejor_modelo = VARIABLES_GLOBALES["RUTA_MODELOS"] / \
-        VARIABLES_GLOBALES["PRUEBA"] / f"modelo_{VARIABLES_GLOBALES['PRUEBA']}.pth"
+        VARIABLES_GLOBALES["PRUEBA"] / \
+        f"modelo_{VARIABLES_GLOBALES['PRUEBA']}.pth"
 
     # Si ya existe un modelo entrenado, preguntamos si se quiere reentrenar
     # o usar directamente el que ya está guardado en disco
     entrenar_de_nuevo = True
     if ruta_mejor_modelo.exists():
-        print(f"Ya existe un modelo entrenado (modelo_{VARIABLES_GLOBALES['PRUEBA']}.pth).\n")
-        entrenar_de_nuevo = resolver_si_no(args.reentrenar, "¿Quieres reentrenar el modelo? (s/n): ")
+        print(
+            f"Ya existe un modelo entrenado (modelo_{VARIABLES_GLOBALES['PRUEBA']}.pth).\n")
+        entrenar_de_nuevo = resolver_si_no(
+            args.reentrenar, "¿Quieres reentrenar el modelo? (s/n): ")
 
     if entrenar_de_nuevo:
         print("Usando especies filtradas de constantes.py. Recuerda cambiadlas si es necesario.")
         if not VARIABLES_GLOBALES["ESPECIES_FILTRADAS"]:
-            raise ValueError("ERROR: ESPECIES_FILTRADAS está vacío en constantes.py Añade al menos una especie antes de entrenar.")
-        
+            raise ValueError(
+                "ERROR: ESPECIES_FILTRADAS está vacío en constantes.py Añade al menos una especie antes de entrenar.")
+
         verificar_especies_consistentes()
 
-        ruta_carpeta_modelo = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"]
+        ruta_carpeta_modelo = VARIABLES_GLOBALES["RUTA_MODELOS"] / \
+            VARIABLES_GLOBALES["PRUEBA"]
         ruta_carpeta_modelo.mkdir(parents=True, exist_ok=True)
-        
-        with open(ruta_carpeta_modelo / f"metadatos_modelo_{VARIABLES_GLOBALES['PRUEBA']}.json", "w", encoding="utf-8") as f:
+
+        with open(ruta_carpeta_modelo / "metadatos_modelo.json", "w", encoding="utf-8") as f:
             json.dump({"especies_filtradas": sorted(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])},
-                    f, indent=2, ensure_ascii=False)
-            
-        resp_split = resolver_si_no(args.regenerar_splits, "¿Regenerar splits de train/val/test?")
-        resp_emb = resolver_si_no(args.recalcular_embeddings, "¿Recalcular embeddings?")
+                      f, indent=2, ensure_ascii=False)
+
+        resp_split = resolver_si_no(
+            args.regenerar_splits, "¿Regenerar splits de train/val/test?")
+        resp_emb = resolver_si_no(
+            args.recalcular_embeddings, "¿Recalcular embeddings?")
         if resp_split:
             generar_split()
         if resp_emb:
             preparar_embeddings_splits()
-            
+
         print("Cargando datos...")
         datos_train = get_datos("train")
         datos_val = get_datos("val")
@@ -116,44 +132,46 @@ def main() -> None:
         emb_train, et_train, numero_especie = codificacion(datos_train)
         emb_val, et_val, _ = codificacion(datos_val)
         contar_clases_train(et_train, numero_especie)
-        numero_genero = construir_numero_genero(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
+        numero_genero = construir_numero_genero(
+            VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
         num_generos = len(numero_genero)
-        et_train_genero = etiquetas_a_generos(et_train, numero_especie, numero_genero)
-        
-        
-        et_val_genero = etiquetas_a_generos(et_val, numero_especie, numero_genero)
+        et_train_genero = etiquetas_a_generos(
+            et_train, numero_especie, numero_genero)
+
+        et_val_genero = etiquetas_a_generos(
+            et_val, numero_especie, numero_genero)
         num_clases = len(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
         print("Creando modelo...")
         modelo = ClasificadorDiatomeas(num_clases, num_generos).to(
             VARIABLES_GLOBALES["DEVICE"])
-        
 
         num_epocas_total = VARIABLES_GLOBALES["num_epocas"]
 
         print("Creando dataloaders...")
         dataloader_train, dataloader_val = crear_dataloaders(
-            emb_train, et_train, et_train_genero, emb_val, et_val, et_val_genero)
+            emb_train, et_train, et_train_genero, emb_val, et_val,
+            et_val_genero, num_clases)
         print(f"Sampler train: {type(dataloader_train.sampler).__name__}")
-        pesos_clase = calcular_pesos_clases(et_train)
+        pesos_clase = calcular_pesos_clases(et_train, num_clases)
         # Función que devuelve la puntuación(logits) de cada clase para cada imagen.
         func_loss_especie = nn.CrossEntropyLoss(label_smoothing=VARIABLES_GLOBALES["LABEL_SMOOTHING"],
                                                 weight=pesos_clase.to(VARIABLES_GLOBALES["DEVICE"]))
         func_loss_genero = nn.CrossEntropyLoss()
-        func_loss_center = center_loss(num_clases, VARIABLES_GLOBALES["DIM_CAPA_2"], VARIABLES_GLOBALES["DEVICE"])
-        
+        func_loss_center = center_loss(
+            num_clases, VARIABLES_GLOBALES["DIM_CAPA_2"], VARIABLES_GLOBALES["DEVICE"])
+
         # El optimizador es el encargado de actualizar los pesos de la red neuronal para que aprenda
         # modelo.parameters() devuelve los pesos y sesgos de la red neuronal entrenables.
         # Learning rate 0.0003 es un valor pequeño para no oscilar demasiado.
         # AdamW con weight decay 0.0001 ayuda a regularizar el modelo y evitar overfitting.
-        optimizador = torch.optim.AdamW(list(modelo.parameters()) + list(func_loss_center.parameters()), 
+        optimizador = torch.optim.AdamW(list(modelo.parameters()) + list(func_loss_center.parameters()),
                                         lr=VARIABLES_GLOBALES["LEARNING_RATE"],
                                         weight_decay=VARIABLES_GLOBALES["WEIGHT_DECAY"])
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizador, lr_lambda)
-        
+
         print("Iniciando entrenamiento...")
 
-
-        historial_perdida_train, historial_perdida_val, historial_precision_val, historial_macro_f1_val = entrenar_modelo(
+        historial_perdida_train, historial_perdida_val, historial_precision_val, historial_macro_f1_val, mejores_centros = entrenar_modelo(
             modelo, dataloader_train, dataloader_val, func_loss_especie, func_loss_genero, func_loss_center,
             optimizador, scheduler,
             ruta_mejor_modelo, num_epocas_total, paciencia=VARIABLES_GLOBALES["PACIENCIA"])
@@ -164,6 +182,12 @@ def main() -> None:
         graficar_curvas_entrenamiento(
             historial_perdida_train, historial_perdida_val,
             historial_precision_val, historial_macro_f1_val, ruta_curvas)
+        # Calibramos la confianza sobre el MEJOR modelo guardado en disco
+        # (el objeto `modelo` en memoria es el de la última época, no
+        # necesariamente el mejor por macro F1; por eso se recarga).
+        print("\nCalibrando confianza (temperatura + centroides)...")
+        modelo_a_calibrar, _ = cargar_modelo_entrenado()
+        calibrar_pesos(modelo_a_calibrar, mejores_centros, ruta_mejor_modelo)
     else:
         print("Usando el modelo ya entrenado, sin reentrenar.")
 
@@ -177,6 +201,7 @@ def main() -> None:
             historial_macro_f1_val,
             metricas_test
         )
+
 
 def preparar_embeddings_splits() -> None:
     """
@@ -193,6 +218,7 @@ def preparar_embeddings_splits() -> None:
         "train": True,
         "val": False,
         "test": False,
+        "unknown": False,
     }
 
     rutas_destino = {
@@ -206,12 +232,14 @@ def preparar_embeddings_splits() -> None:
         ruta_destino = rutas_destino[nombre_split]
         ruta_split_txt = ruta_splits / f"{nombre_split}.txt"
         imagenes = leer_split(ruta_split_txt)
-        print(f"Calculando embeddings de {nombre_split} ({len(imagenes)} imágenes)...")
+        print(
+            f"Calculando embeddings de {nombre_split} ({len(imagenes)} imágenes)...")
 
         copias_por_especie: dict[str, int] | None = None
         if is_train:
             conteo_por_especie = calcular_conteo_por_especie(imagenes)
-            copias_por_especie = calcular_copias_extra_por_especie(conteo_por_especie)
+            copias_por_especie = calcular_copias_extra_por_especie(
+                conteo_por_especie)
             print("Copias extra por especie (train):")
             for especie, copias in sorted(copias_por_especie.items()):
                 if copias > 0:

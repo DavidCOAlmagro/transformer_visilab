@@ -7,9 +7,10 @@ cada vez que se ejecute el programa.
 """
 from pathlib import Path
 from sklearn.model_selection import train_test_split
-from preparar_datos import rutas_imagenes,obtener_especies_activas
+from preparar_datos import rutas_imagenes, obtener_especies_activas
 from collections import Counter
 from constantes import VARIABLES_GLOBALES
+
 
 def generar_split() -> None:
     """
@@ -23,11 +24,13 @@ def generar_split() -> None:
     especies: list[str] = [especie for ruta, especie in imagenes]
     conteo_por_especie = Counter(especies)
 
-    especies_faltantes = sorted(obtener_especies_activas() - set(conteo_por_especie))
-    
+    especies_faltantes = sorted(
+        obtener_especies_activas() - set(conteo_por_especie))
+
     if especies_faltantes:
-        print(f"Advertencia: las siguientes especies filtradas no tienen imágenes: {especies_faltantes}")
-   
+        print(
+            f"Advertencia: las siguientes especies filtradas no tienen imágenes: {especies_faltantes}")
+
     for especie, cantidad in sorted(conteo_por_especie.items()):
         if cantidad < VARIABLES_GLOBALES["MINIMO_IMAGENES_POR_ESPECIE"]:
             print(
@@ -55,9 +58,19 @@ def generar_split() -> None:
     guardar_split(rutas_val, ruta_splits / "val.txt")
     guardar_split(rutas_test, ruta_splits / "test.txt")
 
+    imagenes_desconocidas = [
+        (ruta, especie) for ruta, especie in rutas_imagenes(incluir_todas=True)
+        if especie not in obtener_especies_activas()
+    ]
+    guardar_split(
+        [str(ruta) for ruta, _ in imagenes_desconocidas],
+        ruta_splits / "unknown.txt"
+    )
+
     print(f"Train: {len(rutas_train)} imágenes")
     print(f"Val:   {len(rutas_val)} imágenes")
     print(f"Test:  {len(rutas_test)} imágenes")
+    print(f"Unknown: {len(imagenes_desconocidas)} imágenes")
 
 
 def guardar_split(rutas: list[str], ruta_archivo: Path) -> None:
@@ -65,6 +78,7 @@ def guardar_split(rutas: list[str], ruta_archivo: Path) -> None:
     with open(ruta_archivo, "w", encoding="utf-8") as archivo:
         for ruta in rutas:
             archivo.write(ruta + "\n")
+
 
 def leer_split(ruta_archivo: Path) -> list[tuple[str, str]]:
     """
@@ -84,5 +98,7 @@ def leer_split(ruta_archivo: Path) -> list[tuple[str, str]]:
                 rutas_especies.append((ruta, especie))
 
     return rutas_especies
+
+
 if __name__ == "__main__":
     generar_split()
