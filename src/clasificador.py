@@ -51,11 +51,15 @@ class ClasificadorDiatomeas(nn.Module):
 
     def distancia_a_centro(self, embedding: torch.Tensor,
                            indice_clase: torch.Tensor) -> torch.Tensor:
+        """Devuelve la distancia al centro de la clase predicha para cada embedding."""
+        indice_clase = indice_clase.to(self.centros.device)
         centros_correspondientes = self.centros[indice_clase]
-        return (embedding - centros_correspondientes).pow(2).sum(dim=1)
+        return (embedding.to(self.centros.device) - centros_correspondientes).pow(2).sum(dim=1)
 
     def es_desconocida(self, embedding: torch.Tensor,
                        indice_clase_predicha: torch.Tensor) -> torch.Tensor:
-        distancia = self.distancia_a_centro(embedding, indice_clase_predicha)
-        umbral = self.umbral_distancia[indice_clase_predicha]
-        return distancia > umbral
+         """Devuelve un tensor de booleanos indicando qué embeddings son desconocidos."""
+         indice_clase_predicha = indice_clase_predicha.to(self.umbral_distancia.device)
+         distancia = self.distancia_a_centro(embedding, indice_clase_predicha)
+         umbral = self.umbral_distancia[indice_clase_predicha]
+         return distancia > umbral
