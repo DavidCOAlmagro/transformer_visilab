@@ -131,7 +131,7 @@ def main() -> None:
         print("Renumerando etiquetas...")
         emb_train, et_train, numero_especie = codificacion(datos_train)
         emb_val, et_val, _ = codificacion(datos_val)
-        contar_clases_train(et_train, numero_especie)
+        contar_clases_train(et_train, numero_especie)   
         numero_genero = construir_numero_genero(
             VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
         num_generos = len(numero_genero)
