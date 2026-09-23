@@ -1,0 +1,4 @@
+Evaluación de rechazo de especies
+Imágenes desconocidas: 45259
+Desconocidas rechazadas: 16.07%
+Imágenes conocidas de test rechazadas: 2.61%
