@@ -1,4 +1,4 @@
-Total imágenes procesadas: 95380
+Total imágenes procesadas: 110952
 Duplicados EXACTOS por contenido: 0 grupos
 Coincidencias de NOMBRE (pueden ser o no la misma imagen): 1 grupos
 
@@ -8,5 +8,5 @@ Coincidencias de NOMBRE (pueden ser o no la misma imagen): 1 grupos
 === COINCIDENCIAS DE NOMBRE (revisar a mano, puede ser falso positivo) ===
 
 Fistulifera saprophila_98881_DC_36_0005.tif:
-  /home/visilab/Escritorio/david/transformer_visilab/data/imagenes_visilab(raw)/dataset_aq_dbo5_agrupado/Fistulifera saprophila/Fistulifera saprophila_98881_DC_36_0005.tif
-  /home/visilab/Escritorio/david/transformer_visilab/data/imagenes_visilab(raw)/dataset_aq_dbo5_last_agrupado/Fistulifera saprophila/Fistulifera saprophila_98881_DC_36_0005.tif
+  C:\VISILAB\transformer\proyecto_transformer_v2\data\imagenes_visilab(raw)\dataset_aq_dbo5_agrupado\Fistulifera saprophila\Fistulifera saprophila_98881_DC_36_0005.tif
+  C:\VISILAB\transformer\proyecto_transformer_v2\data\imagenes_visilab(raw)\dataset_aq_dbo5_last_agrupado\Fistulifera saprophila\Fistulifera saprophila_98881_DC_36_0005.tif

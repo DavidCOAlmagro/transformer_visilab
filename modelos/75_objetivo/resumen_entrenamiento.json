@@ -17,5 +17,15 @@
         "accuracy_genero_test": 0.9438755153610853,
         "top3_accuracy_test": 0.9745976858624817,
         "num_especies": 77
+    },
+    {
+        "fecha": "2026-09-24T12:23:31",
+        "mejor_epoca": 34,
+        "mejor_macro_f1_validacion": 0.8792988693214527,
+        "accuracy_test": 0.8905013192612137,
+        "macro_f1_test": 0.8772853141198582,
+        "accuracy_genero_test": 0.9549421554698599,
+        "top3_accuracy_test": 0.977166632839456,
+        "num_especies": 77
     }
 ]

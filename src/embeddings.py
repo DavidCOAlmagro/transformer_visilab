@@ -15,12 +15,36 @@ entrenamiento de un clasificador supervisado (MLP) sobre esos embeddings congela
 --------------------------------------
 """
 from pathlib import Path
+import os
 from PIL import Image
 import torch
+from huggingface_hub import try_to_load_from_cache
 from transformers import AutoImageProcessor, AutoModel
 from torchvision import transforms
 from tqdm import tqdm
 from constantes import VARIABLES_GLOBALES
+
+
+def resolver_modelo_dinov2() -> tuple[str, bool]:
+    """Devuelve una ruta local utilizable o el identificador remoto del modelo."""
+    modelo_id = "facebook/dinov2-base"
+    ruta_configurada = os.environ.get("DINOV2_MODEL_PATH")
+    if ruta_configurada:
+        ruta = Path(ruta_configurada).expanduser()
+        if not ruta.is_dir():
+            raise FileNotFoundError(
+                f"DINOV2_MODEL_PATH no es una carpeta válida: {ruta}")
+        return str(ruta), True
+
+    archivos_requeridos = ("config.json", "preprocessor_config.json", "model.safetensors")
+    rutas_cache = [try_to_load_from_cache(modelo_id, archivo)
+                   for archivo in archivos_requeridos]
+    if all(isinstance(ruta, str) for ruta in rutas_cache):
+        carpetas_cache = {str(Path(ruta).parent) for ruta in rutas_cache}
+        if len(carpetas_cache) == 1:
+            return next(iter(carpetas_cache)), True
+
+    return modelo_id, False
 
 
 def inicializar_dinov2() -> tuple[AutoImageProcessor, AutoModel, torch.device, transforms.Compose]:
@@ -28,11 +52,13 @@ def inicializar_dinov2() -> tuple[AutoImageProcessor, AutoModel, torch.device, t
     Inicializa el procesador de imágenes(imagen a tensor), el modelo DINOv2
     y el dispositivo (CPU o GPU).
     """
+    modelo, solo_local = resolver_modelo_dinov2()
     processor: AutoImageProcessor = AutoImageProcessor.from_pretrained(
-        'facebook/dinov2-base')
+        modelo, local_files_only=solo_local)
     device = VARIABLES_GLOBALES["DEVICE"]
     model: AutoModel = AutoModel.from_pretrained(
-        'facebook/dinov2-base', token = VARIABLES_GLOBALES["HF_TOKEN"])
+        modelo, token=VARIABLES_GLOBALES["HF_TOKEN"],
+        local_files_only=solo_local)
     model.to(device)
     model.eval()
     model.requires_grad_(False)
