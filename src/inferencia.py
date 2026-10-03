@@ -1,268 +1,230 @@
-"""
---------------------------------------
-Inferencia sobre imágenes nuevas usando el modelo DINOv2 + clasificador entrenado.
-Permite clasificar una imagen suelta o una carpeta entera y exportar los resultados a Excel.
---------------------------------------
-"""
+"""Inferencia YOLO recursiva con DINOv2, ResNet50 o ambos clasificadores."""
 
+from __future__ import annotations
+
+import argparse
 from pathlib import Path
-import torch
+from typing import Any
+
 import pandas as pd
-from modelo import cargar_modelo_entrenado
+import torch
+from PIL import Image
+from torchvision import models, transforms
+
 from constantes import VARIABLES_GLOBALES
-from embeddings import inicializar_dinov2, get_embedding
+from embeddings import get_embedding, inicializar_dinov2
+from modelo import cargar_modelo_entrenado
+
+ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_INPUT = ROOT / "imagenes_inferencia"
+DEFAULT_YOLO = ROOT / "yolo_dinov2" / "yolo_best.pt"
+DEFAULT_DINO_WEIGHTS = ROOT / "modelos" / "75_objetivo" / "modelo_75_objetivo.pth"
+DEFAULT_RESNET = ROOT / "yolo_dinov2" / "resnet50_checkpoint_epoch50.pth"
+DEFAULT_CLASSES = {
+    "dinov2": ROOT / "txt_classes" / "classes_77(dino).txt",
+    "resnet": ROOT / "txt_classes" / "classes_78(resnet).txt",
+}
 
 
-def elegir_archivo() -> str:
+def cargar_clases(ruta: Path, esperadas: int) -> list[str]:
+    if not ruta.is_file():
+        raise FileNotFoundError(f"No se encontró el archivo de clases: {ruta}")
+    clases = [linea.strip() for linea in ruta.read_text(encoding="utf-8").splitlines()
+              if linea.strip() and not linea.lstrip().startswith("#")]
+    if len(clases) != esperadas or len(set(clases)) != len(clases):
+        raise ValueError(f"{ruta} debe contener exactamente {esperadas} clases únicas; contiene {len(clases)}.")
+    return clases
+
+
+def cargar_yolo(ruta: Path) -> Any:
+    if not ruta.is_file():
+        raise FileNotFoundError(f"No se encontraron los pesos YOLO: {ruta}")
     try:
-        from tkinter import Tk
-        from tkinter.filedialog import askopenfilename
-
-        root = Tk()
-        root.withdraw()  # oculta la ventana principal, solo queremos el diálogo
-        ruta = askopenfilename(
-            title="Selecciona una imagen",
-            filetypes=[("Imágenes", "*.jpg *.jpeg *.png *.bmp *.tif *.tiff")]
-        )
-        root.destroy()
-        return ruta
-
-    except Exception as e:
-        print(f"Error al seleccionar archivo: {e}")
-        print("Asegúrate de que tkinter esté correctamente instalado.(sudo apt install python3-tk)")
-        return input("Inserta la ruta de la imagen manualmente: ").strip()
+        from ultralytics import YOLO
+    except ImportError as error:
+        raise RuntimeError("YOLO es obligatorio: instala la dependencia ultralytics.") from error
+    return YOLO(str(ruta))
 
 
-def elegir_carpeta() -> str:
-    try:
-        from tkinter import Tk
-        from tkinter.filedialog import askdirectory
-
-        root = Tk()
-        root.withdraw()
-        ruta = askdirectory(title="Selecciona una carpeta de imágenes")
-        root.destroy()
-        return ruta
-
-    except Exception as e:
-        print(f"Error al seleccionar carpeta: {e}")
-        print("Asegúrate de que tkinter esté correctamente instalado.(sudo apt install python3-tk)")
-        return input("Inserta la ruta de la carpeta manualmente: ").strip()
-
-
-@torch.no_grad()
-def predecir_imagen(embedding: torch.Tensor, modelo: torch.nn.Module,
-                    especies_ordenadas: list[str], intervalo_confianza: float = VARIABLES_GLOBALES["UMBRAL_CONF"]) -> dict[str, object]:
-    """
-    Recibe el embedding de una imagen y devuelve un diccionario con:
-    - especie_predicha: la clase con mayor probabilidad
-    - confianza: probabilidad de la clase predicha (0-100%)
-    - top3: lista de tuplas [(especie, probabilidad), ...] con las 3 más probables
-    - revisar: True si la confianza está por debajo del umbral (imagen dudosa)
-    """
-    embedding = embedding.to(VARIABLES_GLOBALES["DEVICE"])
-
-    # logits → probabilidades con softmax
-    logits_especie, _, tronco_embedding = modelo(embedding)    # [1, n_clases]
-    probs: torch.Tensor = torch.softmax(
-        logits_especie, dim=1)          # [1, n_clases]
-
-    # especie con mayor probabilidad y su confianza
-    top3_probs, top3_indices = torch.topk(probs, k=3, dim=1)
-
-    top3 = []
-    # Con zip iteramos sobre los índices y probabilidades de las 3 clases más probables
-    # Indice 0 -> probabilidad 0...
-    for indice, probabilidad in zip(top3_indices[0], top3_probs[0]):
-        especie = especies_ordenadas[indice.item()]
-        porcentaje = round(probabilidad.item() * 100, 2)
-        top3.append((especie, porcentaje))
-    # top3[0] =    ("Nitzschia_inconspicua", 97.3)  → la tupla entera del 1º
-    # top3[0][0] = "Nitzschia_inconspicua"          → el nombre (posición 0 de la tupla)
-    # top3[0][1] = 97.3                             → la confianza (posición 1 de la tupla)
-    especie_mas_parecida: str = top3[0][0]
-    confianza: float = top3[0][1]
-    indice_predicho = top3_indices[:, 0]
-    desconocida = modelo.es_desconocida(
-        tronco_embedding, indice_predicho).item()
-    confianza_baja = confianza < (intervalo_confianza * 100)
-    motivo_revision = ("especie_desconocida" if desconocida
-                       else "confianza_baja" if confianza_baja else None)
-
+def _top3(logits: torch.Tensor, clases: list[str], umbral: float) -> dict[str, Any]:
+    if logits.ndim != 2 or logits.shape[0] != 1 or logits.shape[1] != len(clases):
+        raise ValueError(f"Salida incompatible: {tuple(logits.shape)} para {len(clases)} clases.")
+    valores, indices = torch.topk(torch.softmax(logits, dim=1), k=min(3, len(clases)), dim=1)
+    top = [(clases[indice], round(float(valor) * 100, 2))
+           for indice, valor in zip(indices[0].tolist(), valores[0].tolist())]
+    revisar = top[0][1] < umbral * 100
     return {
-        "especie_predicha": "Desconocida" if desconocida else especie_mas_parecida,
-        "especie_mas_parecida": especie_mas_parecida,
-        "confianza":        confianza,           # en %
-        "top3":             top3,
-        "revisar":          desconocida or confianza_baja,
-        "motivo_revision":  motivo_revision,
+        "especie_predicha": top[0][0],
+        "especie_mas_parecida": top[0][0],
+        "confianza": top[0][1],
+        "top": top,
+        "revisar": revisar,
+        "motivo_revision": "confianza_baja" if revisar else "",
     }
 
 
-def guardar_resultado_txt(ruta_imagen: Path, resultado: dict[str, object]) -> Path:
-    """Guarda el resultado de una imagen suelta en un .txt junto a ella."""
-    ruta_txt = ruta_imagen.with_name(f"{ruta_imagen.stem}_prediccion.txt")
-    lineas = [
-        f"Imagen: {ruta_imagen.name}",
-        f"Especie predicha: {resultado['especie_predicha']}",
-        f"Especie más parecida: {resultado['especie_mas_parecida']}",
-        f"Confianza: {resultado['confianza']}%",
-        "Top-3:",
-    ]
-    for i, (especie, prob) in enumerate(resultado["top3"], start=1):
-        lineas.append(f"  {i}. {especie:40s} {prob}%")
-    if resultado["revisar"]:
-        lineas.append(f"Revisar manualmente: {resultado['motivo_revision']}")
+class ClasificadorDino:
+    def __init__(self, pesos: Path, clases_txt: Path, device: torch.device) -> None:
+        clases = cargar_clases(clases_txt, 77)
+        VARIABLES_GLOBALES["DEVICE"] = device
+        self.modelo, metadatos = cargar_modelo_entrenado(ruta_pesos=pesos, clases=clases)
+        if metadatos != clases:
+            raise ValueError("classes_77(dino).txt no coincide exactamente con el orden de metadatos_modelo.json.")
+        self.clases = metadatos
+        self.device = device
+        self.processor, self.backbone, _, self.augmentation = inicializar_dinov2(device)
 
-    lineas.append("")
-
-    ruta_txt.write_text("\n".join(lineas) + "\n", encoding="utf-8")
-    return ruta_txt
-
-
-def inferir_imagen_suelta(ruta_imagen: str, modelo: torch.nn.Module, especies_ordenadas: list[str],
-                          procesador: torch.nn.Module, dinov2: torch.nn.Module, device: torch.device,
-                          augmentation: bool) -> None:
-    """
-    Modo consola: clasifica una sola imagen y muestra el resultado por pantalla.
-    Uso: python inferencia.py imagen.jpg
-    """
-    ruta = Path(ruta_imagen)
-    valid: bool = True
-    # Comprobamos que el archivo existe y tiene una extensión válida
-    try:
-        if not ruta.exists():
-            valid = False
-            raise ValueError(f"Archivo no encontrado: {ruta_imagen}")
-        if ruta.suffix.lower() not in VARIABLES_GLOBALES["EXTENSIONES_VALIDAS"]:
-            valid = False
-            raise ValueError(f"Extensión inválida para {ruta_imagen}.")
-    except ValueError as e:
-        valid = False
-        print(f"Error: {e}")
-
-    if valid:
-        print(f"\nClasificando: {ruta.name}")
-
-        embedding = get_embedding(
-            ruta_imagen, procesador, dinov2, device, augmentation, is_train=False)
-        resultado = predecir_imagen(embedding, modelo, especies_ordenadas)
-
-        # Mostramos el resultado por consola
-        print(f"\n{'='*50}")
-        print(f"  Especie predicha : {resultado['especie_predicha']}")
-        print(f"  Confianza        : {resultado['confianza']}%")
-        print("  Top-3:")
-        for i, (especie, prob) in enumerate(resultado["top3"], start=1):
-            print(f"    {i}. {especie:40s} {prob}%")
-        if resultado["revisar"]:
-            print("Confianza baja — revisar manualmente")
-        print(f"{'='*50}\n")
-        ruta_txt = guardar_resultado_txt(ruta, resultado)
-        print(f"Resultado guardado en: {ruta_txt}")
+    def predecir(self, imagen: Image.Image) -> dict[str, Any]:
+        inputs = self.processor(images=imagen.convert("RGB"), return_tensors="pt")
+        inputs = {clave: valor.to(self.device) for clave, valor in inputs.items()}
+        with torch.inference_mode():
+            embedding = self.backbone(pixel_values=inputs["pixel_values"]).pooler_output.float()
+            logits, _, tronco = self.modelo(embedding)
+            indices = torch.argmax(logits, dim=1)
+            desconocida = bool(self.modelo.es_desconocida(tronco, indices).item())
+        resultado = _top3(logits, self.clases, float(VARIABLES_GLOBALES["UMBRAL_CONF"]))
+        if desconocida:
+            resultado["especie_predicha"] = "Desconocida"
+            resultado["revisar"] = True
+            resultado["motivo_revision"] = "especie_desconocida"
+        return resultado
 
 
-def inferir_carpeta(ruta_carpeta: str, modelo: torch.nn.Module, especies_ordenadas: list[str],
-                    processor: torch.nn.Module, dinov2: torch.nn.Module, device: torch.device,
-                    augmentation: bool) -> None:
-    """
-    Clasifica todas las imágenes de una carpeta y guarda
-    los resultados en un Excel dentro de la misma carpeta.
-    """
-    valid: bool = True
-    try:
-        ruta = Path(ruta_carpeta)
-        imagenes: list[Path] = []
-        for archivo in ruta.iterdir():
-            if archivo.suffix.lower() in VARIABLES_GLOBALES["EXTENSIONES_VALIDAS"]:
-                imagenes.append(archivo)
-        if not imagenes:
-            print(f"No se encontraron imágenes en {ruta}")
-            valid = False
+class ClasificadorResnet:
+    def __init__(self, pesos: Path, clases_txt: Path, device: torch.device) -> None:
+        clases = cargar_clases(clases_txt, 78)
+        if not pesos.is_file():
+            raise FileNotFoundError(f"No se encontraron los pesos ResNet: {pesos}")
+        self.modelo = models.resnet50(weights=None)
+        self.modelo.fc = torch.nn.Sequential(
+            torch.nn.Dropout(p=0.5),
+            torch.nn.Linear(self.modelo.fc.in_features, 256),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(p=0.3),
+            torch.nn.Linear(256, 78),
+        )
+        estado = torch.load(pesos, map_location=device, weights_only=True)
+        if isinstance(estado, dict) and "state_dict" in estado:
+            estado = estado["state_dict"]
+        if not isinstance(estado, dict):
+            raise ValueError("Los pesos ResNet no contienen un state_dict válido.")
+        estado = {clave.removeprefix("module."): valor for clave, valor in estado.items()}
+        try:
+            self.modelo.load_state_dict(estado, strict=True)
+        except RuntimeError as error:
+            raise ValueError("Los pesos ResNet no coinciden con la arquitectura de 78 clases.") from error
+        self.modelo.to(device).eval()
+        self.clases = clases
+        self.device = device
+        self.transform = transforms.Compose([
+            transforms.Resize((256, 256)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+        ])
 
-    except FileNotFoundError as e:
-        valid = False
-        print(f"Error al procesar la carpeta: {e}")
-    rows: list[dict[str, object]] = []
-    if valid and imagenes:
+    def predecir(self, imagen: Image.Image) -> dict[str, Any]:
+        with torch.inference_mode():
+            logits = self.modelo(self.transform(imagen.convert("RGB")).unsqueeze(0).to(self.device))
+        return _top3(logits, self.clases, float(VARIABLES_GLOBALES["UMBRAL_CONF"]))
 
-        for imagen in imagenes:
-            print(f"  Procesando: {imagen.name}")
 
-            embedding = get_embedding(
-                str(imagen), processor, dinov2, device, augmentation, is_train=False
-            )
-            resultado = predecir_imagen(embedding, modelo, especies_ordenadas)
+def _imagenes(ruta: Path) -> list[Path]:
+    if ruta.is_file():
+        return [ruta]
+    if not ruta.is_dir():
+        raise FileNotFoundError(f"No existe la entrada: {ruta}")
+    imagenes = sorted(archivo for archivo in ruta.rglob("*")
+                      if archivo.is_file() and archivo.suffix.lower() in VARIABLES_GLOBALES["EXTENSIONES_VALIDAS"])
+    if not imagenes:
+        raise ValueError(f"No se encontraron imágenes en {ruta}")
+    return imagenes
 
-            rows.append({
-                "imagen":           imagen.name,
-                "especie_predicha": resultado["especie_predicha"],
-                "especie_mas_parecida": resultado["especie_mas_parecida"],
-                "confianza_%":      resultado["top3"][0][1],
-                "2a_opcion":        resultado["top3"][1][0],
-                "confianza_2_%":   resultado["top3"][1][1],
-                "3a_opcion":        resultado["top3"][2][0],
-                "confianza_3_%":   resultado["top3"][2][1],
-                "motivo_revision":  resultado["motivo_revision"] or "",
-                "revisar":          "Revision" if resultado["revisar"] else "",
-            })
 
-        # Generamos el Excel
-        df = pd.DataFrame(rows)
-        ruta_excel = ruta / "predicciones.xlsx"
-        df.to_excel(ruta_excel, index=False)
+def _añadir_prediccion(fila: dict[str, Any], prefijo: str, resultado: dict[str, Any]) -> None:
+    fila[f"{prefijo}_especie_predicha"] = resultado["especie_predicha"]
+    fila[f"{prefijo}_especie_mas_parecida"] = resultado["especie_mas_parecida"]
+    fila[f"{prefijo}_confianza_%"] = resultado["confianza"]
+    fila[f"{prefijo}_revisar"] = "Revision" if resultado["revisar"] else ""
+    fila[f"{prefijo}_motivo_revision"] = resultado["motivo_revision"]
+    for numero in range(3):
+        fila[f"{prefijo}_top{numero + 1}"] = (
+            resultado["top"][numero][0] if numero < len(resultado["top"]) else ""
+        )
+        fila[f"{prefijo}_top{numero + 1}_confianza_%"] = (
+            resultado["top"][numero][1] if numero < len(resultado["top"]) else ""
+        )
 
-        # si no es vacío, se suma 1 revision
-        total_revisar = sum(1 for f in rows if f["revisar"])
-        print(f"\nExcel guardado en: {ruta_excel}")
-        print(f"Imágenes a revisar: {total_revisar}/{len(imagenes)}")
-    else:
-        print("No se procesaron imágenes debido a errores previos.")
+
+def inferir(entrada: Path, salida: Path, detector: Any, clasificadores: dict[str, Any],
+            confianza_yolo: float, device_yolo: str | int) -> Path:
+    filas: list[dict[str, Any]] = []
+    imagenes = _imagenes(entrada)
+    raiz = entrada if entrada.is_dir() else entrada.parent
+    for imagen in imagenes:
+        detecciones = detector.predict(source=str(imagen), conf=confianza_yolo,
+                                       device=device_yolo, verbose=False)[0]
+        ruta_relativa = str(imagen.relative_to(raiz)) if entrada.is_dir() else imagen.name
+        if detecciones.boxes is None or len(detecciones.boxes) == 0:
+            fila = {"imagen": ruta_relativa, "deteccion": "", "confianza_yolo_%": "",
+                    "revisar": "Revision", "motivo_revision": "sin_detecciones"}
+            for prefijo in clasificadores:
+                _añadir_prediccion(fila, prefijo, {"especie_predicha": "", "especie_mas_parecida": "",
+                    "confianza": "", "top": [], "revisar": True, "motivo_revision": "sin_detecciones"})
+            filas.append(fila)
+            continue
+        with Image.open(imagen) as original:
+            original = original.convert("RGB")
+            for numero, (caja, confianza) in enumerate(zip(
+                    detecciones.boxes.xyxy.cpu().tolist(), detecciones.boxes.conf.cpu().tolist()), 1):
+                x1, y1, x2, y2 = [max(0, round(valor)) for valor in caja]
+                recorte = original.crop((x1, y1, x2, y2))
+                fila = {"imagen": ruta_relativa, "deteccion": numero,
+                        "confianza_yolo_%": round(float(confianza) * 100, 2),
+                        "x1": x1, "y1": y1, "x2": x2, "y2": y2}
+                for prefijo, clasificador in clasificadores.items():
+                    _añadir_prediccion(fila, prefijo, clasificador.predecir(recorte))
+                filas.append(fila)
+    salida.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(filas).to_excel(salida, index=False)
+    return salida
+
+
+def argumentos() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Inferencia recursiva YOLO + DINOv2/ResNet50.")
+    parser.add_argument("entrada", nargs="?", type=Path, default=DEFAULT_INPUT)
+    parser.add_argument("--classifier", choices=("dinov2", "resnet", "both"), default="both")
+    parser.add_argument("--yolo-weights", type=Path, default=DEFAULT_YOLO)
+    parser.add_argument("--dino-weights", type=Path, default=DEFAULT_DINO_WEIGHTS)
+    parser.add_argument("--resnet-weights", type=Path, default=DEFAULT_RESNET)
+    parser.add_argument("--dino-classes", type=Path, default=DEFAULT_CLASSES["dinov2"])
+    parser.add_argument("--resnet-classes", type=Path, default=DEFAULT_CLASSES["resnet"])
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--conf", type=float, default=0.25)
+    parser.add_argument("--device", default=str(VARIABLES_GLOBALES["DEVICE"]))
+    return parser.parse_args()
 
 
 def main() -> None:
-    """
-    Punto de entrada por consola. Pregunta al usuario qué quiere hacer
-    y ejecuta el modo correspondiente.
-    """
-    try:
-        modelo, especies_ordenadas = cargar_modelo_entrenado()
-    except FileNotFoundError as e:
-        print(f"Error: {e}")
-
-    print("Cargando DINOv2 (solo una vez)...")
-    processor, dinov2, device, augmentation = inicializar_dinov2()
-
-    print("=== Inferencia de diatomeas ===\n")
-    print("1. Clasificar una imagen suelta")
-    print("2. Clasificar una carpeta entera")
-
-    valid = True
-    while valid:
-        opcion = input("\nElige una opción (1/2): ").strip()
-
-        if opcion == "1":
-            ruta = elegir_archivo()
-            if not ruta:
-                print("No se seleccionó ninguna imagen.")
-            else:
-                print(f"Imagen seleccionada: {ruta}")
-                inferir_imagen_suelta(
-                    ruta, modelo, especies_ordenadas, processor, dinov2, device, augmentation)
-            valid = False
-
-        elif opcion == "2":
-            ruta = elegir_carpeta()
-            if not ruta:
-                print("No se seleccionó ninguna carpeta.")
-            else:
-                print(f"Carpeta seleccionada: {ruta}")
-                inferir_carpeta(ruta, modelo, especies_ordenadas,
-                                processor, dinov2, device, augmentation)
-            valid = False
-
-        else:
-            print("Opción no válida. Escribe 1 o 2.")
+    args = argumentos()
+    if not 0 <= args.conf <= 1:
+        raise SystemExit("--conf debe estar entre 0 y 1.")
+    entrada = args.entrada.expanduser()
+    if not entrada.exists():
+        raise FileNotFoundError(f"No existe la entrada: {entrada}")
+    device = torch.device(args.device)
+    detector = cargar_yolo(args.yolo_weights.expanduser())
+    clasificadores: dict[str, Any] = {}
+    if args.classifier in ("dinov2", "both"):
+        clasificadores["dinov2"] = ClasificadorDino(args.dino_weights.expanduser(),
+                                                    args.dino_classes.expanduser(), device)
+    if args.classifier in ("resnet", "both"):
+        clasificadores["resnet"] = ClasificadorResnet(args.resnet_weights.expanduser(),
+                                                       args.resnet_classes.expanduser(), device)
+    salida = args.output or (entrada / "predicciones.xlsx" if entrada.is_dir()
+                             else entrada.parent / "predicciones.xlsx")
+    ruta = inferir(entrada, salida, detector, clasificadores, args.conf,
+                   int(args.device) if args.device.isdigit() else args.device)
+    print(f"Excel guardado en: {ruta}")
 
 
 if __name__ == "__main__":

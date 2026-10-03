@@ -47,7 +47,9 @@ def resolver_modelo_dinov2() -> tuple[str, bool]:
     return modelo_id, False
 
 
-def inicializar_dinov2() -> tuple[AutoImageProcessor, AutoModel, torch.device, transforms.Compose]:
+def inicializar_dinov2(
+        device: torch.device | None = None,
+        ) -> tuple[AutoImageProcessor, AutoModel, torch.device, transforms.Compose]:
     """
     Inicializa el procesador de imágenes(imagen a tensor), el modelo DINOv2
     y el dispositivo (CPU o GPU).
@@ -55,7 +57,7 @@ def inicializar_dinov2() -> tuple[AutoImageProcessor, AutoModel, torch.device, t
     modelo, solo_local = resolver_modelo_dinov2()
     processor: AutoImageProcessor = AutoImageProcessor.from_pretrained(
         modelo, local_files_only=solo_local)
-    device = VARIABLES_GLOBALES["DEVICE"]
+    device = device or VARIABLES_GLOBALES["DEVICE"]
     model: AutoModel = AutoModel.from_pretrained(
         modelo, token=VARIABLES_GLOBALES["HF_TOKEN"],
         local_files_only=solo_local)

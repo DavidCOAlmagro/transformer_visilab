@@ -50,10 +50,24 @@ Pares de especies que más se confunden entre sí.
 
 4. CLASIFICAR IMÁGENES NUEVAS
 ===============================
+Coloca las imágenes, incluidas sus subcarpetas, en `imagenes_inferencia/` y
+ejecuta:
+
     python3 src/inferencia.py
 
-Opción 1: una imagen suelta -> especie, confianza y top-3 por pantalla.
-Opción 2: una carpeta -> genera predicciones.xlsx dentro de esa carpeta.
+YOLO es obligatorio y se ejecuta recursivamente antes de clasificar cada
+recorte. Por defecto se usan `yolo_dinov2/yolo_best.pt`,
+`yolo_dinov2/resnet50_checkpoint_epoch50.pth`,
+`txt_classes/classes_77(dino).txt` y `txt_classes/classes_78(resnet).txt`.
+El modo predeterminado ejecuta DINOv2 y ResNet50 en el mismo comando y genera
+`imagenes_inferencia/predicciones.xlsx` con top1/top2/top3 y revisión manual.
+Se puede seleccionar un solo clasificador con `--classifier dinov2` o
+`--classifier resnet`.
+
+La lista DINO debe contener exactamente 77 clases y coincidir con el orden de
+`modelos/75_objetivo/metadatos_modelo.json`; la lista ResNet debe contener
+exactamente 78 clases. Los pesos se cargan con `weights_only=True` y cualquier
+incompatibilidad se informa como error.
 
 Confianza por debajo de UMBRAL_CONF (src/constantes.py) se marca para
 revisión manual.

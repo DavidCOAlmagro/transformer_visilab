@@ -89,13 +89,30 @@ Durante el entrenamiento:
 
 Al finalizar, se guardan en `modelos/<PRUEBA>/`: `mejor_modelo.pth`, `metadatos_modelo.json` (especies con las que se entrenó), curvas, matriz de confusión y reporte de test.
 
-## Inferencia
+## Inferencia YOLO + DINOv2/ResNet50
 
 ```bash
 python3 src/inferencia.py
 ```
 
-Clasifica una imagen suelta o una carpeta entera (genera `predicciones.xlsx` con top-3 y marca de revisión bajo `UMBRAL_CONF`).
+El flujo recorre recursivamente `imagenes_inferencia/`, ejecuta YOLO antes de
+clasificar cada detección y ejecuta DINOv2 y ResNet50 en el mismo comando.
+Usa por defecto `yolo_dinov2/yolo_best.pt`,
+`yolo_dinov2/resnet50_checkpoint_epoch50.pth`,
+`txt_classes/classes_77(dino).txt` y `txt_classes/classes_78(resnet).txt`.
+Genera `imagenes_inferencia/predicciones.xlsx` con top1/top2/top3, confianza
+YOLO y marca de revisión manual.
+
+Las clases DINO deben ser exactamente 77 y coincidir en orden con
+`modelos/75_objetivo/metadatos_modelo.json`; las clases ResNet deben ser
+exactamente 78. Los pesos se cargan de forma segura y las incompatibilidades
+de arquitectura, clases o archivos faltantes producen errores explícitos.
+
+```bash
+python3 src/inferencia.py --classifier dinov2
+python3 src/inferencia.py --classifier resnet
+python3 src/inferencia.py otra_carpeta --output resultados.xlsx
+```
 
 ## Análisis de resultados
 
