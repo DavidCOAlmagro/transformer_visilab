@@ -16,13 +16,13 @@ from embeddings import get_embedding, inicializar_dinov2
 from modelo import cargar_modelo_entrenado
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_INPUT = ROOT / "imagenes_inferencia"
-DEFAULT_YOLO = ROOT / "yolo_dinov2" / "yolo_best.pt"
+DEFAULT_INPUT = ROOT / "Inferir" / "imagenes_inferencia"
+DEFAULT_YOLO = ROOT / "Inferir" / "yolo_dinov2" / "yolo_best.pt"
 DEFAULT_DINO_WEIGHTS = ROOT / "modelos" / "75_objetivo" / "modelo_75_objetivo.pth"
-DEFAULT_RESNET = ROOT / "yolo_dinov2" / "resnet50_checkpoint_epoch50.pth"
+DEFAULT_RESNET = ROOT / "Inferir" / "yolo_dinov2" / "resnet50_checkpoint_epoch50.pth"
 DEFAULT_CLASSES = {
-    "dinov2": ROOT / "txt_classes" / "classes_77(dino).txt",
-    "resnet": ROOT / "txt_classes" / "classes_78(resnet).txt",
+    "dinov2": ROOT / "Inferir" / "txt_classes" / "classes_77(dino).txt",
+    "resnet": ROOT / "Inferir" / "txt_classes" / "classes_78(resnet).txt",
 }
 
 
@@ -192,7 +192,12 @@ def inferir(entrada: Path, salida: Path, detector: Any, clasificadores: dict[str
 def argumentos() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Inferencia recursiva YOLO + DINOv2/ResNet50.")
     parser.add_argument("entrada", nargs="?", type=Path, default=DEFAULT_INPUT)
-    parser.add_argument("--classifier", choices=("dinov2", "resnet", "both"), default="both")
+    parser.add_argument(
+        "--classifier", "--classifier-architecture",
+        dest="classifier",
+        choices=("dinov2", "resnet", "both"),
+        default="both",
+    )
     parser.add_argument("--yolo-weights", type=Path, default=DEFAULT_YOLO)
     parser.add_argument("--dino-weights", type=Path, default=DEFAULT_DINO_WEIGHTS)
     parser.add_argument("--resnet-weights", type=Path, default=DEFAULT_RESNET)

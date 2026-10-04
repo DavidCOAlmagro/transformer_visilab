@@ -62,7 +62,8 @@ recorte. Por defecto se usan `yolo_dinov2/yolo_best.pt`,
 El modo predeterminado ejecuta DINOv2 y ResNet50 en el mismo comando y genera
 `imagenes_inferencia/predicciones.xlsx` con top1/top2/top3 y revisión manual.
 Se puede seleccionar un solo clasificador con `--classifier dinov2` o
-`--classifier resnet`.
+`--classifier resnet`. También se acepta `--classifier-architecture both`
+como alias de `--classifier`.
 
 La lista DINO debe contener exactamente 77 clases y coincidir con el orden de
 `modelos/75_objetivo/metadatos_modelo.json`; la lista ResNet debe contener

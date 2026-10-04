@@ -54,6 +54,15 @@ data/
 data/*
 data/**
 
+# IMAGENES Y RESULTADOS DE INFERENCIA
+Inferir/imagenes_inferencia/
+Inferir/imagenes_inferencia/*
+Inferir/imagenes_inferencia/**
+Inferir/resultados_inferencia/
+runs/
+runs/*
+runs/**
+
 # ============================
 # ENTRENAMIENTO / EXPERIMENTOS
 # ============================

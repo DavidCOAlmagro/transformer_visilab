@@ -10,6 +10,17 @@ from PIL import Image
 import pandas as pd
 from transformers import AutoImageProcessor, AutoModel, AutoModelForImageClassification
 
+ROOT = Path(__file__).resolve().parents[1]
+YOLO_WEIGHTS = ROOT / 'Inferir' / 'yolo_dinov2' / 'yolo_best.pt'
+RESNET_WEIGHTS = ROOT / 'Inferir' / 'yolo_dinov2' / 'resnet50_checkpoint_epoch50.pth'
+DINO_WEIGHTS = ROOT / 'modelos' / '75_objetivo' / 'modelo_75_objetivo.pth'
+CLASS_FILES = {
+    'resnet': ROOT / 'Inferir' / 'txt_classes' / 'classes_78(resnet).txt',
+    'dinov2': ROOT / 'Inferir' / 'txt_classes' / 'classes_77(dino).txt',
+}
+IMAGES_DIR = ROOT / 'Inferir' / 'imagenes_inferencia'
+OUTPUT_BASE_DIR = ROOT / 'Inferir' / 'resultados_inferencia'
+
 
 def extract_original_class(image_path):
     """Obtiene la clase original usando las dos primeras partes del nombre."""
@@ -84,8 +95,7 @@ def load_dinov2_checkpoint(checkpoint_path, device):
 
 def load_classifier(classifier_name, device):
     """Carga el clasificador seleccionado y su procesador de imagen."""
-    class_path = 'E:\\dataset_river\\dataset_classify\\train_resnet_78class\\classes_78.txt'
-    #class_path = 'D:\\pruebas sevilla\\Transformer\\classes_77.txt'
+    class_path = CLASS_FILES[classifier_name]
     with open(class_path, 'r', encoding='utf-8') as classes_file:
         class_names = [line.strip() for line in classes_file if line.strip()]
 
@@ -100,7 +110,7 @@ def load_classifier(classifier_name, device):
             torch.nn.Linear(256, len(class_names))
         )
         checkpoint = torch.load(
-            'E:\\dataset_river\\dataset_classify\\train_resnet_78class\\lr001_epcs50_v2\\resnet50_checkpoint_epoch50.pth',
+            RESNET_WEIGHTS,
             map_location=device
         )
         classifier.load_state_dict(checkpoint)
@@ -112,7 +122,7 @@ def load_classifier(classifier_name, device):
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
     else:
-        dino_model_path = 'D:\\pruebas sevilla\\Transformer\\last\\modelo_75_objetivo.pth'
+        dino_model_path = DINO_WEIGHTS
         if os.path.isfile(dino_model_path) and dino_model_path.lower().endswith(('.pth', '.pt')):
             classifier_processor = AutoImageProcessor.from_pretrained('facebook/dinov2-base')
             classifier = load_dinov2_checkpoint(dino_model_path, device)
@@ -135,8 +145,7 @@ def load_classifier(classifier_name, device):
     return classifier, classifier_processor, class_names
 
 
-#model = YOLO('D:\\River_diatom\\training\\lr0.001_300pcs_960sz\\weights\\best.pt')
-model = YOLO('D:\\yolo_training\\new_trainings\\yolo11l_diatoms_blurred_v2-2\\weights\\best.pt')
+model = YOLO(str(YOLO_WEIGHTS))
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 classifier_name = input("Introduce el clasificador (resnet/dinov2): ").strip().lower()
@@ -152,9 +161,8 @@ if classifier_name == 'dinov2' and device.type == 'cuda':
 
 classifier, classifier_processor, class_names = load_classifier(classifier_name, classifier_device)
 
-images = 'D:\\River_diatom\\images'
-#images = 'D:\\River_diatom\\images'
-output_base_dir = 'D:\\pruebas sevilla\\Aqualitas\\Dinov2'
+images = IMAGES_DIR
+output_base_dir = OUTPUT_BASE_DIR
 
 # Introducir sufijo al inicio
 suffix = input("Introduce el sufijo (original/normalizada): ").strip().lower()
@@ -190,13 +198,16 @@ for image_path in images_path:
     # Realizar predicción YOLO
     results = model.predict(
         image_path,
-        save_txt=True,
+        save_txt=False,
         save=False,
         conf=0.3,
         imgsz=1024
     )
     
     # Procesar resultados
+    if not results:
+        print(f"No se pudo procesar la imagen con YOLO: {image_path}")
+        continue
     result = results[0]
     image_cv = cv2.imread(image_path)
     if image_cv is None:

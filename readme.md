@@ -111,8 +111,11 @@ de arquitectura, clases o archivos faltantes producen errores explícitos.
 ```bash
 python3 src/inferencia.py --classifier dinov2
 python3 src/inferencia.py --classifier resnet
+python3 src/inferencia.py --classifier-architecture both --device cuda
 python3 src/inferencia.py otra_carpeta --output resultados.xlsx
 ```
+
+`--classifier-architecture` es un alias compatible de `--classifier`.
 
 ## Análisis de resultados
 
