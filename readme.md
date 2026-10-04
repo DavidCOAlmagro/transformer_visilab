@@ -108,6 +108,23 @@ Las clases DINO deben ser exactamente 77 y coincidir en orden con
 exactamente 78. Los pesos se cargan de forma segura y las incompatibilidades
 de arquitectura, clases o archivos faltantes producen errores explícitos.
 
+El script heredado equivalente está disponible como:
+
+```bash
+python3 Inferir/infer_and_split_resnet_single_folder.py --classifier both
+```
+
+También recorre subcarpetas, ejecuta YOLO una sola vez por imagen y clasifica
+los recortes en lote. `--threshold 0.80` marca predicciones de baja confianza;
+`Debris` y `Fragments` se marcan para revisión y no se exportan como especie.
+Reinhard no se aplica por defecto: `--reinhard-reference` solo documenta una
+referencia necesaria para una futura implementación y actualmente produce un
+error explícito para evitar inventar estadísticas.
+
+Los pesos (`*.pt`, `*.pth`, `*.ckpt`) están excluidos por `.gitignore`. Deben
+colocarse localmente en `yolo_dinov2/` y `modelos/75_objetivo/`, o pasarse con
+las opciones `--yolo-weights`, `--dino-weights` y `--resnet-weights`.
+
 ```bash
 python3 src/inferencia.py --classifier dinov2
 python3 src/inferencia.py --classifier resnet
