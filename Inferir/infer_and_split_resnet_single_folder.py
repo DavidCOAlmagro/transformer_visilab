@@ -289,7 +289,13 @@ def _prediction_columns(row: dict[str, Any], prefix: str, prediction: dict[str, 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", nargs="?", type=Path, default=DEFAULT_INPUT)
-    parser.add_argument("--classifier", choices=("dinov2", "resnet", "both"), default="both")
+    parser.add_argument(
+        "--classifier",
+        "--classifier-architecture",
+        dest="classifier",
+        choices=("dinov2", "resnet", "both"),
+        default="both",
+    )
     parser.add_argument("--yolo-weights", type=Path, default=DEFAULT_YOLO_WEIGHTS)
     parser.add_argument("--dino-weights", type=Path, default=DEFAULT_DINO_WEIGHTS)
     parser.add_argument("--resnet-weights", type=Path, default=DEFAULT_RESNET_WEIGHTS)
