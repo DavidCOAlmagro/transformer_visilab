@@ -76,3 +76,5 @@ experiments/**
 .cache/
 huggingface/
 transformers/
+
+~$*.xlsx
