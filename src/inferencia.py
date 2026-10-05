@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,7 @@ DEFAULT_CLASSES = {
     "dinov2": ROOT / "Inferir" / "txt_classes" / "classes_77(dino).txt",
     "resnet": ROOT / "Inferir" / "txt_classes" / "classes_78(resnet).txt",
 }
+_PIL_IMAGE_OPEN = Image.open
 
 
 def cargar_clases(ruta: Path, esperadas: int) -> list[str]:
@@ -140,6 +142,15 @@ def _imagenes(ruta: Path) -> list[Path]:
     return imagenes
 
 
+def _cargar_rgb(ruta: Path) -> Image.Image | None:
+    try:
+        with _PIL_IMAGE_OPEN(ruta) as imagen:
+            return imagen.convert("RGB").copy()
+    except (ModuleNotFoundError, OSError, ValueError) as error:
+        print(f"Se omite la imagen ilegible {ruta}: {error}", file=sys.stderr)
+        return None
+
+
 def _añadir_prediccion(fila: dict[str, Any], prefijo: str, resultado: dict[str, Any]) -> None:
     fila[f"{prefijo}_especie_predicha"] = resultado["especie_predicha"]
     fila[f"{prefijo}_especie_mas_parecida"] = resultado["especie_mas_parecida"]
@@ -161,7 +172,10 @@ def inferir(entrada: Path, salida: Path, detector: Any, clasificadores: dict[str
     imagenes = _imagenes(entrada)
     raiz = entrada if entrada.is_dir() else entrada.parent
     for imagen in imagenes:
-        detecciones = detector.predict(source=str(imagen), conf=confianza_yolo,
+        original = _cargar_rgb(imagen)
+        if original is None:
+            continue
+        detecciones = detector.predict(source=original, conf=confianza_yolo,
                                        device=device_yolo, verbose=False)[0]
         ruta_relativa = str(imagen.relative_to(raiz)) if entrada.is_dir() else imagen.name
         if detecciones.boxes is None or len(detecciones.boxes) == 0:
@@ -172,18 +186,16 @@ def inferir(entrada: Path, salida: Path, detector: Any, clasificadores: dict[str
                     "confianza": "", "top": [], "revisar": True, "motivo_revision": "sin_detecciones"})
             filas.append(fila)
             continue
-        with Image.open(imagen) as original:
-            original = original.convert("RGB")
-            for numero, (caja, confianza) in enumerate(zip(
-                    detecciones.boxes.xyxy.cpu().tolist(), detecciones.boxes.conf.cpu().tolist()), 1):
-                x1, y1, x2, y2 = [max(0, round(valor)) for valor in caja]
-                recorte = original.crop((x1, y1, x2, y2))
-                fila = {"imagen": ruta_relativa, "deteccion": numero,
-                        "confianza_yolo_%": round(float(confianza) * 100, 2),
-                        "x1": x1, "y1": y1, "x2": x2, "y2": y2}
-                for prefijo, clasificador in clasificadores.items():
-                    _añadir_prediccion(fila, prefijo, clasificador.predecir(recorte))
-                filas.append(fila)
+        for numero, (caja, confianza) in enumerate(zip(
+                detecciones.boxes.xyxy.cpu().tolist(), detecciones.boxes.conf.cpu().tolist()), 1):
+            x1, y1, x2, y2 = [max(0, round(valor)) for valor in caja]
+            recorte = original.crop((x1, y1, x2, y2))
+            fila = {"imagen": ruta_relativa, "deteccion": numero,
+                    "confianza_yolo_%": round(float(confianza) * 100, 2),
+                    "x1": x1, "y1": y1, "x2": y2}
+            for prefijo, clasificador in clasificadores.items():
+                _añadir_prediccion(fila, prefijo, clasificador.predecir(recorte))
+            filas.append(fila)
     salida.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(filas).to_excel(salida, index=False)
     return salida

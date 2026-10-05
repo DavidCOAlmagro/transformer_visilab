@@ -16,20 +16,23 @@ from typing import Any, Iterable
 import pandas as pd
 import torch
 from PIL import Image
+from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-DEFAULT_INPUT = ROOT / "imagenes_inferencia"
-DEFAULT_YOLO_WEIGHTS = ROOT / "yolo_dinov2" / "yolo_best.pt"
+DEFAULT_INPUT = ROOT / "Inferir" / "imagenes_inferencia"
+DEFAULT_YOLO_WEIGHTS = ROOT / "Inferir" / "yolo_dinov2" / "yolo_best.pt"
 DEFAULT_DINO_WEIGHTS = ROOT / "modelos" / "75_objetivo" / "modelo_75_objetivo.pth"
-DEFAULT_RESNET_WEIGHTS = ROOT / "yolo_dinov2" / "resnet50_checkpoint_epoch50.pth"
-DEFAULT_DINO_CLASSES = ROOT / "txt_classes" / "classes_77(dino).txt"
-DEFAULT_RESNET_CLASSES = ROOT / "txt_classes" / "classes_78(resnet).txt"
+DEFAULT_RESNET_WEIGHTS = ROOT / "Inferir" / "yolo_dinov2" / "resnet50_checkpoint_epoch50.pth"
+DEFAULT_DINO_CLASSES = ROOT / "Inferir" / "txt_classes" / "classes_77(dino).txt"
+DEFAULT_RESNET_CLASSES = ROOT / "Inferir" / "txt_classes" / "classes_78(resnet).txt"
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
+GENERATED_DIRS = {"crops", "bbox"}
 REVIEW_CLASSES = {"Debris", "Fragments"}
+_PIL_IMAGE_OPEN = Image.open
 
 
 def extract_original_class(image_path: str | Path) -> str:
@@ -264,11 +267,24 @@ def discover_images(input_path: Path) -> list[Path]:
         return [input_path]
     if not input_path.is_dir():
         raise FileNotFoundError(f"No existe la entrada: {input_path}")
-    images = sorted(path for path in input_path.rglob("*")
-                    if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS)
+    images = sorted(
+        path for path in input_path.rglob("*")
+        if path.is_file()
+        and path.suffix.lower() in IMAGE_EXTENSIONS
+        and not GENERATED_DIRS.intersection(path.relative_to(input_path).parts)
+    )
     if not images:
         raise ValueError(f"No se encontraron imágenes en: {input_path}")
     return images
+
+
+def load_rgb_image(image_path: Path) -> Image.Image | None:
+    try:
+        with _PIL_IMAGE_OPEN(image_path) as image:
+            return image.convert("RGB").copy()
+    except (ModuleNotFoundError, OSError, ValueError) as error:
+        print(f"Se omite la imagen ilegible {image_path}: {error}", file=sys.stderr)
+        return None
 
 
 def _prediction_columns(row: dict[str, Any], prefix: str, prediction: dict[str, Any]) -> None:
@@ -352,52 +368,63 @@ def main(argv: Iterable[str] | None = None) -> int:
     rows: list[dict[str, Any]] = []
     roi_number = 0
 
-    for image_path in images:
+    progress = tqdm(
+        images,
+        desc="Procesando imágenes",
+        unit="imagen",
+        dynamic_ncols=True,
+    )
+    for image_path in progress:
         relative = image_path.relative_to(input_path) if input_path.is_dir() else Path(image_path.name)
         stem = "_".join(relative.with_suffix("").parts)
-        with Image.open(image_path) as image:
-            original = image.convert("RGB")
-            result = detector.predict(
-                source=str(image_path), conf=args.conf, imgsz=args.imgsz,
-                save=False, save_txt=False, verbose=False,
-                device=args.device,
-            )[0]
-            boxes = result.boxes
-            if boxes is None or len(boxes) == 0:
+        progress.set_postfix_str(f"YOLO: {relative}", refresh=False)
+        original = load_rgb_image(image_path)
+        if original is None:
+            continue
+        result = detector.predict(
+            source=original, conf=args.conf, imgsz=args.imgsz,
+            save=False, save_txt=False, verbose=False,
+            device=args.device,
+        )[0]
+        boxes = result.boxes
+        if boxes is None or len(boxes) == 0:
+            continue
+        crops: list[Image.Image] = []
+        detections: list[tuple[int, float, tuple[int, int, int, int]]] = []
+        width, height = original.size
+        for index, (box, confidence) in enumerate(
+            zip(boxes.xyxy.cpu().tolist(), boxes.conf.cpu().tolist()), start=1
+        ):
+            x1, y1, x2, y2 = [round(value) for value in box]
+            x1, y1, x2, y2 = max(0, x1), max(0, y1), min(width, x2), min(height, y2)
+            if x2 <= x1 or y2 <= y1:
                 continue
-            crops: list[Image.Image] = []
-            detections: list[tuple[int, float, tuple[int, int, int, int]]] = []
-            width, height = original.size
-            for index, (box, confidence) in enumerate(
-                zip(boxes.xyxy.cpu().tolist(), boxes.conf.cpu().tolist()), start=1
-            ):
-                x1, y1, x2, y2 = [round(value) for value in box]
-                x1, y1, x2, y2 = max(0, x1), max(0, y1), min(width, x2), min(height, y2)
-                if x2 <= x1 or y2 <= y1:
-                    continue
-                detections.append((index, float(confidence), (x1, y1, x2, y2)))
-                crops.append(original.crop((x1, y1, x2, y2)))
-            if not crops:
-                continue
-            predictions = {
-                name: classifier.predict_batch(crops, args.threshold)
-                for name, classifier in classifiers.items()
+            detections.append((index, float(confidence), (x1, y1, x2, y2)))
+            crops.append(original.crop((x1, y1, x2, y2)))
+        if not crops:
+            continue
+        predictions: dict[str, list[dict[str, Any]]] = {}
+        for name, classifier in classifiers.items():
+            progress.set_postfix_str(
+                f"{name} ({len(crops)} ROI): {relative}",
+                refresh=False,
+            )
+            predictions[name] = classifier.predict_batch(crops, args.threshold)
+        for crop_index, (detection, yolo_confidence, box) in enumerate(detections):
+            roi_number += 1
+            x1, y1, x2, y2 = box
+            roi_path = crops_dir / f"{stem}_roi_{roi_number}.png"
+            crops[crop_index].save(roi_path)
+            row: dict[str, Any] = {
+                "image": str(relative),
+                "item": detection,
+                "yolo_confidence_%": round(yolo_confidence * 100, 2),
+                "x1": x1, "y1": y1, "x2": x2, "y2": y2,
+                "crop_file": roi_path.name,
             }
-            for crop_index, (detection, yolo_confidence, box) in enumerate(detections):
-                roi_number += 1
-                x1, y1, x2, y2 = box
-                roi_path = crops_dir / f"{stem}_roi_{roi_number}.png"
-                crops[crop_index].save(roi_path)
-                row: dict[str, Any] = {
-                    "image": str(relative),
-                    "item": detection,
-                    "yolo_confidence_%": round(yolo_confidence * 100, 2),
-                    "x1": x1, "y1": y1, "x2": x2, "y2": y2,
-                    "crop_file": roi_path.name,
-                }
-                for name, batch in predictions.items():
-                    _prediction_columns(row, name, batch[crop_index])
-                rows.append(row)
+            for name, batch in predictions.items():
+                _prediction_columns(row, name, batch[crop_index])
+            rows.append(row)
 
     output = args.output.expanduser() if args.output else output_dir / "classification_results.xlsx"
     output.parent.mkdir(parents=True, exist_ok=True)
