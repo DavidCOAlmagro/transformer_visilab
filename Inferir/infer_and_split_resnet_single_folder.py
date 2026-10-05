@@ -9,13 +9,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Iterable
 
 import pandas as pd
 import torch
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -302,6 +303,72 @@ def _prediction_columns(row: dict[str, Any], prefix: str, prediction: dict[str, 
         )
 
 
+def _output_stem(relative: Path) -> str:
+    """Convierte una ruta relativa en un nombre estable y seguro para ficheros."""
+    parts = [
+        re.sub(r"[^0-9A-Za-zÀ-ÿ.-]+", "_", part).strip(" ._") or "imagen"
+        for part in relative.with_suffix("").parts
+    ]
+    return "__".join(parts) or "imagen"
+
+
+def _font() -> ImageFont.ImageFont:
+    try:
+        return ImageFont.truetype("arial.ttf", 16)
+    except (OSError, TypeError):
+        return ImageFont.load_default()
+
+
+def _annotate_image(
+    original: Image.Image,
+    boxes: list[tuple[int, int, int, int]],
+    predictions: list[dict[str, Any]],
+    model_name: str,
+) -> Image.Image:
+    """Dibuja las predicciones de un modelo sobre una copia de la imagen."""
+    annotated = original.copy()
+    draw = ImageDraw.Draw(annotated)
+    font = _font()
+    color = (255, 165, 0) if model_name == "dinov2" else (0, 180, 255)
+    for box, prediction in zip(boxes, predictions):
+        x1, y1, x2, y2 = box
+        label = prediction["especie_mas_parecida"] or "sin_clase"
+        label = f"{label} {prediction['confianza']:.2f}%"
+        if prediction["revisar"]:
+            label = f"REVISION: {label}"
+        draw.rectangle((x1, y1, x2, y2), outline=color, width=3)
+        left, top, right, bottom = draw.textbbox((x1, y1), label, font=font)
+        text_top = max(0, top - (bottom - top) - 4)
+        text_bottom = text_top + (bottom - top) + 4
+        draw.rectangle((left, text_top, right + 4, text_bottom), fill=color)
+        draw.text((left + 2, text_top + 2), label, fill=(0, 0, 0), font=font)
+    return annotated
+
+
+def _save_excel(rows: list[dict[str, Any]], path: Path, model: str | None = None) -> None:
+    """Escribe resultados y ofrece un error accionable si falta el motor XLSX."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    output_rows = rows
+    if model is not None:
+        output_rows = [
+            {
+                key: value
+                for key, value in row.items()
+                if not key.startswith(("dinov2_", "resnet_")) or key.startswith(f"{model}_")
+            }
+            for row in rows
+        ]
+    try:
+        pd.DataFrame(output_rows).to_excel(path, index=False, engine="openpyxl")
+    except ImportError as error:
+        if "openpyxl" in str(error).lower():
+            raise RuntimeError(
+                "No se puede escribir Excel: falta la dependencia 'openpyxl'. "
+                "Instálala con 'python -m pip install openpyxl'."
+            ) from error
+        raise
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", nargs="?", type=Path, default=DEFAULT_INPUT)
@@ -365,70 +432,109 @@ def main(argv: Iterable[str] | None = None) -> int:
     bbox_dir = output_dir / "bbox"
     crops_dir.mkdir(exist_ok=True)
     bbox_dir.mkdir(exist_ok=True)
+    bbox_model_dirs = {name: bbox_dir / name for name in classifiers}
+    for model_dir in bbox_model_dirs.values():
+        model_dir.mkdir(exist_ok=True)
+    output = args.output.expanduser() if args.output else output_dir / "classification_results.xlsx"
+    model_outputs = {
+        name: output.parent / f"{output.stem}_{name}{output.suffix}"
+        for name in classifiers
+    }
     rows: list[dict[str, Any]] = []
     roi_number = 0
-
-    progress = tqdm(
-        images,
-        desc="Procesando imágenes",
-        unit="imagen",
-        dynamic_ncols=True,
-    )
-    for image_path in progress:
-        relative = image_path.relative_to(input_path) if input_path.is_dir() else Path(image_path.name)
-        stem = "_".join(relative.with_suffix("").parts)
-        progress.set_postfix_str(f"YOLO: {relative}", refresh=False)
-        original = load_rgb_image(image_path)
-        if original is None:
-            continue
-        result = detector.predict(
-            source=original, conf=args.conf, imgsz=args.imgsz,
-            save=False, save_txt=False, verbose=False,
-            device=args.device,
-        )[0]
-        boxes = result.boxes
-        if boxes is None or len(boxes) == 0:
-            continue
-        crops: list[Image.Image] = []
-        detections: list[tuple[int, float, tuple[int, int, int, int]]] = []
-        width, height = original.size
-        for index, (box, confidence) in enumerate(
-            zip(boxes.xyxy.cpu().tolist(), boxes.conf.cpu().tolist()), start=1
-        ):
-            x1, y1, x2, y2 = [round(value) for value in box]
-            x1, y1, x2, y2 = max(0, x1), max(0, y1), min(width, x2), min(height, y2)
-            if x2 <= x1 or y2 <= y1:
+    original_error: BaseException | None = None
+    try:
+        progress = tqdm(
+            images,
+            desc="Procesando imágenes",
+            unit="imagen",
+            dynamic_ncols=True,
+        )
+        used_stems: set[str] = set()
+        for image_path in progress:
+            relative = image_path.relative_to(input_path) if input_path.is_dir() else Path(image_path.name)
+            stem = _output_stem(relative)
+            if stem in used_stems:
+                suffix = 2
+                while f"{stem}_{suffix}" in used_stems:
+                    suffix += 1
+                stem = f"{stem}_{suffix}"
+            used_stems.add(stem)
+            progress.set_postfix_str(f"YOLO: {relative}", refresh=False)
+            original = load_rgb_image(image_path)
+            if original is None:
                 continue
-            detections.append((index, float(confidence), (x1, y1, x2, y2)))
-            crops.append(original.crop((x1, y1, x2, y2)))
-        if not crops:
-            continue
-        predictions: dict[str, list[dict[str, Any]]] = {}
-        for name, classifier in classifiers.items():
-            progress.set_postfix_str(
-                f"{name} ({len(crops)} ROI): {relative}",
-                refresh=False,
-            )
-            predictions[name] = classifier.predict_batch(crops, args.threshold)
-        for crop_index, (detection, yolo_confidence, box) in enumerate(detections):
-            roi_number += 1
-            x1, y1, x2, y2 = box
-            roi_path = crops_dir / f"{stem}_roi_{roi_number}.png"
-            crops[crop_index].save(roi_path)
-            row: dict[str, Any] = {
-                "image": str(relative),
-                "item": detection,
-                "yolo_confidence_%": round(yolo_confidence * 100, 2),
-                "x1": x1, "y1": y1, "x2": x2, "y2": y2,
-                "crop_file": roi_path.name,
-            }
-            for name, batch in predictions.items():
-                _prediction_columns(row, name, batch[crop_index])
-            rows.append(row)
-
-    output = args.output.expanduser() if args.output else output_dir / "classification_results.xlsx"
-    output.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows).to_excel(output, index=False)
+            result = detector.predict(
+                source=original, conf=args.conf, imgsz=args.imgsz,
+                save=False, save_txt=False, verbose=False,
+                device=args.device,
+            )[0]
+            boxes = result.boxes
+            if boxes is None or len(boxes) == 0:
+                continue
+            crops: list[Image.Image] = []
+            detections: list[tuple[int, float, tuple[int, int, int, int]]] = []
+            width, height = original.size
+            for index, (box, confidence) in enumerate(
+                zip(boxes.xyxy.cpu().tolist(), boxes.conf.cpu().tolist()), start=1
+            ):
+                x1, y1, x2, y2 = [round(value) for value in box]
+                x1, y1, x2, y2 = max(0, x1), max(0, y1), min(width, x2), min(height, y2)
+                if x2 <= x1 or y2 <= y1:
+                    continue
+                detections.append((index, float(confidence), (x1, y1, x2, y2)))
+                crops.append(original.crop((x1, y1, x2, y2)))
+            if not crops:
+                continue
+            predictions: dict[str, list[dict[str, Any]]] = {}
+            for name, classifier in classifiers.items():
+                progress.set_postfix_str(
+                    f"{name} ({len(crops)} ROI): {relative}",
+                    refresh=False,
+                )
+                predictions[name] = classifier.predict_batch(crops, args.threshold)
+                _annotate_image(
+                    original,
+                    [box for _, _, box in detections],
+                    predictions[name],
+                    name,
+                ).save(bbox_model_dirs[name] / f"{stem}.png")
+            for crop_index, (detection, yolo_confidence, box) in enumerate(detections):
+                roi_number += 1
+                x1, y1, x2, y2 = box
+                roi_path = crops_dir / f"{stem}_roi_{roi_number}.png"
+                crops[crop_index].save(roi_path)
+                row: dict[str, Any] = {
+                    "image": str(relative),
+                    "item": detection,
+                    "yolo_confidence_%": round(yolo_confidence * 100, 2),
+                    "x1": x1, "y1": y1, "x2": x2, "y2": y2,
+                    "crop_file": roi_path.name,
+                }
+                for name, batch in predictions.items():
+                    _prediction_columns(row, name, batch[crop_index])
+                rows.append(row)
+    except BaseException as error:
+        original_error = error
+    finally:
+        save_errors: list[BaseException] = []
+        for path, model in [(output, None), *[(path, name) for name, path in model_outputs.items()]]:
+            try:
+                _save_excel(rows, path, model)
+            except BaseException as error:
+                save_errors.append(error)
+                print(f"No se pudo guardar {path}: {error}", file=sys.stderr)
+        if original_error is not None:
+            if save_errors:
+                print(
+                    f"Se conservaron {len(rows)} ROI, pero falló algún Excel parcial.",
+                    file=sys.stderr,
+                )
+            raise original_error.with_traceback(original_error.__traceback__)
+        if save_errors:
+            raise RuntimeError(
+                "La inferencia terminó, pero no se pudieron guardar todos los Excel."
+            ) from save_errors[0]
     print(f"Inferencia completada: {len(rows)} ROI; resultados: {output}")
     return 0
 
