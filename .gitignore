@@ -59,6 +59,11 @@ Inferir/imagenes_inferencia/
 Inferir/imagenes_inferencia/*
 Inferir/imagenes_inferencia/**
 Inferir/resultados_inferencia/
+resultados_inferencia/
+*_resultados/
+**/crops/
+**/bbox/
+classification_results*.xlsx
 runs/
 runs/*
 runs/**

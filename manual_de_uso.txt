@@ -78,8 +78,17 @@ El script alternativo de procesamiento de recortes admite el mismo flujo:
     python3 Inferir/infer_and_split_resnet_single_folder.py --classifier both
 
 YOLO se ejecuta una vez por imagen, los recortes se clasifican en lote y
-`--threshold 0.80` permite configurar la revisión. Las clases Debris y
-Fragments siempre se marcan para revisión y no se consideran especie.
+`--threshold 0.80` permite configurar la revisión. La clase ganadora se
+conserva tal cual aparece en la lista, incluida una eventual clase explícita
+`Desconocida`; `revisar` y `motivo_revision` dependen únicamente del umbral.
+La salida genera un Excel combinado, un Excel por modelo y anotaciones
+separadas en `bbox/dinov2/` y `bbox/resnet/`. También intenta guardar los
+Excel parciales desde `finally` si la inferencia falla.
+
+La búsqueda recursiva excluye `crops`, `bbox`, `runs`, `resultados`,
+`resultados_inferencia` y otras carpetas generadas. Por seguridad,
+`--output-dir` no puede estar dentro de la carpeta de entrada; el valor
+predeterminado es una carpeta hermana de resultados.
 `--reinhard-reference` requiere una imagen de referencia y no se aplica por
 defecto; actualmente el script rechaza esa opción para no inventar
 estadísticas de color.

@@ -115,8 +115,17 @@ python3 Inferir/infer_and_split_resnet_single_folder.py --classifier both
 ```
 
 También recorre subcarpetas, ejecuta YOLO una sola vez por imagen y clasifica
-los recortes en lote. `--threshold 0.80` marca predicciones de baja confianza;
-`Debris` y `Fragments` se marcan para revisión y no se exportan como especie.
+los recortes en lote. `--threshold 0.80` marca predicciones de baja confianza.
+La clase ganadora se conserva tal cual aparece en la lista de clases, incluida
+una eventual clase explícita `Desconocida`; la revisión depende únicamente de
+ese umbral.
+
+Las imágenes se buscan recursivamente excluyendo `crops`, `bbox`, `runs`,
+`resultados`, `resultados_inferencia` y otras carpetas de salida generadas.
+Por seguridad, `--output-dir` no puede estar dentro de la carpeta de entrada.
+La salida contiene un Excel combinado, un Excel por modelo y anotaciones
+separadas en `bbox/dinov2/` y `bbox/resnet/`. Los Excel se intentan guardar
+también al salir por error para conservar resultados parciales.
 Reinhard no se aplica por defecto: `--reinhard-reference` solo documenta una
 referencia necesaria para una futura implementación y actualmente produce un
 error explícito para evitar inventar estadísticas.

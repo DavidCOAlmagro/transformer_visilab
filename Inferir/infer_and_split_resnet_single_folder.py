@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -31,8 +32,17 @@ DEFAULT_RESNET_WEIGHTS = ROOT / "Inferir" / "yolo_dinov2" / "resnet50_checkpoint
 DEFAULT_DINO_CLASSES = ROOT / "Inferir" / "txt_classes" / "classes_77(dino).txt"
 DEFAULT_RESNET_CLASSES = ROOT / "Inferir" / "txt_classes" / "classes_78(resnet).txt"
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
-GENERATED_DIRS = {"crops", "bbox"}
-REVIEW_CLASSES = {"Debris", "Fragments"}
+GENERATED_DIRS = {
+    "bbox",
+    "crops",
+    "output",
+    "outputs",
+    "result",
+    "results",
+    "resultados",
+    "resultados_inferencia",
+    "runs",
+}
 _PIL_IMAGE_OPEN = Image.open
 
 
@@ -117,6 +127,8 @@ def resolve_dino_classes(weights: Path, classes_path: Path | None) -> list[str]:
 
 
 def top_predictions(logits: torch.Tensor, classes: list[str], threshold: float) -> list[dict[str, Any]]:
+    if not 0 <= threshold <= 1:
+        raise ValueError("El umbral de confianza debe estar entre 0 y 1.")
     if logits.ndim != 2 or logits.shape[1] != len(classes):
         raise ValueError(
             f"Dimensiones incompatibles: logits={tuple(logits.shape)}, clases={len(classes)}."
@@ -131,18 +143,18 @@ def top_predictions(logits: torch.Tensor, classes: list[str], threshold: float) 
         ]
         predicted = top[0][0]
         low_confidence = top[0][1] < threshold * 100
-        special = predicted in REVIEW_CLASSES
         reasons = []
         if low_confidence:
             reasons.append("confianza_baja")
-        if special:
-            reasons.append("clase_no_especie")
         predictions.append({
-            "especie_predicha": "" if special else predicted,
+            # La clase ganadora siempre se conserva, incluso si el dataset la
+            # denomina "Desconocida". No se inventa una clase ni se reemplaza
+            # una predicción por vacío por pertenecer a una lista especial.
+            "especie_predicha": predicted,
             "especie_mas_parecida": predicted,
             "confianza": top[0][1],
             "top": top,
-            "revisar": low_confidence or special,
+            "revisar": low_confidence,
             "motivo_revision": ",".join(reasons),
         })
     return predictions
@@ -210,18 +222,39 @@ class DinoClassifier:
             raise FileNotFoundError(f"No se encontraron los pesos DINOv2: {weights}")
         self.device = device
         self.classes = classes
-        self.backbone = AutoModel.from_pretrained("facebook/dinov2-base")
+        try:
+            state = _state_dict(load_torch_checkpoint(weights, device), "DINOv2")
+        except (OSError, RuntimeError, ValueError) as error:
+            raise RuntimeError(
+                f"No se pudo cargar el checkpoint DINOv2 {weights}. "
+                "Comprueba que sea un checkpoint PyTorch válido y no esté incompleto."
+            ) from error
+        try:
+            self.backbone = AutoModel.from_pretrained("facebook/dinov2-base")
+        except Exception as error:
+            raise RuntimeError(
+                "No se pudo cargar el backbone DINOv2 'facebook/dinov2-base'. "
+                "Comprueba la caché/conectividad y que los pesos del checkpoint "
+                "correspondan a ese backbone."
+            ) from error
         hidden = self.backbone.config.hidden_size
         self.trunk = torch.nn.Sequential(
             torch.nn.Linear(hidden, 512), torch.nn.ReLU(), torch.nn.Dropout(0.3),
             torch.nn.Linear(512, 256), torch.nn.ReLU(), torch.nn.Dropout(0.2),
         )
         self.head = torch.nn.Linear(256, 77)
-        state = _state_dict(load_torch_checkpoint(weights, device), "DINOv2")
         head_weight = state.get("cabeza_especie.weight")
-        if head_weight is None or head_weight.shape[0] != 77:
+        head_bias = state.get("cabeza_especie.bias")
+        if (
+            head_weight is None
+            or head_bias is None
+            or head_weight.ndim != 2
+            or head_weight.shape != self.head.weight.shape
+            or head_bias.shape != self.head.bias.shape
+        ):
             raise ValueError(
-                "El checkpoint DINOv2 debe contener cabeza_especie.weight con 77 salidas."
+                "El checkpoint DINOv2 debe contener cabeza_especie.weight y "
+                "cabeza_especie.bias compatibles con exactamente 77 clases."
             )
         required = {
             "tronco.0.weight": self.trunk[0].weight,
@@ -263,20 +296,45 @@ class DinoClassifier:
         return top_predictions(logits, self.classes, threshold)
 
 
-def discover_images(input_path: Path) -> list[Path]:
+def discover_images(input_path: Path, excluded_paths: Iterable[Path] = ()) -> list[Path]:
     if input_path.is_file() and input_path.suffix.lower() in IMAGE_EXTENSIONS:
         return [input_path]
     if not input_path.is_dir():
         raise FileNotFoundError(f"No existe la entrada: {input_path}")
+    excluded = {path.resolve() for path in excluded_paths}
     images = sorted(
         path for path in input_path.rglob("*")
         if path.is_file()
         and path.suffix.lower() in IMAGE_EXTENSIONS
-        and not GENERATED_DIRS.intersection(path.relative_to(input_path).parts)
+        and path.resolve().parent not in excluded
+        and not any(
+            part.casefold() in GENERATED_DIRS
+            or part.casefold().endswith("_resultados")
+            for part in path.relative_to(input_path).parts[:-1]
+        )
     )
     if not images:
         raise ValueError(f"No se encontraron imágenes en: {input_path}")
     return images
+
+
+def normalize_bbox(
+    box: Iterable[float], width: int, height: int
+) -> tuple[int, int, int, int] | None:
+    """Devuelve una caja entera válida o None sin crear ROI artificiales."""
+    values = list(box)
+    if len(values) != 4 or not all(math.isfinite(float(value)) for value in values):
+        return None
+    raw_x1, raw_y1, raw_x2, raw_y2 = (float(value) for value in values)
+    if raw_x2 <= raw_x1 or raw_y2 <= raw_y1 or width <= 0 or height <= 0:
+        return None
+    x1 = max(0, min(width, math.floor(raw_x1)))
+    y1 = max(0, min(height, math.floor(raw_y1)))
+    x2 = max(0, min(width, math.ceil(raw_x2)))
+    y2 = max(0, min(height, math.ceil(raw_y2)))
+    if x2 <= x1 or y2 <= y1:
+        return None
+    return x1, y1, x2, y2
 
 
 def load_rgb_image(image_path: Path) -> Image.Image | None:
@@ -408,8 +466,27 @@ def main(argv: Iterable[str] | None = None) -> int:
             "no se aplica automáticamente."
         )
 
-    input_path = args.input.expanduser()
-    images = discover_images(input_path)
+    input_path = args.input.expanduser().resolve()
+    output_dir = (
+        args.output_dir.expanduser().resolve()
+        if args.output_dir is not None
+        else (
+            input_path.parent / "resultados_inferencia"
+            if input_path.is_file()
+            else input_path.parent / f"{input_path.name}_resultados"
+        )
+    )
+    if input_path.is_dir():
+        try:
+            output_dir.relative_to(input_path)
+        except ValueError:
+            pass
+        else:
+            raise ValueError(
+                f"--output-dir no puede estar dentro de la entrada {input_path}: {output_dir}. "
+                "Usa una carpeta de resultados hermana para no reingerir salidas."
+            )
+    images = discover_images(input_path, (output_dir,))
     yolo_path = args.yolo_weights.expanduser()
     if not yolo_path.is_file():
         raise FileNotFoundError(f"No se encontraron los pesos YOLO: {yolo_path}")
@@ -425,8 +502,6 @@ def main(argv: Iterable[str] | None = None) -> int:
         resnet_classes = read_classes(args.resnet_classes.expanduser(), 78, "clases ResNet")
         classifiers["resnet"] = ResNetClassifier(args.resnet_weights.expanduser(), resnet_classes, device)
 
-    output_dir = (args.output_dir or
-                  (input_path if input_path.is_dir() else input_path.parent)).expanduser()
     output_dir.mkdir(parents=True, exist_ok=True)
     crops_dir = output_dir / "crops"
     bbox_dir = output_dir / "bbox"
@@ -478,12 +553,11 @@ def main(argv: Iterable[str] | None = None) -> int:
             for index, (box, confidence) in enumerate(
                 zip(boxes.xyxy.cpu().tolist(), boxes.conf.cpu().tolist()), start=1
             ):
-                x1, y1, x2, y2 = [round(value) for value in box]
-                x1, y1, x2, y2 = max(0, x1), max(0, y1), min(width, x2), min(height, y2)
-                if x2 <= x1 or y2 <= y1:
+                normalized = normalize_bbox(box, width, height)
+                if normalized is None:
                     continue
-                detections.append((index, float(confidence), (x1, y1, x2, y2)))
-                crops.append(original.crop((x1, y1, x2, y2)))
+                detections.append((index, float(confidence), normalized))
+                crops.append(original.crop(normalized))
             if not crops:
                 continue
             predictions: dict[str, list[dict[str, Any]]] = {}
