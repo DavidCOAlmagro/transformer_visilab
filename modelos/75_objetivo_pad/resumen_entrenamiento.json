@@ -1,0 +1,12 @@
+[
+    {
+        "fecha": "2026-10-06T19:48:16",
+        "mejor_epoca": 22,
+        "mejor_macro_f1_validacion": 0.8941495861815267,
+        "accuracy_test": 0.9101887558351939,
+        "macro_f1_test": 0.8926719347768267,
+        "accuracy_genero_test": 0.08270752993708139,
+        "top3_accuracy_test": 0.9852851633854273,
+        "num_especies": 77
+    }
+]

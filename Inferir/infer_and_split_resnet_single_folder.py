@@ -32,7 +32,7 @@ from preprocesado import preparar_para_dinov2
 
 DEFAULT_INPUT = ROOT / "Inferir" / "imagenes_inferencia"
 DEFAULT_YOLO_WEIGHTS = ROOT / "Inferir" / "yolo_dinov2" / "yolo_best.pt"
-DEFAULT_DINO_WEIGHTS = ROOT / "modelos" / "75_objetivo" / "modelo_75_objetivo.pth"
+DEFAULT_DINO_WEIGHTS = ROOT / "modelos" / "75_objetivo_pad" / "modelo_75_objetivo_pad.pth"
 DEFAULT_RESNET_WEIGHTS = ROOT / "Inferir" / "yolo_dinov2" / "resnet50_checkpoint_epoch50.pth"
 DEFAULT_DINO_CLASSES = ROOT / "Inferir" / "txt_classes" / "classes_77(dino).txt"
 DEFAULT_RESNET_CLASSES = ROOT / "Inferir" / "txt_classes" / "classes_78(resnet).txt"
