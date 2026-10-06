@@ -8,50 +8,39 @@ use ``python Inferir/infer_and_split_resnet_single_folder.py --help``.
 from __future__ import annotations
 
 import argparse
-from collections import deque
-from concurrent.futures import Future, ThreadPoolExecutor
-from functools import lru_cache
-import itertools
 import json
-import math
-import re
 import sys
 from pathlib import Path
 from typing import Any, Iterable
 
 import pandas as pd
 import torch
-from PIL import Image, ImageDraw, ImageFont
-from tqdm import tqdm
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-DEFAULT_INPUT = ROOT / "Inferir" / "imagenes_inferencia"
-DEFAULT_YOLO_WEIGHTS = ROOT / "Inferir" / "yolo_dinov2" / "yolo_best.pt"
+DEFAULT_INPUT = ROOT / "imagenes_inferencia"
+DEFAULT_YOLO_WEIGHTS = ROOT / "yolo_dinov2" / "yolo_best.pt"
 DEFAULT_DINO_WEIGHTS = ROOT / "modelos" / "75_objetivo" / "modelo_75_objetivo.pth"
-DEFAULT_RESNET_WEIGHTS = ROOT / "Inferir" / "yolo_dinov2" / "resnet50_checkpoint_epoch50.pth"
-DEFAULT_DINO_CLASSES = ROOT / "Inferir" / "txt_classes" / "classes_77(dino).txt"
-DEFAULT_RESNET_CLASSES = ROOT / "Inferir" / "txt_classes" / "classes_78(resnet).txt"
+DEFAULT_RESNET_WEIGHTS = ROOT / "yolo_dinov2" / "resnet50_checkpoint_epoch50.pth"
+DEFAULT_DINO_CLASSES = ROOT / "txt_classes" / "classes_77(dino).txt"
+DEFAULT_RESNET_CLASSES = ROOT / "txt_classes" / "classes_78(resnet).txt"
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
-IMAGE_LOAD_WORKERS = 3
-IMAGE_PREFETCH = 6
-IMAGE_SAVE_WORKERS = 4
-MAX_PENDING_SAVES = 32
-GENERATED_DIRS = {
-    "bbox",
-    "crops",
-    "output",
-    "outputs",
-    "result",
-    "results",
-    "resultados",
-    "resultados_inferencia",
-    "runs",
+REVIEW_CLASSES = {"Debris", "Fragments"}
+
+ROOT = Path(__file__).resolve().parents[1]
+YOLO_WEIGHTS = ROOT / 'Inferir' / 'yolo_dinov2' / 'yolo_best.pt'
+RESNET_WEIGHTS = ROOT / 'Inferir' / 'yolo_dinov2' / 'resnet50_checkpoint_epoch50.pth'
+DINO_WEIGHTS = ROOT / 'modelos' / '75_objetivo' / 'modelo_75_objetivo.pth'
+CLASS_FILES = {
+    'resnet': ROOT / 'Inferir' / 'txt_classes' / 'classes_78(resnet).txt',
+    'dinov2': ROOT / 'Inferir' / 'txt_classes' / 'classes_77(dino).txt',
 }
-_PIL_IMAGE_OPEN = Image.open
+IMAGES_DIR = ROOT / 'Inferir' / 'imagenes_inferencia'
+OUTPUT_BASE_DIR = ROOT / 'Inferir' / 'resultados_inferencia'
 
 
 def extract_original_class(image_path: str | Path) -> str:
@@ -135,13 +124,11 @@ def resolve_dino_classes(weights: Path, classes_path: Path | None) -> list[str]:
 
 
 def top_predictions(logits: torch.Tensor, classes: list[str], threshold: float) -> list[dict[str, Any]]:
-    if not 0 <= threshold <= 1:
-        raise ValueError("El umbral de confianza debe estar entre 0 y 1.")
     if logits.ndim != 2 or logits.shape[1] != len(classes):
         raise ValueError(
             f"Dimensiones incompatibles: logits={tuple(logits.shape)}, clases={len(classes)}."
         )
-    probabilities = torch.softmax(logits.float(), dim=1)
+    probabilities = torch.softmax(logits, dim=1)
     values, indices = torch.topk(probabilities, k=min(3, len(classes)), dim=1)
     predictions = []
     for row_values, row_indices in zip(values, indices):
@@ -151,18 +138,18 @@ def top_predictions(logits: torch.Tensor, classes: list[str], threshold: float) 
         ]
         predicted = top[0][0]
         low_confidence = top[0][1] < threshold * 100
+        special = predicted in REVIEW_CLASSES
         reasons = []
         if low_confidence:
             reasons.append("confianza_baja")
+        if special:
+            reasons.append("clase_no_especie")
         predictions.append({
-            # La clase ganadora siempre se conserva, incluso si el dataset la
-            # denomina "Desconocida". No se inventa una clase ni se reemplaza
-            # una predicción por vacío por pertenecer a una lista especial.
-            "especie_predicha": predicted,
+            "especie_predicha": "" if special else predicted,
             "especie_mas_parecida": predicted,
             "confianza": top[0][1],
             "top": top,
-            "revisar": low_confidence,
+            "revisar": low_confidence or special,
             "motivo_revision": ",".join(reasons),
         })
     return predictions
@@ -183,9 +170,17 @@ def _state_dict(checkpoint: Any, label: str) -> dict[str, Any]:
     }
 
 
+<<<<<<< HEAD
+def load_classifier(classifier_name, device):
+    """Carga el clasificador seleccionado y su procesador de imagen."""
+    class_path = CLASS_FILES[classifier_name]
+    with open(class_path, 'r', encoding='utf-8') as classes_file:
+        class_names = [line.strip() for line in classes_file if line.strip()]
+=======
 class ResNetClassifier:
     def __init__(self, weights: Path, classes: list[str], device: torch.device) -> None:
         from torchvision import models, transforms
+>>>>>>> davidcoalmagro-fusionar-ramas-inferencia
 
         if not weights.is_file():
             raise FileNotFoundError(f"No se encontraron los pesos ResNet: {weights}")
@@ -200,6 +195,16 @@ class ResNetClassifier:
             torch.nn.Dropout(0.3),
             torch.nn.Linear(256, 78),
         )
+<<<<<<< HEAD
+        checkpoint = torch.load(
+            RESNET_WEIGHTS,
+            map_location=device
+        )
+        classifier.load_state_dict(checkpoint)
+        classifier.eval().to(device)
+
+        classifier_processor = transforms.Compose([
+=======
         state = _state_dict(load_torch_checkpoint(weights, device), "ResNet")
         try:
             self.model.load_state_dict(state, strict=True)
@@ -209,25 +214,30 @@ class ResNetClassifier:
             ) from error
         self.model.to(device).eval()
         self.transform = transforms.Compose([
+>>>>>>> davidcoalmagro-fusionar-ramas-inferencia
             transforms.Resize((256, 256)),
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
         ])
+<<<<<<< HEAD
+    else:
+        dino_model_path = DINO_WEIGHTS
+        if os.path.isfile(dino_model_path) and dino_model_path.lower().endswith(('.pth', '.pt')):
+            classifier_processor = AutoImageProcessor.from_pretrained('facebook/dinov2-base')
+            classifier = load_dinov2_checkpoint(dino_model_path, device)
+        else:
+            classifier_processor = AutoImageProcessor.from_pretrained(dino_model_path)
+            classifier = AutoModelForImageClassification.from_pretrained(dino_model_path)
+        classifier.eval().to(device)
+=======
+>>>>>>> davidcoalmagro-fusionar-ramas-inferencia
 
     @torch.inference_mode()
     def predict_batch(self, images: list[Image.Image], threshold: float) -> list[dict[str, Any]]:
         if not images:
             return []
-        batch = torch.stack(
-            [self.transform(image.convert("RGB")) for image in images]
-        ).to(self.device)
-        with torch.autocast(
-            self.device.type,
-            dtype=torch.float16,
-            enabled=self.device.type == "cuda",
-        ):
-            logits = self.model(batch)
-        return top_predictions(logits, self.classes, threshold)
+        batch = torch.stack([self.transform(image.convert("RGB")) for image in images]).to(self.device)
+        return top_predictions(self.model(batch), self.classes, threshold)
 
 
 class DinoClassifier:
@@ -238,39 +248,18 @@ class DinoClassifier:
             raise FileNotFoundError(f"No se encontraron los pesos DINOv2: {weights}")
         self.device = device
         self.classes = classes
-        try:
-            state = _state_dict(load_torch_checkpoint(weights, device), "DINOv2")
-        except (OSError, RuntimeError, ValueError) as error:
-            raise RuntimeError(
-                f"No se pudo cargar el checkpoint DINOv2 {weights}. "
-                "Comprueba que sea un checkpoint PyTorch válido y no esté incompleto."
-            ) from error
-        try:
-            self.backbone = AutoModel.from_pretrained("facebook/dinov2-base")
-        except Exception as error:
-            raise RuntimeError(
-                "No se pudo cargar el backbone DINOv2 'facebook/dinov2-base'. "
-                "Comprueba la caché/conectividad y que los pesos del checkpoint "
-                "correspondan a ese backbone."
-            ) from error
+        self.backbone = AutoModel.from_pretrained("facebook/dinov2-base")
         hidden = self.backbone.config.hidden_size
         self.trunk = torch.nn.Sequential(
             torch.nn.Linear(hidden, 512), torch.nn.ReLU(), torch.nn.Dropout(0.3),
             torch.nn.Linear(512, 256), torch.nn.ReLU(), torch.nn.Dropout(0.2),
         )
         self.head = torch.nn.Linear(256, 77)
+        state = _state_dict(load_torch_checkpoint(weights, device), "DINOv2")
         head_weight = state.get("cabeza_especie.weight")
-        head_bias = state.get("cabeza_especie.bias")
-        if (
-            head_weight is None
-            or head_bias is None
-            or head_weight.ndim != 2
-            or head_weight.shape != self.head.weight.shape
-            or head_bias.shape != self.head.bias.shape
-        ):
+        if head_weight is None or head_weight.shape[0] != 77:
             raise ValueError(
-                "El checkpoint DINOv2 debe contener cabeza_especie.weight y "
-                "cabeza_especie.bias compatibles con exactamente 77 clases."
+                "El checkpoint DINOv2 debe contener cabeza_especie.weight con 77 salidas."
             )
         required = {
             "tronco.0.weight": self.trunk[0].weight,
@@ -305,74 +294,27 @@ class DinoClassifier:
     def predict_batch(self, images: list[Image.Image], threshold: float) -> list[dict[str, Any]]:
         if not images:
             return []
-        inputs = self.processor(
-            images=[image.convert("RGB") for image in images],
-            return_tensors="pt",
-        )
+        inputs = self.processor(images=[image.convert("RGB") for image in images], return_tensors="pt")
         inputs = {key: value.to(self.device) for key, value in inputs.items()}
-        with torch.autocast(
-            self.device.type,
-            dtype=torch.float16,
-            enabled=self.device.type == "cuda",
-        ):
-            embedding = self.backbone(pixel_values=inputs["pixel_values"]).pooler_output
-            logits = self.head(
-                self.trunk(
-                    embedding
-                    / embedding.norm(dim=1, keepdim=True).clamp_min(1e-12)
-                )
-            )
+        embedding = self.backbone(pixel_values=inputs["pixel_values"]).pooler_output.float()
+        logits = self.head(self.trunk(embedding / embedding.norm(dim=1, keepdim=True).clamp_min(1e-12)))
         return top_predictions(logits, self.classes, threshold)
 
 
-def discover_images(input_path: Path, excluded_paths: Iterable[Path] = ()) -> list[Path]:
+<<<<<<< HEAD
+model = YOLO(str(YOLO_WEIGHTS))
+=======
+def discover_images(input_path: Path) -> list[Path]:
     if input_path.is_file() and input_path.suffix.lower() in IMAGE_EXTENSIONS:
         return [input_path]
     if not input_path.is_dir():
         raise FileNotFoundError(f"No existe la entrada: {input_path}")
-    excluded = {path.resolve() for path in excluded_paths}
-    images = sorted(
-        path for path in input_path.rglob("*")
-        if path.is_file()
-        and path.suffix.lower() in IMAGE_EXTENSIONS
-        and path.resolve().parent not in excluded
-        and not any(
-            part.casefold() in GENERATED_DIRS
-            or part.casefold().endswith("_resultados")
-            for part in path.relative_to(input_path).parts[:-1]
-        )
-    )
+    images = sorted(path for path in input_path.rglob("*")
+                    if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS)
     if not images:
         raise ValueError(f"No se encontraron imágenes en: {input_path}")
     return images
-
-
-def normalize_bbox(
-    box: Iterable[float], width: int, height: int
-) -> tuple[int, int, int, int] | None:
-    """Devuelve una caja entera válida o None sin crear ROI artificiales."""
-    values = list(box)
-    if len(values) != 4 or not all(math.isfinite(float(value)) for value in values):
-        return None
-    raw_x1, raw_y1, raw_x2, raw_y2 = (float(value) for value in values)
-    if raw_x2 <= raw_x1 or raw_y2 <= raw_y1 or width <= 0 or height <= 0:
-        return None
-    x1 = max(0, min(width, math.floor(raw_x1)))
-    y1 = max(0, min(height, math.floor(raw_y1)))
-    x2 = max(0, min(width, math.ceil(raw_x2)))
-    y2 = max(0, min(height, math.ceil(raw_y2)))
-    if x2 <= x1 or y2 <= y1:
-        return None
-    return x1, y1, x2, y2
-
-
-def load_rgb_image(image_path: Path) -> Image.Image | None:
-    try:
-        with _PIL_IMAGE_OPEN(image_path) as image:
-            return image.convert("RGB")
-    except (ModuleNotFoundError, OSError, ValueError) as error:
-        print(f"Se omite la imagen ilegible {image_path}: {error}", file=sys.stderr)
-        return None
+>>>>>>> davidcoalmagro-fusionar-ramas-inferencia
 
 
 def _prediction_columns(row: dict[str, Any], prefix: str, prediction: dict[str, Any]) -> None:
@@ -390,103 +332,87 @@ def _prediction_columns(row: dict[str, Any], prefix: str, prediction: dict[str, 
         )
 
 
-def _output_stem(relative: Path) -> str:
-    """Convierte una ruta relativa en un nombre estable y seguro para ficheros."""
-    parts = [
-        re.sub(r"[^0-9A-Za-zÀ-ÿ.-]+", "_", part).strip(" ._") or "imagen"
-        for part in relative.with_suffix("").parts
-    ]
-    return "__".join(parts) or "imagen"
+<<<<<<< HEAD
+images = IMAGES_DIR
+output_base_dir = OUTPUT_BASE_DIR
 
+# Introducir sufijo al inicio
+suffix = input("Introduce el sufijo (original/normalizada): ").strip().lower()
+if suffix not in ['original', 'normalizada']:
+    print("Sufijo inválido. Usando 'original' por defecto.")
+    suffix = 'original'
 
-@lru_cache(maxsize=1)
-def _font() -> ImageFont.ImageFont:
-    try:
-        return ImageFont.truetype("arial.ttf", 16)
-    except (OSError, TypeError):
-        return ImageFont.load_default()
+# Crear carpeta única con el nombre del sufijo
+roi_output_dir = os.path.join(output_base_dir, classifier_name.capitalize(), suffix.capitalize())
+crops_output_dir = os.path.join(roi_output_dir, 'crops')
+bbox_output_dir = os.path.join(roi_output_dir, 'bbox')
+os.makedirs(crops_output_dir, exist_ok=True)
+os.makedirs(bbox_output_dir, exist_ok=True)
 
+images_dir = Path(images)
+image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff', '.webp'}
+images_path = [
+    str(image_path)
+    for image_path in images_dir.rglob('*')
+    if image_path.is_file() and image_path.suffix.lower() in image_extensions
+]
+print(f'Imágenes encontradas (incluyendo subcarpetas): {len(images_path)}')
 
-def _annotate_image(
-    original: Image.Image,
-    boxes: list[tuple[int, int, int, int]],
-    predictions: list[dict[str, Any]],
-    model_name: str,
-) -> Image.Image:
-    """Dibuja las predicciones de un modelo sobre una copia de la imagen."""
-    annotated = original.copy()
-    draw = ImageDraw.Draw(annotated)
-    font = _font()
-    color = (255, 165, 0) if model_name == "dinov2" else (0, 180, 255)
-    for box, prediction in zip(boxes, predictions):
-        x1, y1, x2, y2 = box
-        label = prediction["especie_mas_parecida"] or "sin_clase"
-        label = f"{label} {prediction['confianza']:.2f}%"
-        if prediction["revisar"]:
-            label = f"REVISION: {label}"
-        draw.rectangle((x1, y1, x2, y2), outline=color, width=3)
-        left, top, right, bottom = draw.textbbox((x1, y1), label, font=font)
-        text_top = max(0, top - (bottom - top) - 4)
-        text_bottom = text_top + (bottom - top) + 4
-        draw.rectangle((left, text_top, right + 4, text_bottom), fill=color)
-        draw.text((left + 2, text_top + 2), label, fill=(0, 0, 0), font=font)
-    return annotated
+global_roi_count = 0
+metrics_rows = []
 
-
-def _save_excel(rows: list[dict[str, Any]], path: Path, model: str | None = None) -> None:
-    """Escribe resultados y ofrece un error accionable si falta el motor XLSX."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    output_rows = rows
-    if model is not None:
-        output_rows = [
-            {
-                key: value
-                for key, value in row.items()
-                if not key.startswith(("dinov2_", "resnet_")) or key.startswith(f"{model}_")
-            }
-            for row in rows
-        ]
-    try:
-        pd.DataFrame(output_rows).to_excel(path, index=False, engine="xlsxwriter")
-    except ImportError as error:
-        if "xlsxwriter" in str(error).lower():
-            raise RuntimeError(
-                "No se puede escribir Excel: falta la dependencia 'xlsxwriter'. "
-                "Instálala con 'python -m pip install xlsxwriter'."
-            ) from error
-        raise
-
-
-def iter_images(
-    paths: list[Path],
-    workers: int = IMAGE_LOAD_WORKERS,
-    ahead: int = IMAGE_PREFETCH,
-) -> Iterable[tuple[Path, Image.Image | None]]:
-    """Decodifica unas pocas imágenes por adelantado mientras trabaja la GPU."""
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        iterator = iter(paths)
-        queue: deque[tuple[Path, Future[Image.Image | None]]] = deque(
-            (path, pool.submit(load_rgb_image, path))
-            for path in itertools.islice(iterator, ahead)
-        )
-        while queue:
-            path, future = queue.popleft()
-            next_path = next(iterator, None)
-            if next_path is not None:
-                queue.append((next_path, pool.submit(load_rgb_image, next_path)))
-            yield path, future.result()
-
-
+for image_path in images_path:
+    # Incorporar la ruta relativa para evitar colisiones entre subcarpetas.
+    relative_image_path = Path(image_path).relative_to(images_dir).with_suffix('')
+    image_name = '_'.join(relative_image_path.parts)
+    original_class = extract_original_class(image_path)
+    
+    # Realizar predicción YOLO
+    results = model.predict(
+        image_path,
+        save_txt=False,
+        save=False,
+        conf=0.3,
+        imgsz=1024
+    )
+    
+    # Procesar resultados
+    if not results:
+        print(f"No se pudo procesar la imagen con YOLO: {image_path}")
+        continue
+    result = results[0]
+    image_cv = cv2.imread(image_path)
+    if image_cv is None:
+        print(f"No se pudo leer la imagen: {image_path}")
+        continue
+    height, width = image_cv.shape[:2]
+    
+    # Primero: clasificar todos los ROI con el modelo seleccionado.
+    predictions = []
+    if result.boxes is not None:
+        for idx, box in enumerate(result.boxes):
+            # Obtener coordenadas del box YOLO (solo usamos la detección, no la clasificación)
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            
+            # Asegurar que están dentro de los límites
+            x1, y1 = max(0, x1), max(0, y1)
+            x2, y2 = min(width, x2), min(height, y2)
+            
+            # Recortar ROI
+            roi = image_cv[y1:y2, x1:x2]
+            
+            roi_pil = Image.fromarray(cv2.cvtColor(roi, cv2.COLOR_BGR2RGB))
+            if classifier_name == 'resnet':
+                model_inputs = classifier_processor(roi_pil).unsqueeze(0).to(classifier_device)
+            else:
+                model_inputs = {
+                    key: value.to(classifier_device)
+                    for key, value in classifier_processor(images=roi_pil, return_tensors='pt').items()
+=======
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", nargs="?", type=Path, default=DEFAULT_INPUT)
-    parser.add_argument(
-        "--classifier",
-        "--classifier-architecture",
-        dest="classifier",
-        choices=("dinov2", "resnet", "both"),
-        default="both",
-    )
+    parser.add_argument("--classifier", choices=("dinov2", "resnet", "both"), default="both")
     parser.add_argument("--yolo-weights", type=Path, default=DEFAULT_YOLO_WEIGHTS)
     parser.add_argument("--dino-weights", type=Path, default=DEFAULT_DINO_WEIGHTS)
     parser.add_argument("--resnet-weights", type=Path, default=DEFAULT_RESNET_WEIGHTS)
@@ -516,27 +442,8 @@ def main(argv: Iterable[str] | None = None) -> int:
             "no se aplica automáticamente."
         )
 
-    input_path = args.input.expanduser().resolve()
-    output_dir = (
-        args.output_dir.expanduser().resolve()
-        if args.output_dir is not None
-        else (
-            input_path.parent / "resultados_inferencia"
-            if input_path.is_file()
-            else input_path.parent / f"{input_path.name}_resultados"
-        )
-    )
-    if input_path.is_dir():
-        try:
-            output_dir.relative_to(input_path)
-        except ValueError:
-            pass
-        else:
-            raise ValueError(
-                f"--output-dir no puede estar dentro de la entrada {input_path}: {output_dir}. "
-                "Usa una carpeta de resultados hermana para no reingerir salidas."
-            )
-    images = discover_images(input_path, (output_dir,))
+    input_path = args.input.expanduser()
+    images = discover_images(input_path)
     yolo_path = args.yolo_weights.expanduser()
     if not yolo_path.is_file():
         raise FileNotFoundError(f"No se encontraron los pesos YOLO: {yolo_path}")
@@ -552,60 +459,25 @@ def main(argv: Iterable[str] | None = None) -> int:
         resnet_classes = read_classes(args.resnet_classes.expanduser(), 78, "clases ResNet")
         classifiers["resnet"] = ResNetClassifier(args.resnet_weights.expanduser(), resnet_classes, device)
 
+    output_dir = (args.output_dir or
+                  (input_path if input_path.is_dir() else input_path.parent)).expanduser()
     output_dir.mkdir(parents=True, exist_ok=True)
     crops_dir = output_dir / "crops"
     bbox_dir = output_dir / "bbox"
     crops_dir.mkdir(exist_ok=True)
     bbox_dir.mkdir(exist_ok=True)
-    bbox_model_dirs = {name: bbox_dir / name for name in classifiers}
-    for model_dir in bbox_model_dirs.values():
-        model_dir.mkdir(exist_ok=True)
-    output = args.output.expanduser() if args.output else output_dir / "classification_results.xlsx"
-    model_outputs = {
-        name: output.parent / f"{output.stem}_{name}{output.suffix}"
-        for name in classifiers
-    }
     rows: list[dict[str, Any]] = []
     roi_number = 0
-    original_error: BaseException | None = None
-    io_pool = ThreadPoolExecutor(max_workers=IMAGE_SAVE_WORKERS)
-    pending_saves: deque[Future[Any]] = deque()
 
-    def save_async(image: Image.Image, path: Path, **kwargs: Any) -> None:
-        pending_saves.append(io_pool.submit(image.save, path, **kwargs))
-        while len(pending_saves) > MAX_PENDING_SAVES:
-            pending_saves.popleft().result()
-
-    def drain_saves() -> None:
-        io_pool.shutdown(wait=True)
-        while pending_saves:
-            pending_saves.popleft().result()
-
-    try:
-        progress = tqdm(
-            iter_images(images),
-            total=len(images),
-            desc="Procesando imágenes",
-            unit="imagen",
-            dynamic_ncols=True,
-        )
-        used_stems: set[str] = set()
-        for image_path, original in progress:
-            relative = image_path.relative_to(input_path) if input_path.is_dir() else Path(image_path.name)
-            stem = _output_stem(relative)
-            if stem in used_stems:
-                suffix = 2
-                while f"{stem}_{suffix}" in used_stems:
-                    suffix += 1
-                stem = f"{stem}_{suffix}"
-            used_stems.add(stem)
-            progress.set_postfix_str(f"YOLO: {relative}", refresh=False)
-            if original is None:
-                continue
+    for image_path in images:
+        relative = image_path.relative_to(input_path) if input_path.is_dir() else Path(image_path.name)
+        stem = "_".join(relative.with_suffix("").parts)
+        with Image.open(image_path) as image:
+            original = image.convert("RGB")
             result = detector.predict(
-                source=original, conf=args.conf, imgsz=args.imgsz,
+                source=str(image_path), conf=args.conf, imgsz=args.imgsz,
                 save=False, save_txt=False, verbose=False,
-                device=args.device, half=device.type == "cuda",
+                device=args.device,
             )[0]
             boxes = result.boxes
             if boxes is None or len(boxes) == 0:
@@ -616,71 +488,38 @@ def main(argv: Iterable[str] | None = None) -> int:
             for index, (box, confidence) in enumerate(
                 zip(boxes.xyxy.cpu().tolist(), boxes.conf.cpu().tolist()), start=1
             ):
-                normalized = normalize_bbox(box, width, height)
-                if normalized is None:
+                x1, y1, x2, y2 = [round(value) for value in box]
+                x1, y1, x2, y2 = max(0, x1), max(0, y1), min(width, x2), min(height, y2)
+                if x2 <= x1 or y2 <= y1:
                     continue
-                detections.append((index, float(confidence), normalized))
-                crops.append(original.crop(normalized))
+                detections.append((index, float(confidence), (x1, y1, x2, y2)))
+                crops.append(original.crop((x1, y1, x2, y2)))
             if not crops:
                 continue
-            predictions: dict[str, list[dict[str, Any]]] = {}
-            for name, classifier in classifiers.items():
-                progress.set_postfix_str(
-                    f"{name} ({len(crops)} ROI): {relative}",
-                    refresh=False,
-                )
-                predictions[name] = classifier.predict_batch(crops, args.threshold)
-                save_async(
-                    _annotate_image(
-                        original,
-                        [box for _, _, box in detections],
-                        predictions[name],
-                        name,
-                    ),
-                    bbox_model_dirs[name] / f"{stem}.jpg",
-                    quality=85,
-                )
+            predictions = {
+                name: classifier.predict_batch(crops, args.threshold)
+                for name, classifier in classifiers.items()
+            }
             for crop_index, (detection, yolo_confidence, box) in enumerate(detections):
                 roi_number += 1
                 x1, y1, x2, y2 = box
                 roi_path = crops_dir / f"{stem}_roi_{roi_number}.png"
-                save_async(crops[crop_index], roi_path, compress_level=1)
+                crops[crop_index].save(roi_path)
                 row: dict[str, Any] = {
                     "image": str(relative),
                     "item": detection,
                     "yolo_confidence_%": round(yolo_confidence * 100, 2),
                     "x1": x1, "y1": y1, "x2": x2, "y2": y2,
                     "crop_file": roi_path.name,
+>>>>>>> davidcoalmagro-fusionar-ramas-inferencia
                 }
                 for name, batch in predictions.items():
                     _prediction_columns(row, name, batch[crop_index])
                 rows.append(row)
-    except BaseException as error:
-        original_error = error
-    finally:
-        save_errors: list[BaseException] = []
-        try:
-            drain_saves()
-        except BaseException as error:
-            save_errors.append(error)
-            print(f"No se pudieron guardar todas las imágenes: {error}", file=sys.stderr)
-        for path, model in [(output, None), *[(path, name) for name, path in model_outputs.items()]]:
-            try:
-                _save_excel(rows, path, model)
-            except BaseException as error:
-                save_errors.append(error)
-                print(f"No se pudo guardar {path}: {error}", file=sys.stderr)
-        if original_error is not None:
-            if save_errors:
-                print(
-                    f"Se conservaron {len(rows)} ROI, pero falló algún Excel parcial.",
-                    file=sys.stderr,
-                )
-            raise original_error.with_traceback(original_error.__traceback__)
-        if save_errors:
-            raise RuntimeError(
-                "La inferencia terminó, pero no se pudieron guardar todos los Excel."
-            ) from save_errors[0]
+
+    output = args.output.expanduser() if args.output else output_dir / "classification_results.xlsx"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows).to_excel(output, index=False)
     print(f"Inferencia completada: {len(rows)} ROI; resultados: {output}")
     return 0
 
