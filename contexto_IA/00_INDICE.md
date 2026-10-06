@@ -46,6 +46,6 @@ todo el repo** en cada sesión. Leer solo el documento necesario para la tarea.
 1. Clasificador de **especies de diatomeas** (microscopía) — VISILAB, autor David Calzado Olmo.
 2. **DINOv2-base congelado** → embedding 768 (CLS, L2-normalizado) → **MLP 768→512→256** → 77 especies.
 3. Embeddings precalculados en `.pt`; solo se entrena el MLP (rápido).
-4. Inferencia real (`Inferir/infer_and_split_resnet_single_folder.py`; `src/inferencia.py` no se usa): **YOLO** detecta ROIs → se clasifican con DINOv2-MLP y/o **ResNet50 (78 clases)** → Excel.
+4. Inferencia (`Inferir/infer_and_split_resnet_single_folder.py`, modelo por defecto `75_objetivo_pad`): **YOLO** detecta ROIs → se clasifican con DINOv2-MLP y/o **ResNet50 (78 clases)** → Excel.
 5. Experimento vigente: `75_objetivo` (77 clases), macro-F1 test ≈ 0.877, acc ≈ 0.89, top-3 ≈ 0.977.
 6. **En campo** (12 857 imgs Aqualitas/DBO5): acc por imagen DINOv2 0.675 vs **ResNet50 0.760** → foco actual: ground truth + mejorar DINOv2.

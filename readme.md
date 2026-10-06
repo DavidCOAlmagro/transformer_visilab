@@ -17,6 +17,9 @@ proyecto_transformer_v2/
 │   └── embeddings_procesado/<PRUEBA>/  # Embeddings guardados (.pt) por experimento
 ├── modelos/
 │   └── <PRUEBA>/                       # Pesos y resultados de cada experimento
+├── Inferir/
+│   ├── infer_and_split_resnet_single_folder.py  # Inferencia YOLO + DINOv2/ResNet50
+│   └── txt_classes/                    # Listas de clases DINOv2 (77) y ResNet50 (78)
 └── src/
     ├── main.py                         # Entrenamiento y evaluación completa
     ├── constantes.py                   # Rutas, especies y parámetros
@@ -25,7 +28,7 @@ proyecto_transformer_v2/
     ├── auditoria_dataset.py            # Auditoría global y recomendación de especies
     ├── clasificador.py                 # MLP compartido y cabezas de especie/género
     ├── CenterLoss.py                   # Pérdida auxiliar de compactación de embeddings
-    ├── inferencia.py                   # Predicción de una imagen o carpeta
+    ├── evaluar_campo.py                # Accuracy por imagen en campo desde los Excel de inferencia
     ├── evaluar_test_metricas.py        # Métricas, matriz y curvas
     ├── errores.py                      # Lista de errores del conjunto de test
     └── confusiones.py                  # Pares de especies más confundidos
@@ -46,11 +49,6 @@ Para usar una GPU NVIDIA, instala antes la variante de PyTorch que corresponda a
 ```bash
 pip install torch==2.7.1 torchvision==0.22.1 --index-url https://download.pytorch.org/whl/cu121
 pip install -r requirements.txt
-```
-Para el selector de archivos gráfico de `inferencia.py`, en Linux instala también:
-
-```bash
-sudo apt install python3-tk
 ```
 ## Datos
 
@@ -112,64 +110,63 @@ Durante el entrenamiento:
   sin evidencia experimental.
 - AdamW, warmup + descenso coseno, early stopping según macro F1 de validación.
 
-Al finalizar, se guardan en `modelos/<PRUEBA>/`: `mejor_modelo.pth`, `metadatos_modelo.json` (especies con las que se entrenó), curvas, matriz de confusión y reporte de test.
+Al finalizar, se guardan en `modelos/<PRUEBA>/`: `modelo_<PRUEBA>.pth`, `metadatos_modelo.json` (especies con las que se entrenó), curvas, matriz de confusión y reporte de test.
 
 ## Inferencia YOLO + DINOv2/ResNet50
-
-```bash
-python3 src/inferencia.py
-```
-
-El flujo recorre recursivamente `imagenes_inferencia/`, ejecuta YOLO antes de
-clasificar cada detección y ejecuta DINOv2 y ResNet50 en el mismo comando.
-Usa por defecto `yolo_dinov2/yolo_best.pt`,
-`yolo_dinov2/resnet50_checkpoint_epoch50.pth`,
-`txt_classes/classes_77(dino).txt` y `txt_classes/classes_78(resnet).txt`.
-Genera `imagenes_inferencia/predicciones.xlsx` con top1/top2/top3, confianza
-YOLO y marca de revisión manual.
-
-Las clases DINO deben ser exactamente 77 y coincidir en orden con
-`modelos/75_objetivo/metadatos_modelo.json`; las clases ResNet deben ser
-exactamente 78. Los pesos se cargan de forma segura y las incompatibilidades
-de arquitectura, clases o archivos faltantes producen errores explícitos.
-
-El script heredado equivalente está disponible como:
 
 ```bash
 python3 Inferir/infer_and_split_resnet_single_folder.py --classifier both
 ```
 
-También recorre subcarpetas, ejecuta YOLO una sola vez por imagen y clasifica
-los recortes en lote. `--threshold 0.80` marca predicciones de baja confianza.
-La clase ganadora se conserva tal cual aparece en la lista de clases, incluida
-una eventual clase explícita `Desconocida`; la revisión depende únicamente de
-ese umbral.
+Recorre recursivamente `Inferir/imagenes_inferencia/` (o la carpeta que se pase
+como primer argumento), ejecuta YOLO una vez por imagen y clasifica los recortes
+en lote con DINOv2 y/o ResNet50 (`--classifier dinov2|resnet|both`;
+`--classifier-architecture` es un alias).
 
-Las imágenes se buscan recursivamente excluyendo `crops`, `bbox`, `runs`,
-`resultados`, `resultados_inferencia` y otras carpetas de salida generadas.
-Por seguridad, `--output-dir` no puede estar dentro de la carpeta de entrada.
-La salida contiene un Excel combinado, un Excel por modelo y anotaciones
-separadas en `bbox/dinov2/` y `bbox/resnet/`. Los Excel se intentan guardar
-también al salir por error para conservar resultados parciales.
-Reinhard no se aplica por defecto: `--reinhard-reference` solo documenta una
-referencia necesaria para una futura implementación y actualmente produce un
-error explícito para evitar inventar estadísticas.
+Pesos por defecto (no versionados; `.gitignore` excluye `*.pt`, `*.pth`, `*.ckpt`):
 
-Los pesos (`*.pt`, `*.pth`, `*.ckpt`) están excluidos por `.gitignore`. Deben
-colocarse localmente en `yolo_dinov2/` y `modelos/75_objetivo/`, o pasarse con
-las opciones `--yolo-weights`, `--dino-weights` y `--resnet-weights`.
-Al cambiar el padding o las augmentations hay que recalcular los embeddings de
-train/val/test y reentrenar el MLP; los `.pt` y pesos previos no se sobrescriben
-ni se consideran compatibles automáticamente.
+| Modelo | Ruta por defecto | Opción |
+|---|---|---|
+| YOLO | `Inferir/yolo_dinov2/yolo_best.pt` | `--yolo-weights` |
+| DINOv2 + MLP | `modelos/75_objetivo_pad/modelo_75_objetivo_pad.pth` | `--dino-weights` |
+| ResNet50 | `Inferir/yolo_dinov2/resnet50_checkpoint_epoch50.pth` | `--resnet-weights` |
+
+Las clases DINOv2 se leen de `metadatos_modelo.json` en la carpeta de los pesos y
+se contrastan con `Inferir/txt_classes/classes_77(dino).txt` (deben ser exactamente
+77 y en el mismo orden). ResNet50 usa `classes_78(resnet).txt` (78 clases). Cualquier
+incompatibilidad de arquitectura, clases o archivos produce un error explícito.
+
+El preprocesado DINOv2 de inferencia (`dinov2-pad-square-v1` + normalización L2) debe
+coincidir con el del entrenamiento: `75_objetivo_pad` se entrenó así; el modelo
+antiguo `75_objetivo` se entrenó con center-crop y no es coherente con él.
+Al cambiar el padding o las augmentations hay que recalcular los embeddings y
+reentrenar el MLP.
+
+Salida: un Excel combinado, un Excel por modelo (top-1/2/3 con confianza, confianza
+YOLO y marca de revisión) y las imágenes anotadas en `bbox/dinov2/` y `bbox/resnet/`.
+`--threshold 0.80` marca para revisión las predicciones de baja confianza;
+`--conf` (0.30) es el umbral de YOLO e `--imgsz` (1024) su tamaño de entrada.
+Las carpetas generadas (`crops`, `bbox`, `runs`, `resultados`, ...) se excluyen de la
+búsqueda, `--output-dir` no puede estar dentro de la carpeta de entrada y los Excel se
+intentan guardar también si la inferencia falla. `--reinhard-reference` aún no está
+implementado y produce un error explícito.
 
 ```bash
-python3 src/inferencia.py --classifier dinov2
-python3 src/inferencia.py --classifier resnet
-python3 src/inferencia.py --classifier-architecture both --device cuda
-python3 src/inferencia.py otra_carpeta --output resultados.xlsx
+python3 Inferir/infer_and_split_resnet_single_folder.py otra_carpeta --classifier dinov2 --device cuda
+python3 Inferir/infer_and_split_resnet_single_folder.py --dino-weights modelos/<PRUEBA>/modelo_<PRUEBA>.pth
 ```
 
-`--classifier-architecture` es un alias compatible de `--classifier`.
+### Evaluación en campo
+
+Con los Excel de la inferencia y una tabla de etiquetas por imagen (`imagen`, `etiqueta`):
+
+```bash
+python3 src/evaluar_campo.py --dino classification_results_dinov2.xlsx   --resnet classification_results_resnet.xlsx --etiquetas cruce_ground_truth.xlsx   --salida informe_campo.xlsx
+```
+
+Calcula la accuracy por imagen (reglas voto, recorte mayor y suma de confianza) de
+cada modelo y del ensamble. `Debris`, `Fragments` y las clases `*_fp` (posición
+pleural) no votan en la variante oficial.
 
 ## Análisis de resultados
 

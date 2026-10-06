@@ -55,7 +55,7 @@ Diagnóstico detallado y causas probables en **`13_diagnostico_dinov2_campo.md`*
 ## Modelo nuevo: `75_objetivo_pad` (spec 003, 2026-10-06)
 Pipeline completo con pad-square, mismos splits. Test interno: macro-F1 **0.893** (oficial 0.877), acc 0.910, top-3 0.985.
 Pesos: `modelos/75_objetivo_pad/modelo_75_objetivo_pad.pth`. **Pendiente: medirlo en campo** en el equipo Ubuntu
-(hay que relanzar la inferencia con `--dino-weights` apuntando a esos pesos y después `src/evaluar_campo.py`; baseline de campo DINO 0.741).
+(relanzar `Inferir/infer_and_split_resnet_single_folder.py --classifier both`, que ya usa estos pesos por defecto, y después `src/evaluar_campo.py`; baseline de campo DINO 0.741, ResNet 0.827).
 Embeddings en `data/embeddings_procesado/75_objetivo_pad/` (sin `unknown`). El modelo se ha entrenado en Windows y los pesos no están en git: copiarlos a Ubuntu.
 
 ## Experimentos en curso
@@ -73,10 +73,10 @@ Embeddings en `data/embeddings_procesado/75_objetivo_pad/` (sin `unknown`). El m
 - No inventar top-3 ni probabilidades; no sobrescribir datos originales.
 
 ## Avisos vigentes
-- La inferencia que se usa es **`Inferir/infer_and_split_resnet_single_folder.py`**; `src/inferencia.py` no se usa.
-- ⚠️ **HEAD (`fe127a3`) aplica pad-square en inferencia, pero los pesos de `75_objetivo` (2026-09-24)
+- La inferencia es **`Inferir/infer_and_split_resnet_single_folder.py`** (`src/inferencia.py` eliminado en la spec 004).
+- ✅ (resuelto en spec 004) ~~HEAD aplica pad-square en inferencia, pero los pesos de `75_objetivo` (2026-09-24)
   se entrenaron con resize + center crop.** No usar la inferencia actual con esos pesos
-  hasta reentrenar (o comparar sabiendo que hay desajuste). Ver deuda B4.
+  hasta reentrenar.~~ La inferencia usa por defecto `75_objetivo_pad`, coherente con pad-square.
 - Las clases de ResNet tienen erratas (`Denticula_tenius`, `Nitzschia_dessertorum`) y una clase extra `Planothidium_fp`;
   mapear antes de cruzar.
 

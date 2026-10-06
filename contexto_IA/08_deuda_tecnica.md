@@ -3,16 +3,16 @@
 Detectados en la revisión del 2026-10-06. Marcar `[x]` y referenciar la spec al resolver.
 
 ## Bugs probables (prioridad alta)
-> B1 y B2 afectan solo a `src/inferencia.py`, que **no se usa** → prioridad baja (o eliminar el archivo).
-- [ ] **B1 — Inferencia sin L2-norm** (`src/inferencia.py`, `ClasificadorDino.predecir`):
+> B1 y B2 **resueltos por eliminación** de `src/inferencia.py` (spec 004).
+- [x] **B1 — Inferencia sin L2-norm** (`src/inferencia.py`, `ClasificadorDino.predecir`):
   usa `pooler_output.float()` sin normalizar, pero el MLP se entrenó con embeddings de norma 1
   (`embeddings.get_embedding`). El script heredado sí normaliza. Predicciones/confianzas distintas entre scripts.
-- [ ] **B2 — Coordenadas mal escritas** (`src/inferencia.py`, `inferir`): `"x2": y2` y falta `y2`.
+- [x] **B2 — Coordenadas mal escritas** (`src/inferencia.py`, `inferir`): `"x2": y2` y falta `y2`.
 - [ ] **B3 — Centroides sin entrenar**: con `LAMBDA_CENTER_LOSS=0`, `center_loss.centros` (init `randn`)
   no reciben gradiente útil (solo weight decay) y aun así `calibrar_pesos` los usa para
   `umbral_distancia`. El rechazo de desconocidas se basa en centros casi aleatorios → explica el
   pobre 16 % de rechazo. Alternativa: calcular centros como **media de embeddings del tronco por clase en train**.
-- [~] **B4 — Pesos vs preprocesado** (CRÍTICO; mitigado por la spec 003: existe `75_objetivo_pad` coherente con pad-square, pero las rutas por defecto de la inferencia siguen en 75_objetivo): embeddings y pesos de 75_objetivo (2026-09-24) se calcularon con
+- [x] **B4 — Pesos vs preprocesado** (resuelto: spec 003 entrena `75_objetivo_pad` y la spec 004 lo pone por defecto en la inferencia; `75_objetivo` solo es coherente con center-crop): embeddings y pesos de 75_objetivo (2026-09-24) se calcularon con
   resize + **center crop 224** (sin pad). Desde `fe127a3` ambas inferencias aplican pad-square → desajuste
   train/inferencia hasta reentrenar. Los Excel de campo del 2026-10-06 son anteriores y NO lo sufren.
 - [ ] **B5 — Clases ResNet con erratas**: `classes_78(resnet).txt` tiene `Denticula_tenius`, `Nitzschia_dessertorum`
@@ -21,7 +21,7 @@ Detectados en la revisión del 2026-10-06. Marcar `[x]` y referenciar la spec al
 ## Inconsistencias
 - [ ] `modelo.py` exige **exactamente 77 clases** → `20_especies` y cualquier PRUEBA nueva no cargan.
   Debería validar contra metadatos, no contra un número fijo (77 también hardcodeado en inferencia).
-- [ ] README/manual dicen `mejor_modelo.pth`; el código guarda `modelo_<PRUEBA>.pth`.
+- [x] README/manual dicen `mejor_modelo.pth` → corregido a `modelo_<PRUEBA>.pth` en el README (spec 004).
 - [ ] `reporte_test.txt` sin sufijo, mientras matriz/métricas/confusiones llevan `_<PRUEBA>`.
 - [ ] `obtener_especies_activas()`: `return ESPECIES_FILTRADAS` final inalcanzable; docstring dice fallback que no existe.
 - [ ] `codificacion`: `sorted(sorted(...))` redundante.
@@ -34,7 +34,7 @@ Detectados en la revisión del 2026-10-06. Marcar `[x]` y referenciar la spec al
 ## Deuda / limpieza
 - [ ] `accuracy_genero_test` se sigue calculando y guardando aunque la cabeza de género no se entrena (PESO_GENERO=0) → da ~8 % (spec 003). Ocultar o calcularla desde las especies predichas.
 - [ ] `errores.py`, `confusiones.py` y `evaluar_desconocidas.py` no aceptan `--prueba` (solo `PRUEBA` de constantes.py).
-- [ ] `src/inferencia.py` no se usa pero el README/manual la documentan como la oficial → eliminarla (o marcarla obsoleta) y documentar el script de `Inferir/`.
+- [x] `src/inferencia.py` eliminado y README/manual actualizados (spec 004).
 - [ ] `get_embedding` procesa imágenes de una en una (lento con ~46k × 2+ imágenes); batchear.
 - [ ] Ficheros basura en el repo: `git` (vacío), `Inferir/*.py.backup`; `*.pt` duplicado en `.gitignore`.
 - [ ] `auxiliar/` con rutas absolutas Linux hardcodeadas.

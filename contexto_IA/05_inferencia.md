@@ -1,11 +1,11 @@
 # 05 — Inferencia
 
 > **La inferencia que se usa es `Inferir/infer_and_split_resnet_single_folder.py` (B).** `src/inferencia.py` (A)
-> **no se utiliza** (confirmado por el usuario, 2026-10-06); el README la documenta como principal por error.
+> no se utilizaba y se **eliminó** en la spec 004. README y manual ya documentan el script de `Inferir/`.
 
 Hay **dos** implementaciones que hacen lo mismo con distinto nivel de madurez.
 
-## A) `src/inferencia.py` — NO SE USA (el README la presenta como oficial)
+## A) `src/inferencia.py` — ELIMINADO (spec 004, 2026-10-06). Se conserva la descripción como histórico
 ```bash
 python3 src/inferencia.py [entrada] --classifier {dinov2,resnet,both} --device cuda --conf 0.25 --output x.xlsx
 ```
@@ -34,14 +34,14 @@ python3 Inferir/infer_and_split_resnet_single_folder.py [input] --classifier bot
   `classes_77(dino).txt` si existe). Por eso `--dino-weights modelos/75_objetivo_pad/modelo_75_objetivo_pad.pth` toma
   automáticamente las clases de ese modelo. Exige 77 clases (hardcode).
 - Preprocesado DINO en HEAD: `preparar_para_dinov2` (pad-square) → processor → CLS → L2 (en fp16 con autocast en CUDA).
-  Coherente con `75_objetivo_pad`, **no** con `75_objetivo` (B4).
+  Coherente con `75_objetivo_pad` (por defecto desde spec 004; verificado: reproduce la accuracy del entrenamiento), **no** con `75_objetivo`.
 - Backbone: `AutoModel.from_pretrained("facebook/dinov2-base")` directamente (no usa `resolver_modelo_dinov2`/`DINOV2_MODEL_PATH`).
 
 ## Pesos necesarios (no versionados)
 | Archivo | Ruta por defecto | Flag |
 |---|---|---|
 | YOLO | `Inferir/yolo_dinov2/yolo_best.pt` | `--yolo-weights` |
-| DINOv2-MLP | `modelos/75_objetivo/modelo_75_objetivo.pth` | `--dino-weights` |
+| DINOv2-MLP | `modelos/75_objetivo_pad/modelo_75_objetivo_pad.pth` (desde spec 004) | `--dino-weights` |
 | ResNet50 | `Inferir/yolo_dinov2/resnet50_checkpoint_epoch50.pth` | `--resnet-weights` |
 | Clases DINO (77) | `Inferir/txt_classes/classes_77(dino).txt` | `--dino-classes` |
 | Clases ResNet (78) | `Inferir/txt_classes/classes_78(resnet).txt` | `--resnet-classes` |

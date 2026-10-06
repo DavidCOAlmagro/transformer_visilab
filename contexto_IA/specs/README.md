@@ -5,6 +5,7 @@ Una carpeta por cambio: `NNN-nombre-corto/` con `spec.md`, `plan.md`, `tareas.md
 
 | ID | Nombre | Estado | Fecha | Resumen |
 |---|---|---|---|---|
+| 004 | limpieza-inferencia | Completada | 2026-10-06 | Elimina `src/inferencia.py`; `75_objetivo_pad` por defecto en `Inferir/`; README/manual actualizados |
 | 003 | reentrenar-pad-square | Completada (falta campo) | 2026-10-06 | `75_objetivo_pad`: macro-F1 test **0.893** (oficial 0.877), acc 0.910, top-3 0.985 |
 | 002 | experimento-pad-square | Completada | 2026-10-06 | pad-square +3.0 macro-F1 en test interno (0.887 vs 0.857), mayor ganancia en alargadas |
 | 001 | evaluacion-campo | Completada | 2026-10-06 | `src/evaluar_campo.py`: métrica de campo oficial; excluir `_fp` sube DINO a 0.741 y ResNet a 0.827 |
@@ -16,4 +17,4 @@ Una carpeta por cambio: `NNN-nombre-corto/` con `spec.md`, `plan.md`, `tareas.md
 4. Aumentación realista / normalización de color homogénea.
 5. Fine-tuning parcial de DINOv2 (LoRA o últimos bloques).
 6. Tratamiento de clases `_fp` (jerarquía / nivel género).
-7. Eliminar `src/inferencia.py` (no se usa) y actualizar el README/manual al script de `Inferir/`; quitar el hardcode de 77 clases.
+7. ~~Eliminar `src/inferencia.py`~~ (spec 004 ✔). Pendiente: quitar el hardcode de 77 clases (modelo.py e `Inferir/`).
