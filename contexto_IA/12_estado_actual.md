@@ -54,7 +54,10 @@ Diagnóstico detallado y causas probables en **`13_diagnostico_dinov2_campo.md`*
 
 ## Experimentos en curso
 - **EXP-pad (2026-10-06)**: MLP sin augmentation entrenado con embeddings center-crop vs pad-square, comparado en test interno
-  y por relación de aspecto. Scripts y artefactos en el scratch de la sesión (no versionados). Resultado: *pendiente*.
+  y por relación de aspecto. Scripts y artefactos en el scratch de la sesión (no versionados). **PAUSADO 2026-10-06 16:15** a petición del usuario
+  (portátil caliente). Hecho: baseline center-crop extraída (`centercrop/`), `pad/embeddings_val.pt`. Falta: pad test+train
+  (~25 min a ~40 img/s en RTX 3050 4 GB) y `comparar.py` (~minutos). Scripts: `emb_pad.py` (carga con hilos; DataLoader
+  con workers se cuelga en Windows), `comparar.py`. Si el scratch se ha perdido, rehacerlos según esta descripción.
 
 ## Criterios acordados para el ground truth (de `C:\VISILAB\contexto.md`)
 - Unidad de cruce = **recorte**, alineado por clave `image+item+x1+y1+x2+y2`, nunca por orden de filas.
