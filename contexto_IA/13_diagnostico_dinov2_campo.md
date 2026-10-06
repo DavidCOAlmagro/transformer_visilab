@@ -41,7 +41,7 @@ Accuracy por recorte según la relación de aspecto de la caja YOLO:
 El `AutoImageProcessor` de dinov2-base hace resize del lado corto a 256 + **center crop 224**
 (comprobado: `do_center_crop=True`). Con una diatomea alargada se descartan los extremos (ápices, que son
 claves para distinguir la especie). ResNet hace `Resize((256,256))`: deforma, pero ve el objeto entero.
-La solución (pad-square, D-011) ya está programada, pero **no se ha reentrenado** con ella.
+La solución (pad-square, D-011) ya está programada. **Confirmado en spec 002**: +3.0 macro-F1 en test interno, +8.4 pts en relación 3–5. Falta reentrenar el modelo oficial.
 
 ### E3 — Recortes pequeños
 Lado < 100 px: los dos modelos ≈ 0.09. Entre 100 y 300 px DINO va unos 4–5 puntos por detrás. Es un problema de YOLO o de la

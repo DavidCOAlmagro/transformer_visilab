@@ -5,6 +5,7 @@ Una carpeta por cambio: `NNN-nombre-corto/` con `spec.md`, `plan.md`, `tareas.md
 
 | ID | Nombre | Estado | Fecha | Resumen |
 |---|---|---|---|---|
+| 002 | experimento-pad-square | Completada | 2026-10-06 | pad-square +3.0 macro-F1 en test interno (0.887 vs 0.857), mayor ganancia en alargadas |
 | 001 | evaluacion-campo | Completada | 2026-10-06 | `src/evaluar_campo.py`: métrica de campo oficial; excluir `_fp` sube DINO a 0.741 y ResNet a 0.827 |
 
 ## Candidatas priorizadas (ver `../13_diagnostico_dinov2_campo.md` §4)

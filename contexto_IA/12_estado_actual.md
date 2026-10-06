@@ -1,7 +1,7 @@
 # 12 — Estado actual y trabajo en curso (documento VIVO)
 
 > Actualizar este documento al cerrar cada sesión o spec. Lo más reciente arriba.
-> Última actualización: **2026-10-06** (tarde) — rama `sdd/001-evaluacion-campo`.
+> Última actualización: **2026-10-06** (noche). El usuario pasa a trabajar en **Ubuntu** — rama `sdd/001-evaluacion-campo`.
 
 ## Foco actual del usuario
 1. **Construir un dataset con ground truth** a partir de inferencias en campo (Aqualitas + DBO5 GT),
@@ -53,11 +53,10 @@ DINO pierde en 47 especies, gana en 12 (Nitzschia_amphibia, Tabellaria_flocculos
 Diagnóstico detallado y causas probables en **`13_diagnostico_dinov2_campo.md`**.
 
 ## Experimentos en curso
-- **EXP-pad (2026-10-06)**: MLP sin augmentation entrenado con embeddings center-crop vs pad-square, comparado en test interno
-  y por relación de aspecto. Scripts y artefactos en el scratch de la sesión (no versionados). **PAUSADO 2026-10-06 16:15** a petición del usuario
-  (portátil caliente). Hecho: baseline center-crop extraída (`centercrop/`), `pad/embeddings_val.pt`. Falta: pad test+train
-  (~25 min a ~40 img/s en RTX 3050 4 GB) y `comparar.py` (~minutos). Scripts: `emb_pad.py` (carga con hilos; DataLoader
-  con workers se cuelga en Windows), `comparar.py`. Si el scratch se ha perdido, rehacerlos según esta descripción.
+- **EXP-pad (2026-10-06) — COMPLETADO → spec 002.** Sin augmentation, test interno: pad-square macro-F1 **0.887** vs
+  center-crop 0.857 (+3.0), accuracy 0.903 vs 0.881; en imágenes alargadas (relación 3–5) 0.869 vs 0.785.
+  Pad sin augmentation ya supera al modelo oficial (0.877). **Siguiente: spec 003 = reentrenar 75_objetivo con pad-square**
+  (con augmentation) y medir en campo con `evaluar_campo.py` (requiere las imágenes originales de campo).
 
 ## Criterios acordados para el ground truth (de `C:\VISILAB\contexto.md`)
 - Unidad de cruce = **recorte**, alineado por clave `image+item+x1+y1+x2+y2`, nunca por orden de filas.
