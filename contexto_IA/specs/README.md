@@ -16,4 +16,4 @@ Una carpeta por cambio: `NNN-nombre-corto/` con `spec.md`, `plan.md`, `tareas.md
 4. Aumentación realista / normalización de color homogénea.
 5. Fine-tuning parcial de DINOv2 (LoRA o últimos bloques).
 6. Tratamiento de clases `_fp` (jerarquía / nivel género).
-7. Corregir B1/B2 en `src/inferencia.py` y unificar las dos inferencias; quitar hardcode de 77 clases.
+7. Eliminar `src/inferencia.py` (no se usa) y actualizar el README/manual al script de `Inferir/`; quitar el hardcode de 77 clases.

@@ -73,6 +73,7 @@ Embeddings en `data/embeddings_procesado/75_objetivo_pad/` (sin `unknown`). El m
 - No inventar top-3 ni probabilidades; no sobrescribir datos originales.
 
 ## Avisos vigentes
+- La inferencia que se usa es **`Inferir/infer_and_split_resnet_single_folder.py`**; `src/inferencia.py` no se usa.
 - ⚠️ **HEAD (`fe127a3`) aplica pad-square en inferencia, pero los pesos de `75_objetivo` (2026-09-24)
   se entrenaron con resize + center crop.** No usar la inferencia actual con esos pesos
   hasta reentrenar (o comparar sabiendo que hay desajuste). Ver deuda B4.

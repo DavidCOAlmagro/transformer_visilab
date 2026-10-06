@@ -3,6 +3,7 @@
 Detectados en la revisión del 2026-10-06. Marcar `[x]` y referenciar la spec al resolver.
 
 ## Bugs probables (prioridad alta)
+> B1 y B2 afectan solo a `src/inferencia.py`, que **no se usa** → prioridad baja (o eliminar el archivo).
 - [ ] **B1 — Inferencia sin L2-norm** (`src/inferencia.py`, `ClasificadorDino.predecir`):
   usa `pooler_output.float()` sin normalizar, pero el MLP se entrenó con embeddings de norma 1
   (`embeddings.get_embedding`). El script heredado sí normaliza. Predicciones/confianzas distintas entre scripts.
@@ -33,7 +34,7 @@ Detectados en la revisión del 2026-10-06. Marcar `[x]` y referenciar la spec al
 ## Deuda / limpieza
 - [ ] `accuracy_genero_test` se sigue calculando y guardando aunque la cabeza de género no se entrena (PESO_GENERO=0) → da ~8 % (spec 003). Ocultar o calcularla desde las especies predichas.
 - [ ] `errores.py`, `confusiones.py` y `evaluar_desconocidas.py` no aceptan `--prueba` (solo `PRUEBA` de constantes.py).
-- [ ] Dos implementaciones de inferencia (src vs Inferir) → unificar en un módulo compartido.
+- [ ] `src/inferencia.py` no se usa pero el README/manual la documentan como la oficial → eliminarla (o marcarla obsoleta) y documentar el script de `Inferir/`.
 - [ ] `get_embedding` procesa imágenes de una en una (lento con ~46k × 2+ imágenes); batchear.
 - [ ] Ficheros basura en el repo: `git` (vacío), `Inferir/*.py.backup`; `*.pt` duplicado en `.gitignore`.
 - [ ] `auxiliar/` con rutas absolutas Linux hardcodeadas.

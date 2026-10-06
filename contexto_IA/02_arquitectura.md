@@ -52,7 +52,7 @@ preparar_datos.guardar_resumen_entrenamiento() → resumen_entrenamiento.json (a
 
 Pérdida total: `CE_especie + PESO_GENERO·CE_genero + LAMBDA_CENTER_LOSS·center` (ambos pesos = 0 hoy).
 
-## Pipeline de inferencia
+## Pipeline de inferencia (`Inferir/infer_and_split_resnet_single_folder.py`; `src/inferencia.py` no se usa)
 ```
 imagen completa → YOLO (ultralytics) → cajas xyxy → recorte
    ├── DINOv2: pad_to_square → processor → backbone → [L2 norm] → MLP → softmax → top-3

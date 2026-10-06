@@ -1,8 +1,11 @@
 # 05 — Inferencia
 
+> **La inferencia que se usa es `Inferir/infer_and_split_resnet_single_folder.py` (B).** `src/inferencia.py` (A)
+> **no se utiliza** (confirmado por el usuario, 2026-10-06); el README la documenta como principal por error.
+
 Hay **dos** implementaciones que hacen lo mismo con distinto nivel de madurez.
 
-## A) `src/inferencia.py` (oficial en README, más simple)
+## A) `src/inferencia.py` — NO SE USA (el README la presenta como oficial)
 ```bash
 python3 src/inferencia.py [entrada] --classifier {dinov2,resnet,both} --device cuda --conf 0.25 --output x.xlsx
 ```
@@ -16,7 +19,7 @@ python3 src/inferencia.py [entrada] --classifier {dinov2,resnet,both} --device c
 - Salida: un solo Excel (`predicciones.xlsx` en la carpeta de entrada).
 - ⚠️ Bugs conocidos: no L2-normaliza el embedding; fila con `"x2": y2` y sin `y2`. Ver `08`.
 
-## B) `Inferir/infer_and_split_resnet_single_folder.py` (heredado, más completo, 690 líneas)
+## B) `Inferir/infer_and_split_resnet_single_folder.py` — **LA QUE SE USA** (690 líneas)
 ```bash
 python3 Inferir/infer_and_split_resnet_single_folder.py [input] --classifier both --threshold 0.80 --conf 0.30 --imgsz 1024 --output-dir DIR
 ```
@@ -27,6 +30,12 @@ python3 Inferir/infer_and_split_resnet_single_folder.py [input] --classifier bot
   anotadas en `bbox/dinov2/` y `bbox/resnet/`. Guarda Excel parcial en `finally`.
 - `--reinhard-reference` existe pero lanza error a propósito (no implementado).
 - Hay `.backup` del script en el repo.
+- Clases DINO: `resolve_dino_classes` usa **`metadatos_modelo.json` de la carpeta de los pesos** (y lo contrasta con
+  `classes_77(dino).txt` si existe). Por eso `--dino-weights modelos/75_objetivo_pad/modelo_75_objetivo_pad.pth` toma
+  automáticamente las clases de ese modelo. Exige 77 clases (hardcode).
+- Preprocesado DINO en HEAD: `preparar_para_dinov2` (pad-square) → processor → CLS → L2 (en fp16 con autocast en CUDA).
+  Coherente con `75_objetivo_pad`, **no** con `75_objetivo` (B4).
+- Backbone: `AutoModel.from_pretrained("facebook/dinov2-base")` directamente (no usa `resolver_modelo_dinov2`/`DINOV2_MODEL_PATH`).
 
 ## Pesos necesarios (no versionados)
 | Archivo | Ruta por defecto | Flag |

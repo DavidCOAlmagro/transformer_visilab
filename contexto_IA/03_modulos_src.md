@@ -23,7 +23,7 @@ Toda la configuración global vive en el dict mutable `VARIABLES_GLOBALES` (`con
 | `errores.py` | 133 | Lista errores de test con ruta y confianza → `errores_a_revisar_<PRUEBA>.txt`. |
 | `confusiones.py` | 80 | Pares confundidos ≥ 5 veces → `confusiones_<PRUEBA>.txt`. |
 | `evaluar_desconocidas.py` | 102 | Diagnóstico de rechazo con `unknown` + barrido de percentiles. |
-| `inferencia.py` | 249 | Inferencia YOLO + DINOv2/ResNet50 → Excel. Ver `05`. |
+| `inferencia.py` | 249 | **No se usa** (la inferencia real está en `Inferir/`). Ver `05`. |
 | `exportar_config.py` | 46 | Vuelca hiperparámetros a `config_modelo_<PRUEBA>.json`. |
 | `auditoria_dataset.py` | 87 | Auditoría CLI: distribución, duplicados SHA-256, clases candidatas. |
 | `evaluar_campo.py` | ~190 | **Métrica de campo oficial**: accuracy por imagen desde los Excel de inferencia (reglas voto/mayor/suma_conf, ±excluir `_fp`, ensamble, nivel género). Ver `12`. |
