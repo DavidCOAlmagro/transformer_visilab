@@ -1,7 +1,7 @@
 # 12 — Estado actual y trabajo en curso (documento VIVO)
 
 > Actualizar este documento al cerrar cada sesión o spec. Lo más reciente arriba.
-> Última actualización: **2026-10-06** (noche). El usuario pasa a trabajar en **Ubuntu** — rama `sdd/001-evaluacion-campo`.
+> Última actualización: **2026-10-06** (noche) — spec 003 completada en test interno; siguiente: campo en Ubuntu.
 
 ## Foco actual del usuario
 1. **Construir un dataset con ground truth** a partir de inferencias en campo (Aqualitas + DBO5 GT),
@@ -51,6 +51,12 @@
 DINO pierde en 47 especies, gana en 12 (Nitzschia_amphibia, Tabellaria_flocculosa, Encyonopsis_minuta, Cymbella_excisiformis…).
 
 Diagnóstico detallado y causas probables en **`13_diagnostico_dinov2_campo.md`**.
+
+## Modelo nuevo: `75_objetivo_pad` (spec 003, 2026-10-06)
+Pipeline completo con pad-square, mismos splits. Test interno: macro-F1 **0.893** (oficial 0.877), acc 0.910, top-3 0.985.
+Pesos: `modelos/75_objetivo_pad/modelo_75_objetivo_pad.pth`. **Pendiente: medirlo en campo** en el equipo Ubuntu
+(hay que relanzar la inferencia con `--dino-weights` apuntando a esos pesos y después `src/evaluar_campo.py`; baseline de campo DINO 0.741).
+Embeddings en `data/embeddings_procesado/75_objetivo_pad/` (sin `unknown`). El modelo se ha entrenado en Windows y los pesos no están en git: copiarlos a Ubuntu.
 
 ## Experimentos en curso
 - **EXP-pad (2026-10-06) — COMPLETADO → spec 002.** Sin augmentation, test interno: pad-square macro-F1 **0.887** vs

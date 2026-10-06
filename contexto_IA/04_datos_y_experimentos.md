@@ -41,7 +41,8 @@ Muy desbalanceado: `Achnanthidium_minutissimum` ≈ 16 000 imágenes totales; al
 |---|---|---|---|
 | `20_especies` | 20 | histórico (incompatible con `modelo.py` actual, que exige 77) | ≈ 0.83 |
 | `UMBRAL` | ? | histórico, pruebas de umbral/confianza | — |
-| `75_objetivo` | **77** | **vigente** (`PRUEBA` por defecto) | **0.877** (2026-09-24) |
+| `75_objetivo` | **77** | baseline (center-crop), `PRUEBA` por defecto | 0.877 (2026-09-24) |
+| `75_objetivo_pad` | **77** | **mejor** (pad-square, spec 003); mismos splits; sin `unknown` | **0.893** (2026-10-06) |
 
 Cada carpeta contiene: `metadatos_modelo.json`, `resumen_entrenamiento.json` (histórico de corridas),
 `reporte_test*.txt`, `confusiones*.txt`, `errores_a_revisar*.txt`, PNGs, `config_modelo_*.json`

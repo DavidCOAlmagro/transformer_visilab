@@ -11,7 +11,7 @@ Detectados en la revisión del 2026-10-06. Marcar `[x]` y referenciar la spec al
   no reciben gradiente útil (solo weight decay) y aun así `calibrar_pesos` los usa para
   `umbral_distancia`. El rechazo de desconocidas se basa en centros casi aleatorios → explica el
   pobre 16 % de rechazo. Alternativa: calcular centros como **media de embeddings del tronco por clase en train**.
-- [ ] **B4 — Pesos vs preprocesado** (CRÍTICO): embeddings y pesos de 75_objetivo (2026-09-24) se calcularon con
+- [~] **B4 — Pesos vs preprocesado** (CRÍTICO; mitigado por la spec 003: existe `75_objetivo_pad` coherente con pad-square, pero las rutas por defecto de la inferencia siguen en 75_objetivo): embeddings y pesos de 75_objetivo (2026-09-24) se calcularon con
   resize + **center crop 224** (sin pad). Desde `fe127a3` ambas inferencias aplican pad-square → desajuste
   train/inferencia hasta reentrenar. Los Excel de campo del 2026-10-06 son anteriores y NO lo sufren.
 - [ ] **B5 — Clases ResNet con erratas**: `classes_78(resnet).txt` tiene `Denticula_tenius`, `Nitzschia_dessertorum`
@@ -31,6 +31,8 @@ Detectados en la revisión del 2026-10-06. Marcar `[x]` y referenciar la spec al
 - [ ] Splits con rutas absolutas → no portables entre máquinas.
 
 ## Deuda / limpieza
+- [ ] `accuracy_genero_test` se sigue calculando y guardando aunque la cabeza de género no se entrena (PESO_GENERO=0) → da ~8 % (spec 003). Ocultar o calcularla desde las especies predichas.
+- [ ] `errores.py`, `confusiones.py` y `evaluar_desconocidas.py` no aceptan `--prueba` (solo `PRUEBA` de constantes.py).
 - [ ] Dos implementaciones de inferencia (src vs Inferir) → unificar en un módulo compartido.
 - [ ] `get_embedding` procesa imágenes de una en una (lento con ~46k × 2+ imágenes); batchear.
 - [ ] Ficheros basura en el repo: `git` (vacío), `Inferir/*.py.backup`; `*.pt` duplicado en `.gitignore`.
