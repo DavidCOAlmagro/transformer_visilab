@@ -21,6 +21,8 @@ proyecto_transformer_v2/
     ├── main.py                         # Entrenamiento y evaluación completa
     ├── constantes.py                   # Rutas, especies y parámetros
     ├── embeddings.py                   # DINOv2 y aumentos de datos
+    ├── preprocesado.py                 # Padding cuadrado común a train/inferencia
+    ├── auditoria_dataset.py            # Auditoría global y recomendación de especies
     ├── clasificador.py                 # MLP compartido y cabezas de especie/género
     ├── CenterLoss.py                   # Pérdida auxiliar de compactación de embeddings
     ├── inferencia.py                   # Predicción de una imagen o carpeta
@@ -57,6 +59,22 @@ Coloca tus imágenes en `data/imagenes_visilab(raw)/<algún_nombre_de_carpeta>/<
 Las especies a incluir en el experimento se definen en `ESPECIES_FILTRADAS` (`src/constantes.py`) con el mismo nombre que su carpeta.
 
 Al regenerar splits se crean particiones estratificadas reproducibles 70/15/15 en `data/splits/<PRUEBA>/`.
+El experimento DINOv2 actual mantiene exactamente 77 clases y ordena las clases
+desde `metadatos_modelo.json`. No se añaden especies automáticamente.
+
+Para auditar el dataset completo antes de decidir una ampliación:
+
+```bash
+python3 src/auditoria_dataset.py data/imagenes_visilab(raw) \
+  --clases-activas modelos/75_objetivo/metadatos_modelo.json \
+  --minimo 20 --salida auditoria_dataset.json
+```
+
+El informe incluye total global, distribución por clase y grupo inferido,
+duplicados exactos y candidatas adicionales. Una candidata debe revisarse
+manualmente y debe generar un experimento nuevo; no se modifica el modelo de
+77 clases en silencio. Si la auditoría detecta duplicados, regenera los splits
+tras decidir cómo agruparlos para evitar fuga entre train/val/test.
 
 ## Entrenar y evaluar
 
@@ -81,10 +99,17 @@ python3 src/main.py --reentrenar s --regenerar-splits n --recalcular-embeddings 
 Durante el entrenamiento:
 
 - DINOv2 permanece congelado, solo calcula embeddings.
+- Antes de pasar por `AutoImageProcessor`, cada ROI se centra en un lienzo
+  cuadrado con padding de color medio del borde (`dinov2-pad-square-v1`).
+  Así se evita perder extremos de ROI alargados por un center crop y no se
+  deforma la imagen.
 - `train` recibe aumento de datos y copias extra para clases minoritarias.
 - Un `WeightedRandomSampler` y una loss ponderada (exponente configurable en `EXPONENTE_PESO_CLASE`) compensan el desbalance de especies.
 - El clasificador usa un tronco `768 → 512 → 256`, con ReLU y dropout, y dos cabezas lineales: especie y género.
-- La pérdida combina CrossEntropy de especie (con label smoothing), CrossEntropy de género (ponderada por `PESO_GENERO`) y, Center Loss (ponderada por `LAMBDA_CENTER_LOSS`) para compactar los embeddings de cada especie.
+- La pérdida principal es CrossEntropy de especie. Género y Center Loss se
+  conservan como ablaciones configurables, pero están desactivados por defecto
+  (`PESO_GENERO=0` y `LAMBDA_CENTER_LOSS=0`) para no perjudicar la clasificación
+  sin evidencia experimental.
 - AdamW, warmup + descenso coseno, early stopping según macro F1 de validación.
 
 Al finalizar, se guardan en `modelos/<PRUEBA>/`: `mejor_modelo.pth`, `metadatos_modelo.json` (especies con las que se entrenó), curvas, matriz de confusión y reporte de test.
@@ -133,6 +158,9 @@ error explícito para evitar inventar estadísticas.
 Los pesos (`*.pt`, `*.pth`, `*.ckpt`) están excluidos por `.gitignore`. Deben
 colocarse localmente en `yolo_dinov2/` y `modelos/75_objetivo/`, o pasarse con
 las opciones `--yolo-weights`, `--dino-weights` y `--resnet-weights`.
+Al cambiar el padding o las augmentations hay que recalcular los embeddings de
+train/val/test y reentrenar el MLP; los `.pt` y pesos previos no se sobrescriben
+ni se consideran compatibles automáticamente.
 
 ```bash
 python3 src/inferencia.py --classifier dinov2
@@ -153,4 +181,4 @@ python3 src/confusiones.py            # Confusiones repetidas entre especies
 
 ## Parámetros principales
 
-Centralizados en `src/constantes.py`: dispositivo, batch size, épocas, learning rate, `EXPONENTE_PESO_CLASE`, `LAMBDA_CENTER_LOSS`, `PESO_GENERO`, paciencia, umbral de confianza y `ESPECIES_FILTRADAS`.
+Centralizados en `src/constantes.py`: dispositivo, batch size, épocas, learning rate, `EXPONENTE_PESO_CLASE`, `LAMBDA_CENTER_LOSS`, `PESO_GENERO`, `USAR_CENTER_LOSS`, `USAR_PERDIDA_GENERO`, paciencia, umbral de confianza y `ESPECIES_FILTRADAS`.

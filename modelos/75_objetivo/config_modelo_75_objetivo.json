@@ -11,9 +11,16 @@
   "learning_rate": 0.0003,
   "weight_decay": 0.0001,
   "label_smoothing": 0.05,
-  "peso_genero": 0.4,
+  "peso_genero": 0.0,
   "exponente_peso_clase": 0.3,
-  "lambda_center_loss": 0.01,
+  "lambda_center_loss": 0.0,
+  "perdida_genero_activa": false,
+  "center_loss_activa": false,
+  "preprocesado": {
+    "version": "dinov2-pad-square-v1",
+    "modo": "pad_square",
+    "color_relleno": "mean_border"
+  },
   "umbral_confianza": 0.8,
   "num_especies": 77,
   "especies": [

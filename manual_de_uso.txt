@@ -6,6 +6,7 @@ ANTES DE EMPEZAR
 1. Mirar ##Instalación del readme
 2. Colocar imágenes en data/imagenes_visilab(raw)/<carpeta>/<especie>/*.jpg
 3. Poner los nombres de especie en ESPECIES_FILTRADAS de src/constantes.py
+   El experimento DINOv2 actual conserva exactamente 77 especies.
 
 
 1. ENTRENAR O EVALUAR
@@ -24,6 +25,12 @@ Pregunta tres cosas (s/n):
   ¿Recalcular embeddings?
     n -> usa los .pt actuales (rápido).
     s -> vuelve a pasar las imágenes por DINOv2 (tarda).
+
+El preprocesado recomendado aplica `dinov2-pad-square-v1`: padding a cuadrado
+sin deformar, con color medio del borde. La augmentación usa blur con baja
+probabilidad y relleno gris en transformaciones geométricas para no crear
+esquinas negras. Si se cambia este preprocesado hay que recalcular embeddings
+y reentrenar.
 
 Para automatizar sin preguntas:
     python3 src/main.py --reentrenar s --regenerar-splits n --recalcular-embeddings n --prueba "nombre_experimento"
@@ -96,6 +103,14 @@ estadísticas de color.
 Los pesos no están versionados: `.gitignore` excluye `*.pt`, `*.pth` y
 `*.ckpt`. Colócalos localmente en las rutas por defecto o indícalos con las
 opciones `--yolo-weights`, `--dino-weights` y `--resnet-weights`.
+
+Para auditar el dataset global antes de añadir especies:
+
+    python3 src/auditoria_dataset.py data/imagenes_visilab(raw) \
+      --clases-activas modelos/75_objetivo/metadatos_modelo.json --minimo 20
+
+La auditoría no cambia el split ni añade clases. Las clases adicionales solo
+se recomiendan si tienen suficientes imágenes y deben validarse manualmente.
 
 
 ORDEN RECOMENDADO

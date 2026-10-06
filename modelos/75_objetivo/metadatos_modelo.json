@@ -1,4 +1,18 @@
 {
+  "version_pipeline": "dinov2-77-v2-configurada",
+  "estado_pesos": "preexistentes; recalcular_embeddings_y_reentrenar_para_aplicar_la_configuracion",
+  "preprocesado_recomendado": {
+    "version": "dinov2-pad-square-v1",
+    "modo": "pad_square",
+    "color_relleno": "mean_border",
+    "tamano": 224
+  },
+  "perdidas_auxiliares": {
+    "genero": false,
+    "center_loss": false,
+    "peso_genero": 0.0,
+    "lambda_center_loss": 0.0
+  },
   "especies_filtradas": [
     "Achnanthidium_atomoides",
     "Achnanthidium_caravelense",

@@ -15,6 +15,7 @@ from torchvision import models, transforms
 from constantes import VARIABLES_GLOBALES
 from embeddings import get_embedding, inicializar_dinov2
 from modelo import cargar_modelo_entrenado
+from preprocesado import preparar_para_dinov2
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_INPUT = ROOT / "Inferir" / "imagenes_inferencia"
@@ -77,7 +78,7 @@ class ClasificadorDino:
         self.processor, self.backbone, _, self.augmentation = inicializar_dinov2(device)
 
     def predecir(self, imagen: Image.Image) -> dict[str, Any]:
-        inputs = self.processor(images=imagen.convert("RGB"), return_tensors="pt")
+        inputs = self.processor(images=preparar_para_dinov2(imagen), return_tensors="pt")
         inputs = {clave: valor.to(self.device) for clave, valor in inputs.items()}
         with torch.inference_mode():
             embedding = self.backbone(pixel_values=inputs["pixel_values"]).pooler_output.float()

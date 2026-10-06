@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
+from preprocesado import preparar_para_dinov2
 
 DEFAULT_INPUT = ROOT / "Inferir" / "imagenes_inferencia"
 DEFAULT_YOLO_WEIGHTS = ROOT / "Inferir" / "yolo_dinov2" / "yolo_best.pt"
@@ -306,7 +307,7 @@ class DinoClassifier:
         if not images:
             return []
         inputs = self.processor(
-            images=[image.convert("RGB") for image in images],
+            images=[preparar_para_dinov2(image) for image in images],
             return_tensors="pt",
         )
         inputs = {key: value.to(self.device) for key, value in inputs.items()}

@@ -62,4 +62,5 @@ class ClasificadorDiatomeas(nn.Module):
          indice_clase_predicha = indice_clase_predicha.to(self.umbral_distancia.device)
          distancia = self.distancia_a_centro(embedding, indice_clase_predicha)
          umbral = self.umbral_distancia[indice_clase_predicha]
-         return distancia > umbral
+         # Sin calibración no se debe inventar una clase "Desconocida".
+         return torch.isfinite(umbral) & (distancia > umbral)

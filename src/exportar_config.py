@@ -4,6 +4,7 @@ hiperparámetros utilizados en el entrenamiento.
 """
 import json
 from constantes import VARIABLES_GLOBALES
+from preprocesado import CONFIGURACION_PREPROCESADO
 
 def exportar_config() -> None:
     ruta_carpeta = VARIABLES_GLOBALES["RUTA_MODELOS"] / VARIABLES_GLOBALES["PRUEBA"]
@@ -28,6 +29,9 @@ def exportar_config() -> None:
         "peso_genero": VARIABLES_GLOBALES["PESO_GENERO"],
         "exponente_peso_clase": VARIABLES_GLOBALES["EXPONENTE_PESO_CLASE"],
         "lambda_center_loss": VARIABLES_GLOBALES["LAMBDA_CENTER_LOSS"],
+        "perdida_genero_activa": VARIABLES_GLOBALES["USAR_PERDIDA_GENERO"],
+        "center_loss_activa": VARIABLES_GLOBALES["USAR_CENTER_LOSS"],
+        "preprocesado": CONFIGURACION_PREPROCESADO.como_dict(),
         "umbral_confianza": VARIABLES_GLOBALES["UMBRAL_CONF"],
         "num_especies": len(especies),
         "especies": sorted(especies),

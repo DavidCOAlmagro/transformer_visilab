@@ -79,6 +79,10 @@ def main() -> None:
     VARIABLES_GLOBALES["RUTA_EMBEDDINGS"] = (
         VARIABLES_GLOBALES["RUTA_BASE"] / "embeddings_procesado" /
         VARIABLES_GLOBALES["PRUEBA"])
+    if not VARIABLES_GLOBALES["USAR_PERDIDA_GENERO"]:
+        VARIABLES_GLOBALES["PESO_GENERO"] = 0.0
+    if not VARIABLES_GLOBALES["USAR_CENTER_LOSS"]:
+        VARIABLES_GLOBALES["LAMBDA_CENTER_LOSS"] = 0.0
     print(f"\n Iniciando prueba: {VARIABLES_GLOBALES['PRUEBA'].upper()}\n")
     # Semilla fija para que la inicialización de pesos, el shuffle del
     # dataloader y el data augmentation sean reproducibles entre ejecuciones.
@@ -111,7 +115,22 @@ def main() -> None:
         ruta_carpeta_modelo.mkdir(parents=True, exist_ok=True)
 
         with open(ruta_carpeta_modelo / "metadatos_modelo.json", "w", encoding="utf-8") as f:
-            json.dump({"especies_filtradas": sorted(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])},
+            json.dump({
+                "version_pipeline": "dinov2-77-v2",
+                "especies_filtradas": sorted(VARIABLES_GLOBALES["ESPECIES_FILTRADAS"]),
+                "preprocesado": {
+                    "version": "dinov2-pad-square-v1",
+                    "modo": "pad_square",
+                    "color_relleno": "mean_border",
+                    "tamano": 224,
+                },
+                "perdidas_auxiliares": {
+                    "genero": bool(VARIABLES_GLOBALES["USAR_PERDIDA_GENERO"]),
+                    "center_loss": bool(VARIABLES_GLOBALES["USAR_CENTER_LOSS"]),
+                    "peso_genero": VARIABLES_GLOBALES["PESO_GENERO"],
+                    "lambda_center_loss": VARIABLES_GLOBALES["LAMBDA_CENTER_LOSS"],
+                },
+            },
                       f, indent=2, ensure_ascii=False)
 
         resp_split = resolver_si_no(

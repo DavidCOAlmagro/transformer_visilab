@@ -23,6 +23,7 @@ from transformers import AutoImageProcessor, AutoModel
 from torchvision import transforms
 from tqdm import tqdm
 from constantes import VARIABLES_GLOBALES
+from preprocesado import preparar_para_dinov2
 
 
 def resolver_modelo_dinov2() -> tuple[str, bool]:
@@ -77,12 +78,13 @@ def crear_augmentation() -> transforms.Compose:
     return transforms.Compose([
         transforms.RandomHorizontalFlip(p=0.5),
         transforms.RandomVerticalFlip(p=0.5),
-        transforms.RandomRotation(360),
+        transforms.RandomRotation(15, fill=(128, 128, 128)),
         # Rotación pequeña de hasta 5 grados, escalado y traslación
         transforms.RandomAffine(
             degrees=0,
             translate=(0.02, 0.02),
-            scale=(0.97, 1.03)
+            scale=(0.97, 1.03),
+            fill=(128, 128, 128),
         ),
         # Ajuste aleatorio de brillo y contraste
         transforms.ColorJitter(
@@ -90,10 +92,10 @@ def crear_augmentation() -> transforms.Compose:
             contrast=0.08
         ),
         # Aplicación de un desenfoque gaussiano aleatorio
-        transforms.GaussianBlur(
-            kernel_size=3,
-            sigma=(0.1, 1.0)
-        )
+        transforms.RandomApply(
+            [transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 1.0))],
+            p=0.15,
+        ),
     ])
 
 # Decorador @torch.inference_mode() indica que no se calcularán gradientes, es mas rapido
@@ -109,8 +111,10 @@ def get_embedding(ruta_imagen: str, processor: AutoImageProcessor, model: AutoMo
     """
 
     imagen: Image = Image.open(ruta_imagen).convert("RGB")
+    imagen = preparar_para_dinov2(imagen)
     if is_train:
         imagen = augmentation(imagen)
+        imagen = preparar_para_dinov2(imagen)
 
     # El procesador: Redimensiona(224x224), Normaliza([-1, 1]) y convierte a tensor.
     inputs: dict[str, torch.Tensor] = processor(images=imagen, return_tensors="pt")
