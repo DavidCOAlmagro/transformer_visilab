@@ -1,7 +1,20 @@
 # 12 — Estado actual y trabajo en curso (documento VIVO)
 
 > Actualizar este documento al cerrar cada sesión o spec. Lo más reciente arriba.
-> Última actualización: **2026-10-06** (noche) — spec 003 completada en test interno; siguiente: campo en Ubuntu.
+> Última actualización: **2026-10-07**. Resultado de campo de la spec 003 (DINO-pad 0.788, ResNet 0.827, ensamble 0.850)
+> en la PR #2 (rama `sdd/003-resultado-campo`).
+
+## En curso: spec 006 — fine-tuning parcial de DINOv2 (rama `sdd/006-finetuning-dinov2`)
+Decisión del usuario: probar primero el fine-tuning parcial (la spec 005, ResNet con nuestros datos, queda pospuesta).
+Últimos 4 bloques + MLP (iniciado desde `75_objetivo_pad`), LR 1e-5/1e-4, aumentación online, máx. 15 épocas, paciencia 4.
+**En marcha en Ubuntu desde 2026-10-07 11:29** (`--temperatura-pausa 0`, en primer plano con `tee log_ft.txt`, salida `modelos/75_objetivo_ft/`).
+- GPU de Ubuntu: **Quadro P4000** (Pascal, capacidad 6.1, 8 GB). Va a ~14 img/s (~61 min/época) por: bf16 emulado (corregido
+  después en el script: fp32 en Pascal, commit `078fa34`; la corrida en marcha usa la versión anterior), throttling térmico
+  (683 de 1708 MHz a 90 °C) y un **proceso `nohup` duplicado** (PID 665956) que escribía en la misma carpeta → pararlo.
+- Época 1: macro-F1 val 0.877, acc val 0.891 (75_objetivo_pad: mejor val 0.894).
+- Portátil (RTX 3050, bf16 nativo, batch 16, workers 0): ~34 img/s → ~25 min/época (medido con 1 024 imágenes).
+- Al terminar: campo con `--classifier dinov2 --dino-weights modelos/75_objetivo_ft/modelo_75_objetivo_ft.pth` + `evaluar_campo.py`.
+  Éxito > 0.788; objetivo ≥ 0.827.
 
 ## Foco actual del usuario
 1. **Construir un dataset con ground truth** a partir de inferencias en campo (Aqualitas + DBO5 GT),
