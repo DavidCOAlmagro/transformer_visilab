@@ -171,11 +171,11 @@ def freno_termico(limite: int) -> None:
 
 @torch.no_grad()
 def predecir(modelo: DinoAjustado, cargador: DataLoader, device: torch.device,
-             tipo_amp: torch.dtype) -> tuple[torch.Tensor, torch.Tensor]:
+             tipo_amp: torch.dtype | None) -> tuple[torch.Tensor, torch.Tensor]:
     modelo.eval()
     logits, etiquetas = [], []
     for pixeles, y in cargador:
-        with torch.autocast(device.type, dtype=tipo_amp, enabled=device.type == "cuda"):
+        with torch.autocast(device.type, dtype=tipo_amp or torch.float16, enabled=tipo_amp is not None):
             logits.append(modelo(pixeles.to(device, non_blocking=True)).float().cpu())
         etiquetas.append(y)
     return torch.cat(logits), torch.cat(etiquetas)
@@ -213,12 +213,13 @@ def main() -> None:
     fijar_semilla(42)
     args.salida.mkdir(parents=True, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # bf16 solo es rápido en GPU con soporte nativo (Ampere o posterior, capacidad >= 8.0);
-    # en GPU anteriores PyTorch lo emula y es mucho más lento que fp16.
-    nativo_bf16 = device.type == "cuda" and torch.cuda.get_device_capability()[0] >= 8
-    tipo_amp = torch.bfloat16 if nativo_bf16 else torch.float16
+    # Precisión según la GPU: bf16 nativo desde Ampere (capacidad >= 8), fp16 con tensor cores
+    # en Volta/Turing (7.x) y fp32 en Pascal o anteriores (p. ej. Quadro P4000, 6.1), donde
+    # bf16 se emula y fp16 no acelera. None = fp32 sin autocast.
+    capacidad = torch.cuda.get_device_capability()[0] if device.type == "cuda" else 0
+    tipo_amp = torch.bfloat16 if capacidad >= 8 else torch.float16 if capacidad == 7 else None
     gpu = torch.cuda.get_device_name() if device.type == "cuda" else "cpu"
-    print(f"{datetime.now():%H:%M} device={device} ({gpu}) amp={tipo_amp} bloques={args.bloques}", flush=True)
+    print(f"{datetime.now():%H:%M} device={device} ({gpu}) amp={tipo_amp or "fp32"} bloques={args.bloques}", flush=True)
 
     especies = sorted(json.loads(args.metadatos.read_text(encoding="utf-8"))["especies_filtradas"])
     numero_especie = {e: i for i, e in enumerate(especies)}
@@ -266,7 +267,7 @@ def main() -> None:
         return 0.5 * (1 + math.cos(math.pi * min(1.0, progreso)))
 
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizador, factor_lr)
-    escalador = torch.amp.GradScaler(enabled=tipo_amp == torch.float16 and device.type == "cuda")
+    escalador = torch.amp.GradScaler(enabled=tipo_amp == torch.float16)
 
     ruta_ultimo, ruta_mejor = args.salida / "ultimo.pth", args.salida / "mejor_entrenamiento.pth"
     estado = {"epoca": 0, "mejor_f1": -1.0, "sin_mejora": 0, "historial": []}
@@ -284,7 +285,7 @@ def main() -> None:
         for paso, (pixeles, y) in enumerate(cargadores["train"]):
             pixeles, y = pixeles.to(device, non_blocking=True), y.to(device, non_blocking=True)
             optimizador.zero_grad(set_to_none=True)
-            with torch.autocast(device.type, dtype=tipo_amp, enabled=device.type == "cuda"):
+            with torch.autocast(device.type, dtype=tipo_amp or torch.float16, enabled=tipo_amp is not None):
                 loss = perdida(modelo(pixeles), y)
             escalador.scale(loss).backward()
             escalador.unscale_(optimizador)
