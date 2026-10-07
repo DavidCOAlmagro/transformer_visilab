@@ -11,7 +11,7 @@ Decisión del usuario: probar primero el fine-tuning parcial (la spec 005, ResNe
 - GPU de Ubuntu: **Quadro P4000** (Pascal, capacidad 6.1, 8 GB). Va a ~14 img/s (~61 min/época) por: bf16 emulado (corregido
   después en el script: fp32 en Pascal, commit `078fa34`; la corrida en marcha usa la versión anterior), throttling térmico
   (683 de 1708 MHz a 90 °C) y un **proceso `nohup` duplicado** (PID 665956) que escribía en la misma carpeta → pararlo.
-- Época 1: macro-F1 val 0.877, acc val 0.891 (75_objetivo_pad: mejor val 0.894).
+- Val por época (macro-F1 / acc): E1 0.877/0.891 · E2 0.886/0.902 · E3 0.888/0.908 · **E7 0.911/0.935** (supera a 75_objetivo_pad: 0.894). Sin sobreajuste (loss val 0.42 → 0.30).
 - Portátil (RTX 3050, bf16 nativo, batch 16, workers 0): ~34 img/s → ~25 min/época (medido con 1 024 imágenes).
 - Al terminar: campo con `--classifier dinov2 --dino-weights modelos/75_objetivo_ft/modelo_75_objetivo_ft.pth` + `evaluar_campo.py`.
   Éxito > 0.788; objetivo ≥ 0.827.
