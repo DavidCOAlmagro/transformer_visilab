@@ -9,7 +9,8 @@ las imágenes pasan por DINOv2 en cada época: así se pueden entrenar sus
 - Mismas 77 clases y splits que 75_objetivo (lista relativa en la spec).
 - MLP inicializado con los pesos de 75_objetivo_pad.
 - Reanudable: guarda <salida>/ultimo.pth al final de cada época.
-- Freno térmico: pausa si la GPU llega a 85 ºC hasta que baje a 75 ºC.
+- Freno térmico: pausa si la GPU llega a 85 ºC hasta que baje 10 ºC.
+  `--temperatura-pausa 0` lo desactiva (la GPU mantiene su propia protección).
 
 Uso (Ubuntu):
     nohup python3 contexto_IA/specs/006-finetuning-parcial-dinov2/scripts/finetune_dinov2.py > log_ft.txt 2>&1 &
@@ -66,6 +67,8 @@ def argumentos() -> argparse.Namespace:
     parser.add_argument("--lr-backbone", type=float, default=1e-5)
     parser.add_argument("--lr-cabeza", type=float, default=1e-4)
     parser.add_argument("--workers", type=int, default=0 if os.name == "nt" else 8)
+    parser.add_argument("--temperatura-pausa", type=int, default=85,
+                        help="ºC a los que se pausa el entrenamiento; 0 desactiva el freno térmico.")
     parser.add_argument("--max-imagenes", type=int, default=0, help="Limita cada split (prueba de humo).")
     return parser.parse_args()
 
@@ -157,10 +160,11 @@ def temperatura_gpu() -> int:
         return 0
 
 
-def freno_termico() -> None:
-    if temperatura_gpu() >= 85:
+def freno_termico(limite: int) -> None:
+    """Pausa al llegar a ``limite`` ºC hasta bajar 10 ºC; ``limite`` 0 lo desactiva."""
+    if limite and temperatura_gpu() >= limite:
         print(f"GPU {temperatura_gpu()} C: pausa térmica", flush=True)
-        while temperatura_gpu() > 75:
+        while temperatura_gpu() > limite - 10:
             time.sleep(10)
         print(f"GPU {temperatura_gpu()} C: reanudo", flush=True)
 
@@ -287,7 +291,7 @@ def main() -> None:
                 print(f"  época {epoca} paso {paso}/{pasos_epoca} loss {loss.item():.4f} "
                       f"{(time.time() - inicio) / 60:.1f} min GPU {temperatura_gpu()}C", flush=True)
             if paso % 20 == 0:
-                freno_termico()
+                freno_termico(args.temperatura_pausa)
         val = metricas(*predecir(modelo, cargadores["val"], device, tipo_amp))
         registro = {"epoca": epoca, "loss_train": acumulada / pasos_epoca, "val": val,
                     "minutos": round((time.time() - inicio) / 60, 1)}

@@ -21,7 +21,7 @@
 
 ## Ejecución
 1. **Windows (humo):** `--max-imagenes 256 --epocas 1 --batch 8` en la RTX 3050 → valida el código, la memoria y el checkpoint.
-2. **Ubuntu:** `git pull` y luego `nohup python3 contexto_IA/specs/006-finetuning-parcial-dinov2/scripts/finetune_dinov2.py > log_ft.txt 2>&1 &`.
+2. **Ubuntu:** `git pull` y luego `python3 contexto_IA/specs/006-finetuning-parcial-dinov2/scripts/finetune_dinov2.py --temperatura-pausa 0 2>&1 | tee log_ft.txt` (sin freno térmico en la torre, a petición del usuario).
    Reanudable (`ultimo.pth` por época); comprueba antes que las imágenes de los splits existen.
    Estimación a confirmar con la 1.ª época: ~8–15 min/época (46k imágenes pasan por todo DINOv2 + val) → **2–4 h**.
 3. **Campo:** inferencia con `--classifier dinov2 --dino-weights modelos/75_objetivo_ft/modelo_75_objetivo_ft.pth` → `evaluar_campo.py`.
