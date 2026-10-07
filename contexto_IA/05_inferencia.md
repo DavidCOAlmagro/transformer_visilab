@@ -36,6 +36,7 @@ python3 Inferir/infer_and_split_resnet_single_folder.py [input] --classifier bot
 - Preprocesado DINO en HEAD: `preparar_para_dinov2` (pad-square) → processor → CLS → L2 (en fp16 con autocast en CUDA).
   Coherente con `75_objetivo_pad` (por defecto desde spec 004; verificado: reproduce la accuracy del entrenamiento), **no** con `75_objetivo`.
 - Backbone: `AutoModel.from_pretrained("facebook/dinov2-base")` directamente (no usa `resolver_modelo_dinov2`/`DINOV2_MODEL_PATH`).
+  Si el checkpoint trae claves `backbone.*` (fine-tuning, spec 006), `backbone_state()` las carga en el backbone (strict); si no, se usa el original.
 
 ## Pesos necesarios (no versionados)
 | Archivo | Ruta por defecto | Flag |

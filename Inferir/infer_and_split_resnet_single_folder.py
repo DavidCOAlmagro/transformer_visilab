@@ -184,6 +184,19 @@ def _state_dict(checkpoint: Any, label: str) -> dict[str, Any]:
     }
 
 
+def backbone_state(state: dict[str, Any]) -> dict[str, Any]:
+    """Extracts fine-tuned DINOv2 backbone weights (``backbone.*`` keys), if any.
+
+    Checkpoints from the partial fine-tuning (spec 006) store the whole backbone
+    under ``backbone.``; older checkpoints only contain the MLP and return {}.
+    """
+    return {
+        key.removeprefix("backbone."): value
+        for key, value in state.items()
+        if key.startswith("backbone.")
+    }
+
+
 class ResNetClassifier:
     def __init__(self, weights: Path, classes: list[str], device: torch.device) -> None:
         from torchvision import models, transforms
@@ -254,6 +267,14 @@ class DinoClassifier:
                 "Comprueba la caché/conectividad y que los pesos del checkpoint "
                 "correspondan a ese backbone."
             ) from error
+        tuned_backbone = backbone_state(state)
+        if tuned_backbone:
+            try:
+                self.backbone.load_state_dict(tuned_backbone, strict=True)
+            except RuntimeError as error:
+                raise ValueError(
+                    f"The fine-tuned DINOv2 backbone in {weights} does not match 'facebook/dinov2-base'."
+                ) from error
         hidden = self.backbone.config.hidden_size
         self.trunk = torch.nn.Sequential(
             torch.nn.Linear(hidden, 512), torch.nn.ReLU(), torch.nn.Dropout(0.3),

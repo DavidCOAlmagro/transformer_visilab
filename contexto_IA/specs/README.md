@@ -5,6 +5,8 @@ Una carpeta por cambio: `NNN-nombre-corto/` con `spec.md`, `plan.md`, `tareas.md
 
 | ID | Nombre | Estado | Fecha | Resumen |
 |---|---|---|---|---|
+| 006 | finetuning-parcial-dinov2 | En curso | 2026-10-07 | Entrenar los 4 últimos bloques de DINOv2 + MLP con aumentación online (`75_objetivo_ft`) |
+| 005 | resnet-mismos-datos | Pospuesta | 2026-10-07 | ResNet50 con nuestros splits: ¿receta o datos? |
 | 004 | limpieza-inferencia | Completada | 2026-10-06 | Elimina `src/inferencia.py`; `75_objetivo_pad` por defecto en `Inferir/`; README/manual actualizados |
 | 003 | reentrenar-pad-square | Completada (falta campo) | 2026-10-06 | `75_objetivo_pad`: macro-F1 test **0.893** (oficial 0.877), acc 0.910, top-3 0.985 |
 | 002 | experimento-pad-square | Completada | 2026-10-06 | pad-square +3.0 macro-F1 en test interno (0.887 vs 0.857), mayor ganancia en alargadas |
