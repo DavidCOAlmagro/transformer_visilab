@@ -52,9 +52,18 @@ DINO pierde en 47 especies, gana en 12 (Nitzschia_amphibia, Tabellaria_flocculos
 
 Diagnóstico detallado y causas probables en **`13_diagnostico_dinov2_campo.md`**.
 
+## Resultado en campo del modelo nuevo (2026-10-07) — spec 003 cerrada
+| suma_conf sin `_fp` (8 234 imgs) | DINO antes | **DINO pad** | ResNet50 | Ensamble |
+|---|---|---|---|---|
+| accuracy por imagen | 0.741 | **0.788** | 0.827 | **0.850** |
+DINO queda a 3.9 pts de ResNet (antes 8.6). Gana a ResNet en 14 especies y pierde en 32. Regresiones: Stephanodiscus_hantzschii → Cyclotella_atomus,
+A. eutrophilum → A. rivulare, Encyonopsis_minuta → A. pyrenaicum. Detalle en `specs/003-reentrenar-pad-square/tareas.md`.
+⚠️ Los Excel de `C:\VISILAB\classification_results*.xlsx` son ahora los del modelo pad (los de ayer se sobrescribieron;
+sus métricas siguen en las specs 001/003 y en `cruce_ground_truth.xlsx`).
+
 ## Modelo nuevo: `75_objetivo_pad` (spec 003, 2026-10-06)
 Pipeline completo con pad-square, mismos splits. Test interno: macro-F1 **0.893** (oficial 0.877), acc 0.910, top-3 0.985.
-Pesos: `modelos/75_objetivo_pad/modelo_75_objetivo_pad.pth`. **Pendiente: medirlo en campo** en el equipo Ubuntu
+Pesos: `modelos/75_objetivo_pad/modelo_75_objetivo_pad.pth`. Medido en campo ✔ (ver arriba). Para usarlo en otra máquina, copiar los pesos
 (relanzar `Inferir/infer_and_split_resnet_single_folder.py --classifier both`, que ya usa estos pesos por defecto, y después `src/evaluar_campo.py`; baseline de campo DINO 0.741, ResNet 0.827).
 Embeddings en `data/embeddings_procesado/75_objetivo_pad/` (sin `unknown`). El modelo se ha entrenado en Windows y los pesos no están en git: copiarlos a Ubuntu.
 
@@ -85,7 +94,7 @@ Ver ranking en `13_diagnostico_dinov2_campo.md` §4 y specs candidatas en `specs
 
 ## Preguntas abiertas al usuario
 - Imágenes originales de campo (Aqualitas/DBO5) no están en esta máquina: hacen falta para probar cambios de preprocesado en campo.
-- ResNet50: **el usuario no sabe cómo se entrenó** (2026-10-06). Checkpoint no disponible en local (`Inferir/yolo_dinov2/` no existe).
+- ResNet50: receta conocida por el script recibido (2026-10-07; ver `13` §1b): fine-tuning completo, aumentación online, 50 épocas. **Dataset de entrenamiento desconocido** → preguntar al autor (¿incluía imágenes de Aqualitas/DBO5?).
 - ¿Las imágenes de inferencia (`diatomeas_infer(norm1)`, Aqualitas) están normalizadas con Reinhard?
 - `_fp` = posición pleural ✔. Pendiente: ¿mantener como clase o tratar como “vista pleural + género”?
 - ¿Formato/ubicación previstos para el dataset de ground truth (carpeta nueva en `imagenes_visilab(raw)`?).

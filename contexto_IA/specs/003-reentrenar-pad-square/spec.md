@@ -1,6 +1,6 @@
 # SPEC 003 — Reentrenar el modelo DINOv2 de 77 clases con pad-square
 
-- **Estado:** Completada en test interno (2026-10-06). CA4 (campo) pendiente en el equipo Ubuntu.
+- **Estado:** Completada (test interno 2026-10-06; campo 2026-10-07).
 - **Fecha:** 2026-10-06
 - **Relacionado:** deuda B4 (crítica), D-011, spec 002 (experimento), `13_diagnostico_dinov2_campo.md` E2.
 
@@ -24,7 +24,7 @@ que sea coherente con la inferencia actual y que mejore al modelo oficial.
 - [x] CA1: `modelos/75_objetivo_pad/` contiene pesos calibrados, `metadatos_modelo.json` (preprocesado `dinov2-pad-square-v1`) y reportes.
 - [x] CA2: macro-F1 de test ≥ 0.877 (modelo oficial actual). Objetivo: ≥ 0.887 (pad sin augmentation, spec 002).
 - [x] CA3: `75_objetivo` queda intacto.
-- [ ] CA4: si están disponibles las imágenes de campo, accuracy por imagen con `evaluar_campo.py` (suma_conf sin `_fp`) > 0.741.
+- [x] CA4: si están disponibles las imágenes de campo, accuracy por imagen con `evaluar_campo.py` (suma_conf sin `_fp`) > 0.741.
 
 ## 6. Impacto en experimentos
 - PRUEBA nueva `75_objetivo_pad`. Splits **no** se regeneran (copia exacta de `data/splits/75_objetivo/`).

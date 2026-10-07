@@ -49,4 +49,7 @@ Motivo: el center-crop del AutoImageProcessor cortaba extremos de ROIs alargados
 **D-015 | 2026-10-06 | En la evaluación por imagen, las predicciones `*_fp` (posición pleural), `Debris` y `Fragments` no votan; la regla oficial es `suma_conf` y el voto desempata por suma de confianza.**
 Motivo: `_fp` no es una especie. Excluirlas sube DINOv2 0.675→0.741 y ResNet 0.762→0.827 (spec 001). La métrica de campo oficial es `src/evaluar_campo.py`.
 
-<!-- D-016 | AAAA-MM-DD | ... -->
+**D-016 | 2026-10-07 | `75_objetivo_pad` (pad-square) es el modelo DINOv2 por defecto.**
+Motivo: test interno macro-F1 0.893 frente a 0.877; campo 0.788 frente a 0.741 (spec 003). Por defecto en `Inferir/` desde la spec 004.
+
+<!-- D-017 | AAAA-MM-DD | ... -->
