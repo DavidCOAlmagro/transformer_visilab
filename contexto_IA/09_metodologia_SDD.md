@@ -18,6 +18,8 @@ La spec es la fuente de verdad; el código la implementa; `contexto_IA/` se mant
                decisión), estado de la spec → "Completada". Commit solo si el usuario lo pide.
 ```
 
+> Atajo: la skill `/spec-sdd` (`.claude/skills/spec-sdd/SKILL.md`) aplica este proceso paso a paso.
+
 ## Tamaño del cambio
 | Tipo | Proceso |
 |---|---|
