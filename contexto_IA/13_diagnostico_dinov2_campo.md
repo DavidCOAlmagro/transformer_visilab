@@ -67,6 +67,22 @@ Las confianzas de DINO están calibradas (T horneada): media 79 % en aciertos y 
 - Desajuste por pad-square: los Excel se generaron con una versión sin pad (commit ≤ `0b42d93`), así que fueron coherentes.
 - fp16 (autocast) en inferencia frente a fp32 en entrenamiento: impacto esperado mínimo (sin verificar).
 
+## 1b. Cómo se entrenó ResNet50 (script recibido, `C:\VISILAB\train_resnet.rar`, 2026-10-07)
+Es una **plantilla** de otro proyecto (rutas `D:\resnet_tejido`, entrada 512, cabeza `Linear` simple); la versión real de diatomeas
+se adaptó (cabeza `2048→256→78` con dropout, entrada 256×256). La receta común:
+- **Fine-tuning completo** de ResNet50 preentrenada en ImageNet: SGD lr 0.002, momentum 0.9, **todas las capas** se entrenan.
+- **Resize a cuadrado fijo** (deforma, pero ve el objeto entero; no hay center crop).
+- **Aumentación online en cada época** durante 50 épocas: RandomAffine (shear 10°, escala 0.8–1.2) + flip horizontal
+  → unas 50 vistas distintas por imagen (DINO: 1 original + 1–4 aumentadas, fijas).
+- Sin pesos de clase ni sampler; CE simple; batch 4.
+- Checkpoint usado = **época 50** (la última, no la mejor en val). La evaluación en test está definida pero no se llama.
+- Dataset: `ImageFolder` train/val/test **desconocido**. Sus 78 clases tienen erratas (`Denticula_tenius`, `Nitzschia_dessertorum`)
+  y `Planothidium_fp` → otra versión o carpeta del dataset, no nuestros splits.
+- ⚠️ **Riesgo de fuga sin verificar**: si su train incluía imágenes o recortes de Aqualitas/DBO5, su 0.827 de campo estaría inflado.
+
+Implicación: la diferencia DINO–ResNet es **receta + datos**, no solo arquitectura: la ResNet adapta todas sus capas al dominio
+y ve muchas más variaciones. Las palancas equivalentes para DINO son el fine-tuning parcial y la aumentación online (§4 puntos 3–4).
+
 ## 2. Causas probables (por peso estimado)
 1. **Desfase de dominio** + backbone congelado (E1).
 2. **Pérdida de información por el center crop** en especies alargadas (E2).

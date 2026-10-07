@@ -94,7 +94,7 @@ Ver ranking en `13_diagnostico_dinov2_campo.md` §4 y specs candidatas en `specs
 
 ## Preguntas abiertas al usuario
 - Imágenes originales de campo (Aqualitas/DBO5) no están en esta máquina: hacen falta para probar cambios de preprocesado en campo.
-- ResNet50: **el usuario no sabe cómo se entrenó** (2026-10-06). Checkpoint no disponible en local (`Inferir/yolo_dinov2/` no existe).
+- ResNet50: receta conocida por el script recibido (2026-10-07; ver `13` §1b): fine-tuning completo, aumentación online, 50 épocas. **Dataset de entrenamiento desconocido** → preguntar al autor (¿incluía imágenes de Aqualitas/DBO5?).
 - ¿Las imágenes de inferencia (`diatomeas_infer(norm1)`, Aqualitas) están normalizadas con Reinhard?
 - `_fp` = posición pleural ✔. Pendiente: ¿mantener como clase o tratar como “vista pleural + género”?
 - ¿Formato/ubicación previstos para el dataset de ground truth (carpeta nueva en `imagenes_visilab(raw)`?).
