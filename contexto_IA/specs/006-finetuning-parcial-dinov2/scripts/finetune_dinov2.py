@@ -213,8 +213,12 @@ def main() -> None:
     fijar_semilla(42)
     args.salida.mkdir(parents=True, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    tipo_amp = torch.bfloat16 if device.type == "cuda" and torch.cuda.is_bf16_supported() else torch.float16
-    print(f"{datetime.now():%H:%M} device={device} amp={tipo_amp} bloques={args.bloques}", flush=True)
+    # bf16 solo es rápido en GPU con soporte nativo (Ampere o posterior, capacidad >= 8.0);
+    # en GPU anteriores PyTorch lo emula y es mucho más lento que fp16.
+    nativo_bf16 = device.type == "cuda" and torch.cuda.get_device_capability()[0] >= 8
+    tipo_amp = torch.bfloat16 if nativo_bf16 else torch.float16
+    gpu = torch.cuda.get_device_name() if device.type == "cuda" else "cpu"
+    print(f"{datetime.now():%H:%M} device={device} ({gpu}) amp={tipo_amp} bloques={args.bloques}", flush=True)
 
     especies = sorted(json.loads(args.metadatos.read_text(encoding="utf-8"))["especies_filtradas"])
     numero_especie = {e: i for i, e in enumerate(especies)}
