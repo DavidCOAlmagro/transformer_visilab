@@ -13,9 +13,9 @@ las imágenes pasan por DINOv2 en cada época: así se pueden entrenar sus
   `--temperatura-pausa 0` lo desactiva (la GPU mantiene su propia protección).
 
 Uso (Ubuntu):
-    nohup python3 contexto_IA/specs/006-finetuning-parcial-dinov2/scripts/finetune_dinov2.py > log_ft.txt 2>&1 &
+    python3 src/finetune_dinov2.py --temperatura-pausa 0 2>&1 | tee log_ft.txt
 Prueba de humo (Windows):
-    python contexto_IA/specs/006-finetuning-parcial-dinov2/scripts/finetune_dinov2.py \
+    python src/finetune_dinov2.py \
         --max-imagenes 256 --epocas 1 --batch 8 --salida <carpeta_temporal>
 --------------------------------------
 """
@@ -39,8 +39,7 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
 from torchvision import transforms
 
-RAIZ = Path(__file__).resolve().parents[4]
-CARPETA_SPEC = Path(__file__).resolve().parents[1]
+RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ / "src"))
 from calibracion_confianza import ajustar_temperatura  # noqa: E402
 from clasificador import ClasificadorDiatomeas  # noqa: E402
@@ -56,7 +55,7 @@ PRUEBA = "75_objetivo_ft"
 def argumentos() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fine-tuning parcial de DINOv2 (spec 006).")
     parser.add_argument("--raiz-imagenes", type=Path, default=RAIZ / "data" / "imagenes_visilab(raw)")
-    parser.add_argument("--splits", type=Path, default=CARPETA_SPEC / "splits_75_objetivo_relativos.txt.gz")
+    parser.add_argument("--splits", type=Path, default=RAIZ / "recursos" / "splits_75_objetivo_relativos.txt.gz")
     parser.add_argument("--metadatos", type=Path, default=RAIZ / "modelos" / "75_objetivo_pad" / "metadatos_modelo.json")
     parser.add_argument("--pesos-mlp", type=Path, default=RAIZ / "modelos" / "75_objetivo_pad" / "modelo_75_objetivo_pad.pth")
     parser.add_argument("--salida", type=Path, default=RAIZ / "modelos" / PRUEBA)
