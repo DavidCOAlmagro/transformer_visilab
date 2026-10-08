@@ -28,6 +28,8 @@ python3 Inferir/infer_and_split_resnet_single_folder.py [input] --classifier bot
 - Excluye carpetas generadas (`crops`, `bbox`, `runs`, `resultados`, `resultados_inferencia`…).
 - `--output-dir` no puede estar dentro de la entrada. Excel combinado + uno por modelo + imágenes
   anotadas en `bbox/dinov2/` y `bbox/resnet/`. Guarda Excel parcial en `finally`.
+- Imágenes anotadas (spec 008): recuadro **verde**, solo el nombre de la especie en letra grande proporcional a la imagen
+  (DejaVu Sans Bold en Ubuntu), sin confianza ni `REVISION` (eso queda en el Excel); etiquetas sin solaparse.
 - `--reinhard-reference` existe pero lanza error a propósito (no implementado).
 - Hay `.backup` del script en el repo.
 - Clases DINO: `resolve_dino_classes` usa **`metadatos_modelo.json` de la carpeta de los pesos** (y lo contrasta con
