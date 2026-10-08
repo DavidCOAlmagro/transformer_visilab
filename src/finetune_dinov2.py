@@ -45,7 +45,7 @@ from calibracion_confianza import ajustar_temperatura  # noqa: E402
 from clasificador import ClasificadorDiatomeas  # noqa: E402
 from constantes import VARIABLES_GLOBALES  # noqa: E402
 from embeddings import crear_augmentation, resolver_modelo_dinov2  # noqa: E402
-from preparar_datos import construir_numero_genero, fijar_semilla  # noqa: E402
+from preparar_datos import construir_numero_genero, fijar_semilla, normalizar_nombre_especie  # noqa: E402
 from preprocesado import CONFIGURACION_PREPROCESADO, preparar_para_dinov2  # noqa: E402
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -80,7 +80,7 @@ def leer_splits(ruta: Path, raiz: Path, max_imagenes: int) -> dict[str, list[tup
         for linea in archivo:
             split, relativa = linea.rstrip("\n").split("\t")
             ruta_imagen = raiz.joinpath(*relativa.split("/"))
-            splits[split].append((ruta_imagen, ruta_imagen.parent.name))
+            splits[split].append((ruta_imagen, normalizar_nombre_especie(ruta_imagen.parent.name)))
     if max_imagenes:
         # Submuestra repartida por todo el split para que haya varias especies
         splits = {s: items[::max(1, len(items) // max_imagenes)][:max_imagenes] for s, items in splits.items()}

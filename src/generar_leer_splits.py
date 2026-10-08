@@ -7,7 +7,7 @@ cada vez que se ejecute el programa.
 """
 from pathlib import Path
 from sklearn.model_selection import train_test_split
-from preparar_datos import rutas_imagenes, obtener_especies_activas
+from preparar_datos import rutas_imagenes, obtener_especies_activas, normalizar_nombre_especie
 from collections import Counter
 from constantes import VARIABLES_GLOBALES
 
@@ -94,7 +94,7 @@ def leer_split(ruta_archivo: Path) -> list[tuple[str, str]]:
             ruta = linea.strip()
             # Si no está vacía, obtiene la especie a partir del nombre de la carpeta padre
             if ruta:
-                especie = Path(ruta).parent.name
+                especie = normalizar_nombre_especie(Path(ruta).parent.name)
                 rutas_especies.append((ruta, especie))
 
     return rutas_especies
