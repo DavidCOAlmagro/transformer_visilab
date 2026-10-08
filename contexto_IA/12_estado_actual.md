@@ -13,7 +13,8 @@ Decisión del usuario: probar primero el fine-tuning parcial (la spec 005, ResNe
   (683 de 1708 MHz a 90 °C) y un **proceso `nohup` duplicado** (PID 665956) que escribía en la misma carpeta → pararlo.
 - Val por época (macro-F1 / acc): E1 0.877/0.891 · E2 0.886/0.902 · E3 0.888/0.908 · **E7 0.911/0.935** (supera a 75_objetivo_pad: 0.894). Sin sobreajuste (loss val 0.42 → 0.30).
 - Portátil (RTX 3050, bf16 nativo, batch 16, workers 0): ~34 img/s → ~25 min/época (medido con 1 024 imágenes).
-- Al terminar: campo con `--classifier dinov2 --dino-weights modelos/75_objetivo_ft/modelo_75_objetivo_ft.pth` + `evaluar_campo.py`.
+- **Terminado (2026-10-08). Test: acc 0.937 · macro-F1 0.918 · top-3 0.990** (75_objetivo_pad: 0.910 / 0.893 / 0.985). Mejor época 12 (val 0.917).
+- Pendiente: campo con `--classifier dinov2 --dino-weights modelos/75_objetivo_ft/modelo_75_objetivo_ft.pth` + `evaluar_campo.py`.
   Éxito > 0.788; objetivo ≥ 0.827.
 
 ## Foco actual del usuario
