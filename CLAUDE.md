@@ -14,7 +14,7 @@ No escribir código de una feature sin spec aprobada por el usuario.
 - Código, comentarios y commits verbosos en **español** (salvo `Inferir/infer_and_split_resnet_single_folder.py`, en inglés).
 - Orden de clases = `sorted(especies)`. Preprocesado idéntico en train e inferencia.
 - No tocar `data/`, splits, embeddings ni pesos sin que la spec lo indique.
-- Tests: `python -m unittest tests.test_preprocesado tests.test_evaluar_campo` desde la raíz (Python del sistema; la `.venv` del repo está vacía, sin dependencias).
+- Tests: `python -m unittest tests.test_preprocesado tests.test_evaluar_campo tests.test_inferir_checkpoint tests.test_anotacion` desde la raíz (Python del sistema; la `.venv` del repo está vacía, sin dependencias).
 - Al cambiar algo documentado, actualizar el `.md` correspondiente de `contexto_IA/` en el mismo cambio.
 - Skills del proyecto (`.claude/skills/`): `/spec-sdd` (abrir/cerrar specs), `/evaluar-campo` (medir una inferencia nueva),
   `/trabajo-ubuntu` (preparar algo para la Quadro P4000 del trabajo). No usar skills de terceros.

@@ -421,12 +421,29 @@ def _output_stem(relative: Path) -> str:
     return "__".join(parts) or "imagen"
 
 
-@lru_cache(maxsize=1)
-def _font() -> ImageFont.ImageFont:
-    try:
-        return ImageFont.truetype("arial.ttf", 16)
-    except (OSError, TypeError):
-        return ImageFont.load_default()
+ANNOTATION_COLOR = (0, 200, 0)
+FONT_CANDIDATES = (
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # Ubuntu
+    "DejaVuSans-Bold.ttf",
+    "arialbd.ttf",  # Windows
+    "arial.ttf",
+)
+
+
+@lru_cache(maxsize=8)
+def _font(size: int) -> ImageFont.ImageFont:
+    """Fuente legible y escalable; nunca cae en la fuente bitmap diminuta de PIL."""
+    for candidate in FONT_CANDIDATES:
+        try:
+            return ImageFont.truetype(candidate, size)
+        except (OSError, TypeError):
+            continue
+    return ImageFont.load_default(size=size)  # Pillow >= 10.1: escalable
+
+
+def _annotation_label(prediction: dict[str, Any]) -> str:
+    """Solo el nombre de la especie (sin confianza ni marca de revisión)."""
+    return (prediction["especie_mas_parecida"] or "sin clase").replace("_", " ")
 
 
 def _annotate_image(
@@ -435,23 +452,40 @@ def _annotate_image(
     predictions: list[dict[str, Any]],
     model_name: str,
 ) -> Image.Image:
-    """Dibuja las predicciones de un modelo sobre una copia de la imagen."""
+    """Dibuja recuadros verdes con el nombre de la especie sobre una copia de la imagen.
+
+    La confianza y la marca de revisión solo van al Excel. El tamaño de letra y el
+    grosor del recuadro son proporcionales a la imagen para que se lean en cualquier resolución.
+    """
     annotated = original.copy()
     draw = ImageDraw.Draw(annotated)
-    font = _font()
-    color = (255, 165, 0) if model_name == "dinov2" else (0, 180, 255)
-    for box, prediction in zip(boxes, predictions):
-        x1, y1, x2, y2 = box
-        label = prediction["especie_mas_parecida"] or "sin_clase"
-        label = f"{label} {prediction['confianza']:.2f}%"
-        if prediction["revisar"]:
-            label = f"REVISION: {label}"
-        draw.rectangle((x1, y1, x2, y2), outline=color, width=3)
-        left, top, right, bottom = draw.textbbox((x1, y1), label, font=font)
-        text_top = max(0, top - (bottom - top) - 4)
-        text_bottom = text_top + (bottom - top) + 4
-        draw.rectangle((left, text_top, right + 4, text_bottom), fill=color)
-        draw.text((left + 2, text_top + 2), label, fill=(0, 0, 0), font=font)
+    width, height = annotated.size
+    short_side = min(width, height)
+    font = _font(max(24, short_side // 30))
+    line_width = max(4, short_side // 200)
+    padding = max(4, line_width)
+    for x1, y1, x2, y2 in boxes:
+        draw.rectangle((x1, y1, x2, y2), outline=ANNOTATION_COLOR, width=line_width)
+    placed: list[tuple[int, int, int, int]] = []
+    for (x1, y1, x2, y2), prediction in zip(boxes, predictions):
+        label = _annotation_label(prediction)
+        left, top, right, bottom = draw.textbbox((0, 0), label, font=font)
+        label_w, label_h = right - left + 2 * padding, bottom - top + 2 * padding
+        label_x = max(0, min(x1, width - label_w))  # que no se salga por la derecha
+        # Encima del recuadro, debajo o dentro: la primera posición que quepa y no pise otra etiqueta
+        candidates = [y1 - label_h, y2, y1]
+        fits = [y for y in candidates if 0 <= y and y + label_h <= height]
+        label_y = next(
+            (y for y in fits if not any(
+                label_x < px2 and px1 < label_x + label_w and y < py2 and py1 < y + label_h
+                for px1, py1, px2, py2 in placed
+            )),
+            fits[0] if fits else max(0, y1),
+        )
+        rect = (label_x, label_y, label_x + label_w, label_y + label_h)
+        placed.append(rect)
+        draw.rectangle(rect, fill=ANNOTATION_COLOR)
+        draw.text((label_x + padding - left, label_y + padding - top), label, fill=(0, 0, 0), font=font)
     return annotated
 
 
