@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 from collections import deque
+from datetime import datetime
 from concurrent.futures import Future, ThreadPoolExecutor
 from functools import lru_cache
 import itertools
@@ -36,6 +37,8 @@ DEFAULT_DINO_WEIGHTS = ROOT / "modelos" / "75_objetivo_ft" / "modelo_75_objetivo
 DEFAULT_RESNET_WEIGHTS = ROOT / "Inferir" / "yolo_dinov2" / "resnet50_checkpoint_epoch50.pth"
 DEFAULT_DINO_CLASSES = ROOT / "Inferir" / "txt_classes" / "classes_77(dino).txt"
 DEFAULT_RESNET_CLASSES = ROOT / "Inferir" / "txt_classes" / "classes_78(resnet).txt"
+# Único sitio donde se decide dónde van los resultados: <RESULTS_ROOT>/<modelo>/<prueba>/
+RESULTS_ROOT = ROOT / "Inferir" / "resultados_inferencia"
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
 IMAGE_LOAD_WORKERS = 3
 IMAGE_PREFETCH = 6
@@ -347,6 +350,27 @@ class DinoClassifier:
         return top_predictions(logits, self.classes, threshold)
 
 
+def results_dir(model_name: str, run_name: str | None = None, root: Path = RESULTS_ROOT) -> Path:
+    """Carpeta de una ejecución nueva; si el nombre ya existe se añade _2, _3… para no sobrescribir."""
+    run_name = run_name or datetime.now().strftime("%Y%m%d_%H%M%S")
+    path = root / model_name / run_name
+    suffix = 2
+    while path.exists():
+        path = root / model_name / f"{run_name}_{suffix}"
+        suffix += 1
+    return path
+
+
+def model_name(args: argparse.Namespace) -> str:
+    """Nombre del modelo para la carpeta de resultados: carpeta de los pesos DINOv2 y/o resnet50."""
+    names = []
+    if args.classifier in ("dinov2", "both"):
+        names.append(args.dino_weights.expanduser().resolve().parent.name)
+    if args.classifier in ("resnet", "both"):
+        names.append("resnet50")
+    return "+".join(names)
+
+
 def discover_images(input_path: Path, excluded_paths: Iterable[Path] = ()) -> list[Path]:
     if input_path.is_file() and input_path.suffix.lower() in IMAGE_EXTENSIONS:
         return [input_path]
@@ -549,7 +573,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dino-classes", type=Path, default=DEFAULT_DINO_CLASSES)
     parser.add_argument("--resnet-classes", type=Path, default=DEFAULT_RESNET_CLASSES)
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--run-name", help="Nombre de la prueba (por defecto, fecha y hora).")
+    parser.add_argument("--output-dir", type=Path,
+                        help="Solo si hace falta otra carpeta; por defecto Inferir/resultados_inferencia/<modelo>/<prueba>.")
     parser.add_argument("--conf", type=float, default=0.30)
     parser.add_argument("--threshold", type=float, default=0.80)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
@@ -573,15 +599,8 @@ def main(argv: Iterable[str] | None = None) -> int:
         )
 
     input_path = args.input.expanduser().resolve()
-    output_dir = (
-        args.output_dir.expanduser().resolve()
-        if args.output_dir is not None
-        else (
-            input_path.parent / "resultados_inferencia"
-            if input_path.is_file()
-            else input_path.parent / f"{input_path.name}_resultados"
-        )
-    )
+    output_dir = (args.output_dir.expanduser().resolve() if args.output_dir is not None
+                  else results_dir(model_name(args), args.run_name))
     if input_path.is_dir():
         try:
             output_dir.relative_to(input_path)

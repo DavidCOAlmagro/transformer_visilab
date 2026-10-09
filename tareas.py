@@ -5,7 +5,8 @@ Tareas del proyecto en un solo comando (Windows y Ubuntu, sin instalar nada).
     python tareas.py dividir-datos              reparto train/val/test -> recursos/
     python tareas.py dividir-campo --etiquetas cruce_ground_truth.xlsx
     python tareas.py entrenar [opciones]        fine-tuning (opciones de src/entrenar.py)
-    python tareas.py inferir [entrada] [--salida DIR] [--classifier both|dinov2|resnet]
+    python tareas.py inferir [entrada] [--prueba NOMBRE] [--classifier both|dinov2|resnet]
+                                                -> Inferir/resultados_inferencia/<modelo>/<prueba>/
     python tareas.py evaluar --resultados DIR --etiquetas cruce_ground_truth.xlsx
     python tareas.py test
     python tareas.py limpiar [--si]             lista (y con --si borra) lo regenerable
@@ -19,7 +20,6 @@ import argparse
 import shutil
 import subprocess
 import sys
-from datetime import datetime
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent
@@ -107,7 +107,7 @@ def main() -> int:
     sub.add_parser("entrenar", help="Acepta las opciones de src/entrenar.py")
     p = sub.add_parser("inferir")
     p.add_argument("entrada", nargs="?", type=Path, default=RAIZ / "Inferir" / "imagenes_inferencia")
-    p.add_argument("--salida", type=Path, default=RAIZ.parent / f"resultados_{datetime.now():%Y%m%d_%H%M}")
+    p.add_argument("--prueba", help="Nombre de la ejecución (por defecto, fecha y hora)")
     p.add_argument("--classifier", default="both", choices=("both", "dinov2", "resnet"))
     p = sub.add_parser("evaluar")
     p.add_argument("--resultados", type=Path, required=True,
@@ -129,8 +129,9 @@ def main() -> int:
     if args.tarea == "entrenar":
         return ejecutar(PY, "src/entrenar.py", *extra)
     if args.tarea == "inferir":
+        prueba = ["--run-name", args.prueba] if args.prueba else []
         return ejecutar(PY, "Inferir/infer_and_split_resnet_single_folder.py", args.entrada,
-                        "--classifier", args.classifier, "--output-dir", args.salida, *extra)
+                        "--classifier", args.classifier, *prueba, *extra)
     if args.tarea == "evaluar":
         excel = args.resultados / "classification_results.xlsx"
         comando = [PY, "src/evaluar_campo.py", "--dino", excel, "--resnet", args.resnet or excel,

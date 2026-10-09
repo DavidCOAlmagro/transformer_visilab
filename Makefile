@@ -1,8 +1,8 @@
 # Atajos para Ubuntu (todo llama a tareas.py). Ejemplos:
 #   make estado
-#   make inferir                                  # Inferir/imagenes_inferencia -> ../resultados_<fecha>
-#   make inferir ARGS="--classifier dinov2"
-#   make evaluar RESULTADOS=~/Escritorio/david/resultados_ft ETIQUETAS=~/cruce_ground_truth.xlsx
+#   make inferir                                  # -> Inferir/resultados_inferencia/<modelo>/<fecha>/
+#   make inferir ARGS="--classifier dinov2 --prueba campo_ft"
+#   make evaluar RESULTADOS=Inferir/resultados_inferencia/75_objetivo_ft+resnet50/<prueba> ETIQUETAS=~/cruce_ground_truth.xlsx
 #   make entrenar ARGS="--epocas 15"
 #   make limpiar            (solo lista)   ->   make limpiar ARGS=--si
 PY ?= python3
