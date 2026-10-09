@@ -62,7 +62,7 @@ def load_torch_checkpoint(path: Path, device: torch.device) -> Any:
     return torch.load(path, map_location=device, weights_only=True)
 
 
-def read_classes(path: Path, expected: int, label: str) -> list[str]:
+def read_classes(path: Path, expected: int | None, label: str) -> list[str]:
     """Lee una clase por línea, tolerando BOM, comentarios y líneas vacías."""
     if not path.is_file():
         raise FileNotFoundError(f"No se encontró el fichero de clases {label}: {path}")
@@ -71,7 +71,7 @@ def read_classes(path: Path, expected: int, label: str) -> list[str]:
         for line in path.read_text(encoding="utf-8-sig").splitlines()
         if line.strip() and not line.lstrip().startswith("#")
     ]
-    if len(classes) != expected:
+    if expected is not None and len(classes) != expected:
         raise ValueError(
             f"{label} debe contener exactamente {expected} clases; contiene {len(classes)}: {path}"
         )
@@ -90,8 +90,8 @@ def read_metadata_classes(path: Path) -> list[str]:
     classes = data.get("especies_filtradas") or data.get("especies")
     if not isinstance(classes, list) or not all(isinstance(item, str) for item in classes):
         raise ValueError(f"El metadata no contiene una lista de clases: {path}")
-    if len(classes) != 77 or len(set(classes)) != 77:
-        raise ValueError(f"El metadata DINOv2 debe contener exactamente 77 clases: {path}")
+    if len(set(classes)) != len(classes):
+        raise ValueError(f"El metadata DINOv2 contiene clases duplicadas: {path}")
     return list(classes)
 
 
@@ -110,7 +110,8 @@ def resolve_dino_classes(weights: Path, classes_path: Path | None) -> list[str]:
         ) if path not in candidates
     )
     class_file = next((path for path in candidates if path.is_file()), None)
-    classes = read_classes(class_file, 77, "clases DINOv2") if class_file else None
+    expected = len(metadata) if metadata is not None else None
+    classes = read_classes(class_file, expected, "clases DINOv2") if class_file else None
     if metadata is not None and classes is not None and classes != metadata:
         raise ValueError(
             "El orden de clases DINOv2 no coincide entre metadatos_modelo.json y clases.txt."
@@ -120,7 +121,7 @@ def resolve_dino_classes(weights: Path, classes_path: Path | None) -> list[str]:
     if classes is not None:
         return classes
     raise FileNotFoundError(
-        "No se encontró una lista DINOv2 de 77 clases ni metadatos_modelo.json."
+        "No se encontró una lista de clases DINOv2 ni metadatos_modelo.json."
     )
 
 
@@ -173,17 +174,13 @@ def _state_dict(checkpoint: Any, label: str) -> dict[str, Any]:
     }
 
 
-def backbone_state(state: dict[str, Any]) -> dict[str, Any]:
-    """Extracts fine-tuned DINOv2 backbone weights (``backbone.*`` keys), if any.
+def _with_prefix(state: dict[str, Any], prefix: str) -> dict[str, Any]:
+    return {key.removeprefix(prefix): value for key, value in state.items() if key.startswith(prefix)}
 
-    Checkpoints from the partial fine-tuning (spec 006) store the whole backbone
-    under ``backbone.``; older checkpoints only contain the MLP and return {}.
-    """
-    return {
-        key.removeprefix("backbone."): value
-        for key, value in state.items()
-        if key.startswith("backbone.")
-    }
+
+def backbone_state(state: dict[str, Any]) -> dict[str, Any]:
+    """Backbone ajustado (claves ``backbone.*``) de los checkpoints del fine-tuning; {} en los antiguos."""
+    return _with_prefix(state, "backbone.")
 
 
 class ResNetClassifier:
@@ -201,14 +198,14 @@ class ResNetClassifier:
             torch.nn.Linear(features, 256),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.3),
-            torch.nn.Linear(256, 78),
+            torch.nn.Linear(256, len(classes)),
         )
         state = _state_dict(load_torch_checkpoint(weights, device), "ResNet")
         try:
             self.model.load_state_dict(state, strict=True)
         except RuntimeError as error:
             raise ValueError(
-                "Los pesos ResNet no coinciden con ResNet50 de 78 clases."
+                f"Los pesos ResNet no coinciden con ResNet50 de {len(classes)} clases."
             ) from error
         self.model.to(device).eval()
         self.transform = transforms.Compose([
@@ -271,44 +268,14 @@ class DinoClassifier:
             torch.nn.Linear(hidden, 512), torch.nn.ReLU(), torch.nn.Dropout(0.3),
             torch.nn.Linear(512, 256), torch.nn.ReLU(), torch.nn.Dropout(0.2),
         )
-        self.head = torch.nn.Linear(256, 77)
-        head_weight = state.get("cabeza_especie.weight")
-        head_bias = state.get("cabeza_especie.bias")
-        if (
-            head_weight is None
-            or head_bias is None
-            or head_weight.ndim != 2
-            or head_weight.shape != self.head.weight.shape
-            or head_bias.shape != self.head.bias.shape
-        ):
+        self.head = torch.nn.Linear(256, len(classes))
+        try:
+            self.trunk.load_state_dict(_with_prefix(state, "tronco."), strict=True)
+            self.head.load_state_dict(_with_prefix(state, "cabeza_especie."), strict=True)
+        except RuntimeError as error:
             raise ValueError(
-                "El checkpoint DINOv2 debe contener cabeza_especie.weight y "
-                "cabeza_especie.bias compatibles con exactamente 77 clases."
-            )
-        required = {
-            "tronco.0.weight": self.trunk[0].weight,
-            "tronco.0.bias": self.trunk[0].bias,
-            "tronco.3.weight": self.trunk[3].weight,
-            "tronco.3.bias": self.trunk[3].bias,
-            "cabeza_especie.weight": self.head.weight,
-            "cabeza_especie.bias": self.head.bias,
-        }
-        missing = [key for key in required if key not in state]
-        incompatible = [
-            key for key, value in required.items()
-            if key in state and state[key].shape != value.shape
-        ]
-        if missing or incompatible:
-            raise ValueError(
-                f"Faltan pesos esenciales DINOv2: {missing}; dimensiones incompatibles: {incompatible}."
-            )
-        self.trunk.load_state_dict({
-            key.removeprefix("tronco."): state[key] for key in required if key.startswith("tronco.")
-        }, strict=True)
-        self.head.load_state_dict({
-            key.removeprefix("cabeza_especie."): state[key]
-            for key in required if key.startswith("cabeza_especie.")
-        }, strict=True)
+                f"El checkpoint DINOv2 {weights} no tiene un MLP compatible con {len(classes)} clases: {error}"
+            ) from error
         self.backbone.to(device).eval()
         self.trunk.to(device).eval()
         self.head.to(device).eval()
