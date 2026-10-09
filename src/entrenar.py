@@ -60,7 +60,8 @@ def argumentos() -> argparse.Namespace:
                         help="metadatos_modelo.json con las especies; por defecto, ESPECIES_FILTRADAS de constantes.py.")
     parser.add_argument("--pesos-mlp", type=Path,
                         help="Pesos iniciales del MLP (opcional); sin ellos el MLP empieza desde cero (Xavier).")
-    parser.add_argument("--salida", type=Path, default=RAIZ / "modelos" / PRUEBA)
+    parser.add_argument("--salida", type=Path,
+                        help="Carpeta del experimento; por defecto modelos/<prueba>_<fecha>. Si ya existe, se reanuda.")
     parser.add_argument("--bloques", type=int, default=4, help="Últimos bloques de DINOv2 que se entrenan.")
     parser.add_argument("--epocas", type=int, default=15)
     parser.add_argument("--paciencia", type=int, default=4)
@@ -225,6 +226,10 @@ def graficar(historial: list[dict], ruta: Path) -> None:
 def main() -> None:
     args = argumentos()
     fijar_semilla(42)
+    args.salida = args.salida or RAIZ / "modelos" / f"{PRUEBA}_{datetime.now():%Y%m%d_%H%M}"
+    # Nunca pisar un modelo terminado (p. ej. los pesos de referencia): reanudar sí, sobrescribir no
+    if (args.salida / f"modelo_{PRUEBA}.pth").exists():
+        raise SystemExit(f"{args.salida} ya tiene un modelo terminado; usa otra --salida.")
     args.salida.mkdir(parents=True, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Precisión según la GPU: bf16 nativo desde Ampere (capacidad >= 8), fp16 con tensor cores
