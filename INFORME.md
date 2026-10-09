@@ -29,7 +29,7 @@ Commits pequeños, uno por cambio, **sin subir a GitHub** (no se ha hecho `push`
 - **Arranque:** los 7 scripts responden a `--help`, y `tareas.py estado` encuentra el modelo, los metadatos y los recursos.
 - **Pesos de referencia intactos:** `modelos/75_objetivo_ft/*` mantiene fechas (2026-10-08) y tamaños.
 - **Constantes:** el volcado antes y después es idéntico.
-- **`dividir_campo`:** la versión antigua y la nueva dan las mismas listas sobre 1 742 imágenes sintéticas. El cruce real no estaba disponible (ver §4).
+- **`dividir_campo`:** con el cruce real (restaurado después), `campo_test.txt` y `campo_pool.txt` salen **idénticos byte a byte** a los versionados.
 
 ## 3. Lo que no he podido verificar de extremo a extremo (compruébalo tú)
 1. **YOLO real:** `yolo_best.pt` está, pero **`ultralytics` no está instalado** en el Python de este portátil, y no lo instalé porque eso cambia el sistema, fuera del proyecto. La llamada a `detector.predict(...)` es la misma que antes, sin cambios.
@@ -52,7 +52,6 @@ Las PR #6, #7 y #8 siguen abiertas y encadenadas. Esta rama va encima de todas.
   - `data/Resultados inferencia/` (`Dinov2.rar` y `ResNet50.rar`, 109 MB);
   - `data/metadata/ResNet50/ResNet50/bbox/` (PNG anotados por la inferencia antigua de ResNet);
   - `modelos/75_objetivo/` y `modelos/75_objetivo_pad/` (solo sus `.pth`, sin seguimiento en git).
-- **Los Excel de `C:\VISILAB\`** (`cruce_ground_truth.xlsx`, `classification_results*.xlsx`) ya no están en esa carpeta: solo queda `train_resnet.rar`. Si los moviste, hará falta la nueva ruta para `tareas.py evaluar` y `dividir-campo`.
 - **`tareas.py limpiar --si`** borraría los `.pth` de `modelos/75_objetivo` y `75_objetivo_pad` (aprobado en la spec 012). Revisa la lista con `python tareas.py limpiar` antes de usar `--si`.
 - **`notas.md`:** sigue pendiente de tu decisión.
 
