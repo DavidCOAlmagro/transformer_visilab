@@ -32,6 +32,9 @@ RAIZ = Path(__file__).resolve().parent.parent
 SALIDA = RAIZ / "recursos"
 PATRON_DBO5 = re.compile(r"_(\d{4,})_DC_", re.IGNORECASE)
 PATRON_FOTO = re.compile(r"_(\d+)(?:\.\d+)?\.[A-Za-z]+$")
+# Las fotos DBO5 GT podrían compartir preparaciones con dataset_aq_dbo5_* (entrenamiento):
+# por si acaso, también se mide el test sin ellas (spec 011).
+FUENTE_DUDOSA = "Diatomeas DBO5 GT/"
 
 
 def clave_grupo(imagen: str) -> str:
@@ -71,6 +74,7 @@ def main() -> None:
     test, pool = dividir(etiquetas)
     guardar_lista(test, args.salida / "campo_test.txt")
     guardar_lista(pool, args.salida / "campo_pool.txt")
+    guardar_lista([i for i in test if not i.startswith(FUENTE_DUDOSA)], args.salida / "campo_test_aqualitas.txt")
 
     etiquetas["lado"] = etiquetas.imagen.isin(set(test)).map({True: "test", False: "pool"})
     etiquetas["grupo"] = etiquetas.imagen.map(clave_grupo)
