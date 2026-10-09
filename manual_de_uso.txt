@@ -1,119 +1,60 @@
 MANUAL DE USO
-Clasificador de diatomeas con DINOv2
+Clasificador de diatomeas (YOLO + DINOv2 con fine-tuning + ResNet50)
 
-ANTES DE EMPEZAR
-================
-1. Mirar ##Instalación del readme
-2. Colocar imágenes en data/imagenes_visilab(raw)/<carpeta>/<especie>/*.jpg
-3. Poner los nombres de especie en ESPECIES_FILTRADAS de src/constantes.py
-   El experimento DINOv2 actual conserva exactamente 77 especies.
+Todo se hace con tareas.py (Windows y Ubuntu) o con make (Ubuntu).
+Ver la lista completa: python tareas.py --help
 
 
-1. ENTRENAR O EVALUAR
-======================
-    python3 src/main.py
-
-Pregunta tres cosas (s/n):
-
-  ¿Entrenar uno nuevo?
-    n -> usa el modelo ya guardado y evalúa test directamente.
-    s -> entrena de nuevo. Sigue preguntando lo siguiente.
-
-  ¿Regenerar splits?
-    n -> usa los splits actuales (recomendado para comparar experimentos).
-    s ->
-  ¿Recalcular embeddings?
-    n -> usa los .pt actuales (rápido).
-    s -> vuelve a pasar las imágenes por DINOv2 (tarda).
-
-El preprocesado recomendado aplica `dinov2-pad-square-v1`: padding a cuadrado
-sin deformar, con color medio del borde. La augmentación usa blur con baja
-probabilidad y relleno gris en transformaciones geométricas para no crear
-esquinas negras. Si se cambia este preprocesado hay que recalcular embeddings
-y reentrenar.
-
-Para automatizar sin preguntas:
-    python3 src/main.py --reentrenar s --regenerar-splits n --recalcular-embeddings n --prueba "nombre_experimento"
-
-Resultados en modelos/<nombre_experimento>/:
-  mejor_modelo.pth, metadatos_modelo.json, reporte_test.txt,
-  curvas_entrenamiento.png, matriz_confusion_test.png
-
-
-2. REVISAR ERRORES
-===================
-    python3 src/errores.py
-
-Muestra cada imagen mal clasificada con su ruta. Útil para detectar
-etiquetas incorrectas o recortes malos.
-
-
-3. VER CONFUSIONES REPETIDAS
-=============================
-    python3 src/confusiones.py
-
-Pares de especies que más se confunden entre sí.
-
-
-4. CLASIFICAR IMÁGENES NUEVAS
-===============================
-Coloca las imágenes, incluidas sus subcarpetas, en `Inferir/imagenes_inferencia/`
-(o pasa otra carpeta como primer argumento) y ejecuta:
-
-    python3 Inferir/infer_and_split_resnet_single_folder.py --classifier both
-
-YOLO es obligatorio y se ejecuta una vez por imagen; los recortes se clasifican
-en lote con DINOv2 y ResNet50 (o solo uno con `--classifier dinov2` o
-`--classifier resnet`). Pesos por defecto:
-  YOLO      Inferir/yolo_dinov2/yolo_best.pt
-  DINOv2    modelos/75_objetivo_pad/modelo_75_objetivo_pad.pth
-  ResNet50  Inferir/yolo_dinov2/resnet50_checkpoint_epoch50.pth
-Se pueden cambiar con `--yolo-weights`, `--dino-weights` y `--resnet-weights`.
-Los pesos no están versionados (`.gitignore` excluye `*.pt`, `*.pth` y `*.ckpt`).
-
-Las clases DINOv2 se toman de `metadatos_modelo.json` junto a los pesos y deben
-coincidir con `Inferir/txt_classes/classes_77(dino).txt` (77 clases, mismo
-orden). ResNet50 usa `classes_78(resnet).txt` (78 clases).
-
-IMPORTANTE: el preprocesado de inferencia (padding cuadrado + normalización)
-debe ser el mismo con el que se entrenó el modelo. `75_objetivo_pad` es
-coherente; el modelo antiguo `75_objetivo` (center-crop) no lo es.
-
-`--threshold 0.80` marca para revisión las predicciones de baja confianza.
-La salida genera un Excel combinado, un Excel por modelo y anotaciones en
-`bbox/dinov2/` y `bbox/resnet/`. Los Excel parciales se intentan guardar
-también si la inferencia falla.
-
-La búsqueda recursiva excluye `crops`, `bbox`, `runs`, `resultados`,
-`resultados_inferencia` y otras carpetas generadas. Por seguridad,
-`--output-dir` no puede estar dentro de la carpeta de entrada; el valor
-predeterminado es una carpeta hermana de resultados.
-`--reinhard-reference` aún no está implementado y produce un error.
-
-
-5. EVALUAR EN CAMPO
+0. ANTES DE EMPEZAR
 ====================
-Con los Excel de la inferencia y las etiquetas por imagen:
-
-    python3 src/evaluar_campo.py --dino <excel_dinov2> --resnet <excel_resnet>       --etiquetas <cruce_ground_truth.xlsx> --salida informe_campo.xlsx
-
-Da la accuracy por imagen de cada modelo y del ensamble. Debris, Fragments y
-las clases *_fp (posición pleural) no votan en la variante oficial.
-
-Para auditar el dataset global antes de añadir especies:
-
-    python3 src/auditoria_dataset.py data/imagenes_visilab(raw) \
-      --clases-activas modelos/75_objetivo/metadatos_modelo.json --minimo 20
-
-La auditoría no cambia el split ni añade clases. Las clases adicionales solo
-se recomiendan si tienen suficientes imágenes y deben validarse manualmente.
+- Instalación: ver readme.md.
+- Pesos (no están en git):
+    modelos/75_objetivo_ft/modelo_75_objetivo_ft.pth
+    Inferir/yolo_dinov2/yolo_best.pt
+    Inferir/yolo_dinov2/resnet50_checkpoint_epoch50.pth
+- Comprobar:   python tareas.py estado        (Ubuntu: make estado)
 
 
-ORDEN RECOMENDADO
+1. CLASIFICAR IMÁGENES NUEVAS (INFERENCIA)
+===========================================
+Pon las imágenes (con subcarpetas) en Inferir/imagenes_inferencia/ o indica otra carpeta:
+
+    python tareas.py inferir                       (Ubuntu: make inferir)
+    python tareas.py inferir OTRA_CARPETA --salida CARPETA_RESULTADOS --classifier dinov2
+
+Salida (por defecto ../resultados_<fecha>/):
+  classification_results.xlsx (+ uno por modelo): top-1/2/3, confianza, revisión (< 80 %)
+  bbox/   imágenes anotadas: recuadro verde y nombre de la especie
+  crops/  recortes de cada diatomea
+
+
+2. MEDIR EN CAMPO
 ==================
-1. Configurar datos/especies si hace falta.
-2. python3 src/main.py
-3. Revisar modelos/<prueba>/reporte_test.txt y la matriz de confusión.
-4. python3 src/errores.py y python3 src/confusiones.py para investigar fallos.
-5. python3 Inferir/infer_and_split_resnet_single_folder.py para imágenes nuevas.
-6. python3 src/evaluar_campo.py para medir en campo.
+Con el Excel de la inferencia y las etiquetas (cruce_ground_truth.xlsx, hoja Por_imagen):
+
+    python tareas.py evaluar --resultados CARPETA_RESULTADOS --etiquetas cruce_ground_truth.xlsx
+    (Ubuntu: make evaluar RESULTADOS=... ETIQUETAS=...)
+
+Mide solo recursos/campo_test.txt (test fijo). Fila importante: suma_conf con excluye_fp = True.
+Referencias: DINO-ft 0.830 · ResNet 0.815 · ensamble 0.857.
+Si el Excel no tiene ResNet, añade --resnet EXCEL_DE_RESNET.
+
+
+3. ENTRENAR
+============
+    python tareas.py dividir-datos      reparto train/val/test → recursos/splits_<prueba>.txt.gz
+    python tareas.py entrenar           (Ubuntu: make entrenar, sin freno térmico y con log)
+
+Opciones útiles de entrenar: --epocas, --batch, --bloques, --splits, --salida, --pesos-mlp,
+--max-imagenes (prueba rápida), --temperatura-pausa 0 (sin freno térmico).
+Si se corta, relanza el mismo comando: continúa desde la última época.
+IMPORTANTE: nunca entrenar con imágenes de recursos/campo_test.txt.
+
+
+4. OTROS
+=========
+    python tareas.py dividir-campo --etiquetas cruce_ground_truth.xlsx   rehacer test/pool de campo
+    python src/auditoria_dataset.py "data/imagenes_visilab(raw)"        distribución y duplicados
+    python tareas.py test                                                tests
+    python tareas.py limpiar          lista lo regenerable u obsoleto (no borra)
+    python tareas.py limpiar --si     lo borra

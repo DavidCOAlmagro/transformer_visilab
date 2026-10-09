@@ -9,7 +9,7 @@ import torch
 # -------------------------
 # NOMBRE DE PRUEBA
 # -------------------------
-PRUEBA: str = "75_objetivo"  
+PRUEBA: str = "75_objetivo_ft"  
 
 VARIABLES_GLOBALES: dict[str, object] = {
     
@@ -19,8 +19,6 @@ VARIABLES_GLOBALES: dict[str, object] = {
     # Rutas principales
     # -------------------------
     "RUTA_BASE": Path(__file__).resolve().parent.parent / "data",
-    "RUTA_SPLITS": Path(__file__).resolve().parent.parent / "data" / "splits" / PRUEBA,
-    "RUTA_EMBEDDINGS": Path(__file__).resolve().parent.parent / "data" / "embeddings_procesado" / PRUEBA,
     "RUTA_MODELOS": Path(__file__).resolve().parent.parent / "modelos",
 
     # -------------------------
@@ -124,25 +122,11 @@ VARIABLES_GLOBALES: dict[str, object] = {
     # -------------------------
     # Parámetros
     # -------------------------
-    "BATCH_SIZE": 32,
     "DIM_EMBEDDING": 768,
-    "num_epocas": 40,
-    "NUM_WORKERS": 4,
-    "PIN_MEMORY": True,
-    "PERSISTENT_WORKERS": True,
-    "EPOCAS_WARMUP": 3,
-    "PACIENCIA": 7,
-    "UMBRAL_CONF": 0.80, # Comprobado con validación, 0.80 es un buen valor para filtrar predicciones poco confiables.
-    "LEARNING_RATE": 0.0003,
     "WEIGHT_DECAY": 0.0001,
     "LABEL_SMOOTHING": 0.05, # No confia mucho en sus predicciones.
-    # Auxiliares desactivados por defecto; activarlos solo tras una ablación.
-    "PESO_GENERO": 0.0,
     "MINIMO_IMAGENES_POR_ESPECIE": 5,
     "EXPONENTE_PESO_CLASE": 0.3, # Cuanto más alto, más importancia a las clases minoritarias. Rango 0.3-1.0
-    "LAMBDA_CENTER_LOSS": 0.0,
-    "USAR_PERDIDA_GENERO": False,
-    "USAR_CENTER_LOSS": False,
     # -------------------------
     # Clasificador
     # -------------------------
