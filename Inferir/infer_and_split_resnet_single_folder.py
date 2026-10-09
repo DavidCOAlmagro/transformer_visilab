@@ -56,25 +56,10 @@ GENERATED_DIRS = {
     "resultados_inferencia",
     "runs",
 }
-_PIL_IMAGE_OPEN = Image.open
-
-
-def extract_original_class(image_path: str | Path) -> str:
-    """Obtiene la clase indicada por las dos primeras partes del nombre."""
-    import re
-
-    parts = [part for part in re.split(r"[_\s]+", Path(image_path).stem) if part]
-    return " ".join(parts[:2]) if len(parts) >= 2 else (parts[0] if parts else "")
 
 
 def load_torch_checkpoint(path: Path, device: torch.device) -> Any:
-    """Carga un checkpoint usando weights_only cuando el runtime lo admite."""
-    try:
-        return torch.load(path, map_location=device, weights_only=True)
-    except TypeError as error:
-        if "weights_only" not in str(error):
-            raise
-        return torch.load(path, map_location=device)
+    return torch.load(path, map_location=device, weights_only=True)
 
 
 def read_classes(path: Path, expected: int, label: str) -> list[str]:
@@ -417,7 +402,7 @@ def normalize_bbox(
 
 def load_rgb_image(image_path: Path) -> Image.Image | None:
     try:
-        with _PIL_IMAGE_OPEN(image_path) as image:
+        with Image.open(image_path) as image:
             return image.convert("RGB")
     except (ModuleNotFoundError, OSError, ValueError) as error:
         print(f"Se omite la imagen ilegible {image_path}: {error}", file=sys.stderr)
@@ -477,7 +462,6 @@ def _annotate_image(
     original: Image.Image,
     boxes: list[tuple[int, int, int, int]],
     predictions: list[dict[str, Any]],
-    model_name: str,
 ) -> Image.Image:
     """Dibuja recuadros verdes con el nombre de la especie sobre una copia de la imagen.
 
@@ -583,11 +567,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--threshold", type=float, default=0.80)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--imgsz", type=int, default=1024)
-    parser.add_argument(
-        "--reinhard-reference",
-        type=Path,
-        help="Referencia requerida para Reinhard; no se aplica por defecto y aún no se implementa.",
-    )
     return parser
 
 
@@ -595,11 +574,6 @@ def main(argv: Iterable[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if not 0 <= args.conf <= 1 or not 0 <= args.threshold <= 1:
         raise SystemExit("--conf y --threshold deben estar entre 0 y 1.")
-    if args.reinhard_reference is not None:
-        raise NotImplementedError(
-            "Reinhard requiere estadísticas de una imagen de referencia; "
-            "no se aplica automáticamente."
-        )
 
     input_path = args.input.expanduser().resolve()
     output_dir = (args.output_dir.expanduser().resolve() if args.output_dir is not None
@@ -713,7 +687,6 @@ def main(argv: Iterable[str] | None = None) -> int:
                         original,
                         [box for _, _, box in detections],
                         predictions[name],
-                        name,
                     ),
                     bbox_model_dirs[name] / f"{stem}.jpg",
                     quality=85,
