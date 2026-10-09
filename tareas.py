@@ -27,17 +27,16 @@ PY = sys.executable
 MODELO = RAIZ / "modelos" / "75_objetivo_ft" / "modelo_75_objetivo_ft.pth"
 TESTS = sorted(p.stem for p in (RAIZ / "tests").glob("test_*.py"))
 DATOS = RAIZ / "data"
-# Regenerable u obsoleto (spec 012). Nunca: imágenes de entrenamiento, data/metadata, zips originales.
+# Regenerable u obsoleto (spec 012). Nunca: imágenes de entrenamiento, data/metadata, zips originales
+# ni resultados de inferencia (ni los antiguos dentro de Inferir/imagenes_inferencia).
 LIMPIABLE = [
     DATOS / "embeddings_procesado",
     DATOS / "splits",
-    DATOS / "Resultados inferencia",
     DATOS / "imagenes_visilab(raw)" / "dataset_aq_dbo5_agrupado.zip",
     DATOS / "imagenes_visilab(raw)" / "Seleccion_5_especies_por_especie",
     RAIZ / ".venv",
-    RAIZ / "Inferir" / "imagenes_inferencia" / "crops",
-    RAIZ / "Inferir" / "imagenes_inferencia" / "bbox",
 ]
+CARPETAS_CODIGO = ("src", "tests", "Inferir")
 
 
 def ejecutar(*argumentos: object) -> int:
@@ -58,7 +57,9 @@ def candidatos_limpieza() -> list[Path]:
     modelos = RAIZ / "modelos"
     if modelos.is_dir():
         rutas += [d for d in modelos.iterdir() if d.is_dir() and d.name != "75_objetivo_ft"]
-    rutas += [p for p in RAIZ.rglob("__pycache__") if ".venv" not in p.parts]
+    # Solo en carpetas de código: recorrer data/ entero (millones de imágenes) es lentísimo
+    rutas += [p for c in CARPETAS_CODIGO for p in (RAIZ / c).rglob("__pycache__")]
+    rutas += [p for p in [RAIZ / "__pycache__"] if p.exists()]
     return rutas
 
 
