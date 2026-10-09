@@ -9,7 +9,7 @@ from PIL import Image
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "src"))
 sys.path.insert(0, str(RAIZ / "Inferir"))
-from dividir_datos import dividir_campo  # noqa: E402
+from dividir_datos import dividir_campo, dividir_con_base  # noqa: E402
 from seleccionar_recortes_campo import grupo_de_recorte, nombre_recorte, seleccionar  # noqa: E402
 import infer_and_split_resnet_single_folder as inferir  # noqa: E402
 
@@ -58,6 +58,23 @@ class RepartoCampoTests(unittest.TestCase):
         self.assertFalse(grupos["train"] & grupos["val"])
         self.assertEqual(len(partes["train"]) + len(partes["val"]), len(recortes))
         self.assertTrue(partes["val"])
+
+
+class RepartoBaseTests(unittest.TestCase):
+    def test_las_antiguas_conservan_su_split(self):
+        raiz = Path("raw")
+        antiguas = [(raiz / "lab" / "Gom_a" / f"{i}.png", "Gom_a") for i in range(60)]
+        base = {f"lab/Gom_a/{i}.png": ("train", "val", "test")[i % 3] for i in range(60)}
+        nuevas = [(raiz / "lab" / "Fis_s" / f"{i}.png", "Fis_s") for i in range(40)]
+        pocas = [(raiz / "lab" / "Gom_b" / f"{i}.png", "Gom_b") for i in range(3)]
+        partes = dividir_con_base(antiguas + nuevas + pocas, raiz, base)
+        for split, items in partes.items():
+            for ruta, especie in items:
+                if especie == "Gom_a":
+                    self.assertEqual(base[ruta.relative_to(raiz).as_posix()], split)
+        self.assertTrue(all(any(e == "Fis_s" for _, e in partes[s]) for s in ("train", "val", "test")))
+        self.assertEqual(sum(e == "Gom_b" for _, e in partes["train"]), 3)
+        self.assertEqual(sum(len(i) for i in partes.values()), 103)
 
 
 class ListaImagenesTests(unittest.TestCase):
