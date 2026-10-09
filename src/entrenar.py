@@ -49,7 +49,7 @@ from preparar_datos import construir_numero_genero, fijar_semilla, normalizar_no
 from preprocesado import CONFIGURACION_PREPROCESADO, preparar_para_dinov2  # noqa: E402
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-PRUEBA = "75_objetivo_ft"
+PRUEBA = "77_campo"  # nombre por defecto de la carpeta de salida
 
 
 def argumentos() -> argparse.Namespace:
@@ -58,8 +58,11 @@ def argumentos() -> argparse.Namespace:
     parser.add_argument("--splits", type=Path, default=RAIZ / "recursos" / "splits_75_objetivo_relativos.txt.gz")
     parser.add_argument("--metadatos", type=Path,
                         help="metadatos_modelo.json con las especies; por defecto, ESPECIES_FILTRADAS de constantes.py.")
-    parser.add_argument("--pesos-mlp", type=Path,
+    inicio = parser.add_mutually_exclusive_group()
+    inicio.add_argument("--pesos-mlp", type=Path,
                         help="Pesos iniciales del MLP (opcional); sin ellos el MLP empieza desde cero (Xavier).")
+    inicio.add_argument("--desde-modelo", type=Path,
+                        help="Seguir desde un modelo terminado (backbone + MLP), p. ej. modelos/75_objetivo_ft/modelo_75_objetivo_ft.pth.")
     parser.add_argument("--salida", type=Path,
                         help="Carpeta del experimento; por defecto modelos/<prueba>_<fecha>. Si ya existe, se reanuda.")
     parser.add_argument("--bloques", type=int, default=4, help="Últimos bloques de DINOv2 que se entrenan.")
@@ -154,6 +157,14 @@ class DinoAjustado(nn.Module):
         return estado
 
 
+def cargar_modelo_inferencia(modelo: DinoAjustado, ruta: Path) -> None:
+    """Carga un .pth en formato de inferencia (backbone.* + claves del MLP), el que guarda state_dict_inferencia()."""
+    estado = torch.load(ruta, map_location="cpu", weights_only=True)
+    modelo.backbone.load_state_dict({k.removeprefix("backbone."): v for k, v in estado.items()
+                                     if k.startswith("backbone.")}, strict=True)
+    modelo.mlp.load_state_dict({k: v for k, v in estado.items() if not k.startswith("backbone.")}, strict=True)
+
+
 def temperatura_gpu() -> int:
     try:
         return int(subprocess.run(["nvidia-smi", "--query-gpu=temperature.gpu", "--format=csv,noheader"],
@@ -228,7 +239,8 @@ def main() -> None:
     fijar_semilla(42)
     args.salida = args.salida or RAIZ / "modelos" / f"{PRUEBA}_{datetime.now():%Y%m%d_%H%M}"
     # Nunca pisar un modelo terminado (p. ej. los pesos de referencia): reanudar sí, sobrescribir no
-    if (args.salida / f"modelo_{PRUEBA}.pth").exists():
+    nombre = args.salida.name  # los ficheros llevan el nombre de su carpeta: modelos/<x>/modelo_<x>.pth
+    if any(args.salida.glob("modelo_*.pth")):
         raise SystemExit(f"{args.salida} ya tiene un modelo terminado; usa otra --salida.")
     args.salida.mkdir(parents=True, exist_ok=True)
     print(f"Salida: {args.salida}  (para reanudar si se corta: --salida {args.salida})", flush=True)
@@ -256,7 +268,10 @@ def main() -> None:
     mlp = ClasificadorDiatomeas(len(especies), len(construir_numero_genero(set(especies))))
     if args.pesos_mlp:
         mlp.load_state_dict(torch.load(args.pesos_mlp, map_location="cpu", weights_only=True))
-    modelo = DinoAjustado(backbone, mlp, args.bloques).to(device)
+    modelo = DinoAjustado(backbone, mlp, args.bloques)
+    if args.desde_modelo:
+        cargar_modelo_inferencia(modelo, args.desde_modelo)
+    modelo.to(device)
     entrenables = sum(p.numel() for p in modelo.parameters() if p.requires_grad)
     print(f"Parámetros entrenables: {entrenables / 1e6:.1f} M", flush=True)
 
@@ -336,7 +351,7 @@ def main() -> None:
         torch.save({"modelo": modelo.state_dict(), "optimizador": optimizador.state_dict(),
                     "scheduler": scheduler.state_dict(), "escalador": escalador.state_dict(),
                     "estado": estado}, ruta_ultimo)
-        graficar(estado["historial"], args.salida / f"curvas_entrenamiento_{PRUEBA}.png")
+        graficar(estado["historial"], args.salida / f"curvas_entrenamiento_{nombre}.png")
 
     # Mejor época -> calibración de temperatura en val -> evaluación en test
     modelo.load_state_dict(torch.load(ruta_mejor, map_location=device, weights_only=True))
@@ -360,19 +375,19 @@ def main() -> None:
         y_test, logits_test.argmax(1), labels=list(range(len(especies))), target_names=especies,
         digits=3, zero_division=0), encoding="utf-8")
     guardar_confusiones(logits_test.argmax(1), y_test, especies, args.salida / "confusiones.txt")
-    torch.save(modelo.state_dict_inferencia(), args.salida / f"modelo_{PRUEBA}.pth")
+    torch.save(modelo.state_dict_inferencia(), args.salida / f"modelo_{nombre}.pth")
     metadatos = {
         "version_pipeline": "dinov2-77-ft-v1",
         "backbone": f"dinov2-base-ft-ultimos{args.bloques}",
         "especies_filtradas": especies,
         "preprocesado": CONFIGURACION_PREPROCESADO.como_dict(),
-        "origen_mlp": args.pesos_mlp.name if args.pesos_mlp else "desde cero",
+        "origen": str(args.desde_modelo or args.pesos_mlp or "desde cero"),
     }
     (args.salida / "metadatos_modelo.json").write_text(json.dumps(metadatos, indent=2, ensure_ascii=False), encoding="utf-8")
     t = resultado["test"]
     print(f"\nTEST — accuracy {t['accuracy']:.4f} — macro-F1 {t['macro_f1']:.4f} — top-3 {t['top3']:.4f} "
           f"(75_objetivo_ft: 0.937 / 0.918 / 0.990) — temperatura {temperatura}", flush=True)
-    print(f"Modelo para inferencia: {args.salida / f'modelo_{PRUEBA}.pth'}", flush=True)
+    print(f"Modelo para inferencia: {args.salida / f'modelo_{nombre}.pth'}", flush=True)
 
 
 if __name__ == "__main__":
