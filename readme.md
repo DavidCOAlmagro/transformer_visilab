@@ -48,7 +48,7 @@ Compruébalo con `python tareas.py estado`.
 | Qué | Comando (Windows o Ubuntu) | Ubuntu |
 |---|---|---|
 | Comprobar modelo, pesos y GPU | `python tareas.py estado` | `make estado` |
-| Inferencia de campo | `python tareas.py inferir [carpeta] [--salida DIR] [--classifier both\|dinov2\|resnet]` | `make inferir` |
+| Inferencia de campo | `python tareas.py inferir [carpeta] [--prueba NOMBRE] [--classifier both\|dinov2\|resnet]` | `make inferir` |
 | Evaluar una inferencia en el test de campo | `python tareas.py evaluar --resultados DIR --etiquetas cruce_ground_truth.xlsx` | `make evaluar RESULTADOS=… ETIQUETAS=…` |
 | Reparto train/val/test | `python tareas.py dividir-datos` | `make dividir-datos` |
 | Test de campo fijo / pool | `python tareas.py dividir-campo --etiquetas cruce_ground_truth.xlsx` | `make dividir-campo ETIQUETAS=…` |
@@ -58,7 +58,9 @@ Compruébalo con `python tareas.py estado`.
 
 ### Inferencia
 Recorre la carpeta de entrada (por defecto `Inferir/imagenes_inferencia/`), ejecuta YOLO una vez por imagen y clasifica los
-recortes en lote. Por defecto la salida va a una carpeta hermana del repo, `resultados_<fecha>/`, con:
+recortes en lote. Todos los resultados van a una única carpeta, sin sobrescribir nunca:
+`Inferir/resultados_inferencia/<modelo>/<prueba>/` (`<modelo>` = carpeta de los pesos DINOv2 y/o `resnet50`;
+`<prueba>` = `--prueba` o la fecha y hora). Contiene:
 - un Excel combinado y uno por modelo (top-1/2/3, confianza y marca de revisión con `--threshold 0.80`);
 - las imágenes anotadas en `bbox/` (recuadro verde con el nombre de la especie);
 - los recortes en `crops/`.
@@ -70,6 +72,7 @@ recortes en lote. Por defecto la salida va a una carpeta hermana del repo, `resu
 
 ### Entrenamiento
 `src/entrenar.py` lee `recursos/splits_75_objetivo_relativos.txt.gz` (o `--splits`), comprueba que las imágenes existen,
-entrena con aumentación online, calibra la temperatura en validación y guarda en `modelos/<prueba>/` el modelo, los metadatos,
+entrena con aumentación online, calibra la temperatura en validación y guarda en `modelos/<prueba>_<fecha>/` (o `--salida`;
+nunca en una carpeta con un modelo terminado, como `modelos/75_objetivo_ft/`) el modelo, los metadatos,
 `metricas.json`, `reporte_test.txt`, `confusiones.txt` y las curvas. Es reanudable y elige la precisión según la GPU (fp32 en Pascal).
 Los nombres de carpeta con espacios o puntos se normalizan (`Fistulifera saprophila` → `Fistulifera_saprophila`).

@@ -20,9 +20,9 @@ Ver la lista completa: python tareas.py --help
 Pon las imágenes (con subcarpetas) en Inferir/imagenes_inferencia/ o indica otra carpeta:
 
     python tareas.py inferir                       (Ubuntu: make inferir)
-    python tareas.py inferir OTRA_CARPETA --salida CARPETA_RESULTADOS --classifier dinov2
+    python tareas.py inferir OTRA_CARPETA --prueba NOMBRE --classifier dinov2
 
-Salida (por defecto ../resultados_<fecha>/):
+Salida (siempre en Inferir/resultados_inferencia/<modelo>/<prueba>/; nunca se sobrescribe):
   classification_results.xlsx (+ uno por modelo): top-1/2/3, confianza, revisión (< 80 %)
   bbox/   imágenes anotadas: recuadro verde y nombre de la especie
   crops/  recortes de cada diatomea
@@ -32,7 +32,7 @@ Salida (por defecto ../resultados_<fecha>/):
 ==================
 Con el Excel de la inferencia y las etiquetas (cruce_ground_truth.xlsx, hoja Por_imagen):
 
-    python tareas.py evaluar --resultados CARPETA_RESULTADOS --etiquetas cruce_ground_truth.xlsx
+    python tareas.py evaluar --resultados Inferir/resultados_inferencia/<modelo>/<prueba> --etiquetas cruce_ground_truth.xlsx
     (Ubuntu: make evaluar RESULTADOS=... ETIQUETAS=...)
 
 Mide solo recursos/campo_test.txt (test fijo). Fila importante: suma_conf con excluye_fp = True.
@@ -45,6 +45,7 @@ Si el Excel no tiene ResNet, añade --resnet EXCEL_DE_RESNET.
     python tareas.py dividir-datos      reparto train/val/test → recursos/splits_<prueba>.txt.gz
     python tareas.py entrenar           (Ubuntu: make entrenar, sin freno térmico y con log)
 
+La salida por defecto es modelos/<prueba>_<fecha>/; nunca escribe en una carpeta con un modelo terminado.
 Opciones útiles de entrenar: --epocas, --batch, --bloques, --splits, --salida, --pesos-mlp,
 --max-imagenes (prueba rápida), --temperatura-pausa 0 (sin freno térmico).
 Si se corta, relanza el mismo comando: continúa desde la última época.
