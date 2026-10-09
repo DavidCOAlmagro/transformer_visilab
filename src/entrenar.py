@@ -1,14 +1,14 @@
 """
 --------------------------------------
-Spec 006 — Fine-tuning parcial de DINOv2 (últimos bloques + MLP).
+Fine-tuning parcial de DINOv2 (últimos bloques + MLP).
 
-A diferencia de main.py (DINOv2 congelado + embeddings precalculados), aquí
-las imágenes pasan por DINOv2 en cada época: así se pueden entrenar sus
+Las imágenes pasan por DINOv2 en cada época, así se pueden entrenar sus
 últimos bloques y aplicar aumentación online (una variante nueva por época).
 
-- Mismas 77 clases y splits que 75_objetivo (lista relativa en la spec).
+- Especies de constantes.py (o --metadatos); splits de recursos/ (rutas relativas).
 - MLP desde cero (Xavier) o, con --pesos-mlp, desde un modelo anterior.
-- Reanudable: guarda <salida>/ultimo.pth al final de cada época.
+- Salida en modelos/<prueba>_<fecha> (o --salida). Reanudable: guarda ultimo.pth
+  al final de cada época; nunca escribe en una carpeta con un modelo terminado.
 - Freno térmico: pausa si la GPU llega a 85 ºC hasta que baje 10 ºC.
   `--temperatura-pausa 0` lo desactiva (la GPU mantiene su propia protección).
 
@@ -53,7 +53,7 @@ PRUEBA = "75_objetivo_ft"
 
 
 def argumentos() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Fine-tuning parcial de DINOv2 (spec 006).")
+    parser = argparse.ArgumentParser(description="Fine-tuning parcial de DINOv2.")
     parser.add_argument("--raiz-imagenes", type=Path, default=RAIZ / "data" / "imagenes_visilab(raw)")
     parser.add_argument("--splits", type=Path, default=RAIZ / "recursos" / "splits_75_objetivo_relativos.txt.gz")
     parser.add_argument("--metadatos", type=Path,
@@ -238,7 +238,8 @@ def main() -> None:
     capacidad = torch.cuda.get_device_capability()[0] if device.type == "cuda" else 0
     tipo_amp = torch.bfloat16 if capacidad >= 8 else torch.float16 if capacidad == 7 else None
     gpu = torch.cuda.get_device_name() if device.type == "cuda" else "cpu"
-    print(f"{datetime.now():%H:%M} device={device} ({gpu}) amp={tipo_amp or "fp32"} bloques={args.bloques}", flush=True)
+    precision = tipo_amp or "fp32"
+    print(f"{datetime.now():%H:%M} device={device} ({gpu}) amp={precision} bloques={args.bloques}", flush=True)
 
     especies = sorted(json.loads(args.metadatos.read_text(encoding="utf-8"))["especies_filtradas"]
                       if args.metadatos else VARIABLES_GLOBALES["ESPECIES_FILTRADAS"])
@@ -258,7 +259,7 @@ def main() -> None:
     entrenables = sum(p.numel() for p in modelo.parameters() if p.requires_grad)
     print(f"Parámetros entrenables: {entrenables / 1e6:.1f} M", flush=True)
 
-    # Desbalance: mismo suavizado 1/n^EXP que main.py (sampler y pesos de la pérdida)
+    # Desbalance: suavizado 1/n^EXP en el sampler y en los pesos de la pérdida
     y_train = torch.tensor([numero_especie[e] for _, e in splits["train"]])
     conteo = torch.bincount(y_train, minlength=len(especies)).float().clamp_min(1)
     peso_clase = 1.0 / conteo.pow(VARIABLES_GLOBALES["EXPONENTE_PESO_CLASE"])

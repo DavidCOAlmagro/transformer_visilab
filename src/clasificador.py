@@ -1,6 +1,4 @@
-"""
-Red neuronal clasificadora que opera sobre embeddings de DINOv2.
-"""
+"""MLP que clasifica la especie a partir del embedding (CLS) de DINOv2."""
 
 import torch
 from torch import nn
@@ -25,8 +23,8 @@ class ClasificadorDiatomeas(nn.Module):
             nn.Dropout(VARIABLES_GLOBALES["DROPOUT_CAPA_2"]),
         )
 
-        # La especie es la tarea principal. La cabeza de género regulariza el
-        # tronco compartido, pero no condiciona la predicción de especie.
+        # Solo se entrena la cabeza de especie. La de género y los buffers de centros
+        # ya no se usan, pero se mantienen porque están en los checkpoints existentes.
         self.cabeza_especie = nn.Linear(
             VARIABLES_GLOBALES["DIM_CAPA_2"], num_clases)
         self.cabeza_genero = nn.Linear(
@@ -44,7 +42,6 @@ class ClasificadorDiatomeas(nn.Module):
             nn.init.zeros_(capa.bias)
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Devuelve logits globales de especie, logits de género y el embedding
-        del tronco para center loss."""
+        """Devuelve logits de especie, logits de género y el embedding del tronco."""
         embedding = self.tronco(x)
         return self.cabeza_especie(embedding), self.cabeza_genero(embedding), embedding
