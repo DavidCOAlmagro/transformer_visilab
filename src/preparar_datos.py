@@ -90,12 +90,16 @@ def rutas_imagenes(incluir_todas: bool = False) -> list[tuple[str, str]]:
         if ruta_grupo.exists():
 
             especies = [ruta for ruta in ruta_grupo.iterdir() if ruta.is_dir()
-                        and (especies_activas is None or ruta.name in especies_activas)]
+                        and (especies_activas is None
+                             or normalizar_nombre_especie(ruta.name) in especies_activas)]
 
             for especie in especies:
+                nombre = normalizar_nombre_especie(especie.name)
+                if nombre != especie.name:
+                    print(f"Aviso: carpeta '{especie.name}' tratada como '{nombre}'.")
                 for archivo in especie.iterdir():
                     if archivo.suffix.lower() in VARIABLES_GLOBALES["EXTENSIONES_VALIDAS"]:
-                        imagenes.append((archivo, especie.name))
+                        imagenes.append((archivo, nombre))
 
     return imagenes
 
@@ -151,6 +155,16 @@ def calcular_copias_extra_por_especie(
         copias_por_especie[especie] = copias
 
     return copias_por_especie
+
+
+def normalizar_nombre_especie(nombre_carpeta: str) -> str:
+    """
+    Convierte el nombre de una carpeta en el nombre de especie canónico:
+    espacios y puntos pasan a '_' (p. ej. 'Fistulifera saprophila' ->
+    'Fistulifera_saprophila'). Sin esto, 387 imágenes de Fistulifera
+    quedaban fuera de los splits (spec 009).
+    """
+    return "_".join(nombre_carpeta.replace(".", " ").split())
 
 
 def obtener_genero(especie: str) -> str:

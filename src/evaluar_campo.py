@@ -111,6 +111,13 @@ def cargar_etiquetas(ruta: Path) -> pd.DataFrame:
     return df[["imagen", "etiqueta"]].drop_duplicates("imagen")
 
 
+def filtrar_subconjunto(etiquetas: pd.DataFrame, ruta_lista: Path) -> pd.DataFrame:
+    """Deja solo las imágenes de la lista (una ruta relativa por línea, como la columna ``image``)."""
+    incluidas = {linea.strip().replace("\\", "/")
+                 for linea in ruta_lista.read_text(encoding="utf-8").splitlines() if linea.strip()}
+    return etiquetas[etiquetas.imagen.str.replace("\\", "/", regex=False).isin(incluidas)]
+
+
 def predecir_imagenes(recortes: pd.DataFrame, regla: str, excluir_fp: bool) -> pd.Series:
     """Especie predicha por imagen (índice = image)."""
     tuplas = recortes.groupby("image")[["top1", "conf1", "area"]].apply(
@@ -165,6 +172,8 @@ def main() -> None:
     parser.add_argument("--clases", type=Path, default=CLASES_DINO,
                         help="Especies evaluables (por defecto, las 77 de DINOv2).")
     parser.add_argument("--salida", type=Path, help="Excel con resumen, por especie y por imagen.")
+    parser.add_argument("--subconjunto", type=Path,
+                        help="Lista de imágenes a evaluar, una por línea (p. ej. recursos/campo_test.txt).")
     args = parser.parse_args()
 
     modelos: dict[str, pd.DataFrame] = {}
@@ -177,7 +186,11 @@ def main() -> None:
 
     clases = {linea.strip() for linea in args.clases.read_text(encoding="utf-8").splitlines()
               if linea.strip()} - NO_ESPECIES
-    resumen, predicciones = evaluar(modelos, cargar_etiquetas(args.etiquetas), clases)
+    etiquetas = cargar_etiquetas(args.etiquetas)
+    if args.subconjunto:
+        etiquetas = filtrar_subconjunto(etiquetas, args.subconjunto)
+        print(f"Subconjunto {args.subconjunto.name}: {len(etiquetas)} imágenes con etiqueta")
+    resumen, predicciones = evaluar(modelos, etiquetas, clases)
     print(resumen.to_string(index=False))
 
     if args.salida:
