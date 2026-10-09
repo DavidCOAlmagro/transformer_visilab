@@ -52,9 +52,8 @@ def dividir(etiquetas: pd.DataFrame, partes: int = 3, semilla: int = 42) -> tupl
     """Devuelve (test, pool): 1 de `partes` pliegues estratificados por especie y agrupados por muestra."""
     grupos = etiquetas.imagen.map(clave_grupo)
     pliegues = StratifiedGroupKFold(n_splits=partes, shuffle=True, random_state=semilla)
-    _, indices_test = next(pliegues.split(etiquetas, etiquetas.etiqueta, grupos))
-    en_test = etiquetas.index.isin(etiquetas.index[indices_test])
-    return sorted(etiquetas.imagen[en_test]), sorted(etiquetas.imagen[~en_test])
+    indices_pool, indices_test = next(pliegues.split(etiquetas, etiquetas.etiqueta, grupos))
+    return sorted(etiquetas.imagen.iloc[indices_test]), sorted(etiquetas.imagen.iloc[indices_pool])
 
 
 def guardar_lista(rutas: list[str], ruta: Path) -> None:
