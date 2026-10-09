@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
+from embeddings import resolver_modelo_dinov2
 from preprocesado import preparar_para_dinov2
 
 DEFAULT_INPUT = ROOT / "Inferir" / "imagenes_inferencia"
@@ -262,8 +263,10 @@ class DinoClassifier:
                 f"No se pudo cargar el checkpoint DINOv2 {weights}. "
                 "Comprueba que sea un checkpoint PyTorch válido y no esté incompleto."
             ) from error
+        # Igual que en el entrenamiento: caché local o DINOV2_MODEL_PATH, sin depender de la red
+        model_path, local_only = resolver_modelo_dinov2()
         try:
-            self.backbone = AutoModel.from_pretrained("facebook/dinov2-base")
+            self.backbone = AutoModel.from_pretrained(model_path, local_files_only=local_only)
         except Exception as error:
             raise RuntimeError(
                 "No se pudo cargar el backbone DINOv2 'facebook/dinov2-base'. "
@@ -324,7 +327,7 @@ class DinoClassifier:
         self.backbone.to(device).eval()
         self.trunk.to(device).eval()
         self.head.to(device).eval()
-        self.processor = AutoImageProcessor.from_pretrained("facebook/dinov2-base")
+        self.processor = AutoImageProcessor.from_pretrained(model_path, local_files_only=local_only)
 
     @torch.inference_mode()
     def predict_batch(self, images: list[Image.Image], threshold: float) -> list[dict[str, Any]]:
