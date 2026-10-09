@@ -1,0 +1,83 @@
+                                        precision    recall  f1-score   support
+
+               Achnanthidium_atomoides       0.83      0.86      0.84       187
+             Achnanthidium_caravelense       0.96      0.96      0.96        25
+               Achnanthidium_catenatum       0.97      0.94      0.96        69
+                Achnanthidium_druartii       0.98      0.97      0.98        61
+             Achnanthidium_eutrophilum       0.82      0.85      0.83        79
+                   Achnanthidium_exile       0.92      0.92      0.92        37
+                      Achnanthidium_fp       0.96      1.00      0.98       133
+            Achnanthidium_minutissimum       0.93      0.97      0.95        78
+              Achnanthidium_pyrenaicum       0.95      0.90      0.92       307
+                Achnanthidium_rivulare       0.90      0.89      0.89       175
+                     Amphora_pediculus       0.94      0.97      0.95       536
+                 Aulacoseira_granulata       0.95      0.94      0.95       113
+                     Cocconeis_lineata       1.00      1.00      1.00        56
+                   Cocconeis_pediculus       1.00      1.00      1.00        45
+     Cocconeis_placentula_var_euglypta       1.00      1.00      1.00        70
+                    Craticula_accomoda       0.98      0.98      0.98        60
+                     Cyclotella_atomus       0.75      0.80      0.78       119
+Cymbella_excisiformis_var_excisiformis       0.98      1.00      0.99        84
+                        Cymbella_parva       1.00      0.98      0.99        81
+                                Debris       0.95      0.90      0.92        20
+                      Denticula_tenuis       0.99      0.97      0.98       175
+                  Diatoma_moniliformis       0.97      0.96      0.97        77
+                      Diatoma_vulgaris       0.95      0.99      0.97        75
+          Discostella_pseudostelligera       0.93      0.92      0.92       577
+                          Encyonema_fp       0.86      1.00      0.92        12
+                     Encyonema_minutum       0.93      0.88      0.91       103
+                 Encyonema_reichardtii       1.00      0.97      0.99        76
+                  Encyonema_silesiacum       0.98      0.90      0.94        72
+                 Encyonema_ventricosum       0.86      0.94      0.90        89
+                        Encyonopsis_fp       1.00      1.00      1.00         1
+                    Encyonopsis_minuta       0.97      0.99      0.98        76
+                      Epithemia_adnata       1.00      0.97      0.99        35
+                          Epithemia_fp       0.94      1.00      0.97        16
+                Fistulifera_saprophila       0.70      0.75      0.72        40
+                         Fragilaria_fp       0.78      0.90      0.84        20
+                Fragilaria_pararumpens       0.95      0.87      0.91        45
+                  Fragilaria_perminuta       1.00      0.97      0.98        31
+                 Fragilaria_vaucheriae       0.88      0.91      0.89        65
+                             Fragments       0.82      0.95      0.88        19
+               Gomphonema_angustivalva       0.92      0.92      0.92        24
+                         Gomphonema_fp       0.94      0.94      0.94       159
+                 Gomphonema_minusculum       0.76      0.80      0.78        35
+                    Gomphonema_minutum       0.88      0.77      0.82        56
+     Gomphonema_parvulum_f_saprophilum       0.98      1.00      0.99        40
+        Gomphonema_pumilum_var_elegans       1.00      1.00      1.00        39
+                  Gomphonema_rhombicum       0.87      1.00      0.93        13
+                  Humidophila_contenta       0.99      0.98      0.98        83
+           Karayevia_clevei_var_clevei       0.97      1.00      0.98        58
+                     Mayamaea_permitis       0.88      0.88      0.88       121
+                           Melosira_fp       0.89      1.00      0.94        17
+                      Melosira_varians       0.97      0.95      0.96       115
+              Navicula_capitatoradiata       0.93      0.93      0.93        46
+                Navicula_cryptotenella       0.89      0.90      0.89       147
+            Navicula_cryptotenelloides       0.92      0.86      0.89        65
+                     Navicula_gregaria       0.96      0.98      0.97       390
+                   Navicula_lanceolata       0.97      0.97      0.97       375
+                        Navicula_notha       0.96      0.96      0.96        26
+                  Navicula_tripunctata       0.97      0.88      0.92        64
+                    Nitzschia_amphibia       0.71      0.81      0.76        43
+                 Nitzschia_capitellata       0.97      0.97      0.97        32
+                  Nitzschia_desertorum       1.00      0.96      0.98        24
+                   Nitzschia_fonticola       0.84      0.86      0.85        49
+                          Nitzschia_fp       0.33      0.25      0.29         8
+     Nitzschia_frustulum_var_frustulum       1.00      1.00      1.00        57
+                 Nitzschia_inconspicua       0.88      0.74      0.81       277
+             Nitzschia_palea_var_palea       0.95      1.00      0.97        19
+                    Nitzschia_paleacea       0.94      0.82      0.88        40
+                  Nitzschia_soratensis       0.78      0.87      0.82       333
+          Planothidium_frequentissimum       0.80      0.81      0.81       238
+              Planothidium_lanceolatum       0.87      0.84      0.86       321
+                      Reimeria_sinuata       0.90      0.86      0.88        42
+                           Reimeria_sp       0.50      0.40      0.44         5
+              Rhoicosphenia_abbreviata       0.84      0.89      0.86       123
+                     Staurosira_venter       1.00      0.85      0.92        33
+             Stephanodiscus_hantzschii       0.73      0.88      0.80        41
+                 Tabellaria_flocculosa       0.86      0.80      0.83        15
+                         Tabellaria_fp       0.62      0.71      0.67         7
+
+                              accuracy                           0.91      7519
+                             macro avg       0.90      0.90      0.90      7519
+                          weighted avg       0.91      0.91      0.91      7519
