@@ -48,7 +48,8 @@ Si el Excel no tiene ResNet, añade --resnet EXCEL_DE_RESNET.
 La salida por defecto es modelos/<prueba>_<fecha>/; nunca escribe en una carpeta con un modelo terminado.
 Opciones útiles de entrenar: --epocas, --batch, --bloques, --splits, --salida, --pesos-mlp,
 --max-imagenes (prueba rápida), --temperatura-pausa 0 (sin freno térmico).
-Si se corta, relanza el mismo comando: continúa desde la última época.
+Si se corta, relanza con la misma carpeta (la primera línea del log la indica):
+    python tareas.py entrenar --salida modelos/<prueba>_<fecha>     -> continúa desde la última época.
 IMPORTANTE: nunca entrenar con imágenes de recursos/campo_test.txt.
 
 

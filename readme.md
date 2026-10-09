@@ -74,5 +74,5 @@ recortes en lote. Todos los resultados van a una única carpeta, sin sobrescribi
 `src/entrenar.py` lee `recursos/splits_75_objetivo_relativos.txt.gz` (o `--splits`), comprueba que las imágenes existen,
 entrena con aumentación online, calibra la temperatura en validación y guarda en `modelos/<prueba>_<fecha>/` (o `--salida`;
 nunca en una carpeta con un modelo terminado, como `modelos/75_objetivo_ft/`) el modelo, los metadatos,
-`metricas.json`, `reporte_test.txt`, `confusiones.txt` y las curvas. Es reanudable y elige la precisión según la GPU (fp32 en Pascal).
+`metricas.json`, `reporte_test.txt`, `confusiones.txt` y las curvas. Es reanudable (relanzar con la misma `--salida`, que se imprime al empezar) y elige la precisión según la GPU (fp32 en Pascal).
 Los nombres de carpeta con espacios o puntos se normalizan (`Fistulifera saprophila` → `Fistulifera_saprophila`).

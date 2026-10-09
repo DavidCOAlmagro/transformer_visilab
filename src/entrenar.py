@@ -231,6 +231,7 @@ def main() -> None:
     if (args.salida / f"modelo_{PRUEBA}.pth").exists():
         raise SystemExit(f"{args.salida} ya tiene un modelo terminado; usa otra --salida.")
     args.salida.mkdir(parents=True, exist_ok=True)
+    print(f"Salida: {args.salida}  (para reanudar si se corta: --salida {args.salida})", flush=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Precisión según la GPU: bf16 nativo desde Ampere (capacidad >= 8), fp16 con tensor cores
     # en Volta/Turing (7.x) y fp32 en Pascal o anteriores (p. ej. Quadro P4000, 6.1), donde
