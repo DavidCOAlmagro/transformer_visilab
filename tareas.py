@@ -4,6 +4,8 @@ Tareas del proyecto en un solo comando (Windows y Ubuntu, sin instalar nada).
     python tareas.py estado                     modelo por defecto, pesos, GPU
     python tareas.py dividir-datos              reparto train/val/test -> recursos/
     python tareas.py dividir-campo --etiquetas cruce_ground_truth.xlsx
+    python tareas.py seleccionar-campo --dino X --resnet X --etiquetas X   recortes de campo -> recursos/recortes_campo.csv
+    python tareas.py extraer-campo [--entrada DIR]   recorta esas cajas de las fotos -> data/.../campo_pool/
     python tareas.py entrenar [opciones]        fine-tuning (opciones de src/entrenar.py)
     python tareas.py inferir [entrada] [--prueba NOMBRE] [--classifier both|dinov2|resnet]
                                                 -> Inferir/resultados_inferencia/<modelo>/<prueba>/
@@ -105,10 +107,13 @@ def main() -> int:
     sub.add_parser("dividir-datos")
     p = sub.add_parser("dividir-campo")
     p.add_argument("--etiquetas", type=Path, required=True)
+    sub.add_parser("seleccionar-campo", help="Acepta las opciones de src/seleccionar_recortes_campo.py")
+    sub.add_parser("extraer-campo", help="Acepta las opciones de src/extraer_recortes_campo.py")
     sub.add_parser("entrenar", help="Acepta las opciones de src/entrenar.py")
     p = sub.add_parser("inferir")
     p.add_argument("entrada", nargs="?", type=Path, default=RAIZ / "Inferir" / "imagenes_inferencia")
     p.add_argument("--prueba", help="Nombre de la ejecución (por defecto, fecha y hora)")
+    p.add_argument("--lista", type=Path, help="Solo estas imágenes, p. ej. recursos/campo_test.txt")
     p.add_argument("--classifier", default="both", choices=("both", "dinov2", "resnet"))
     p = sub.add_parser("evaluar")
     p.add_argument("--resultados", type=Path, required=True,
@@ -116,6 +121,8 @@ def main() -> int:
     p.add_argument("--resnet", type=Path, help="Excel de ResNet si no está en --resultados")
     p.add_argument("--etiquetas", type=Path, required=True)
     p.add_argument("--todo", action="store_true", help="Evaluar todas las imágenes, no solo campo_test")
+    p.add_argument("--lista", type=Path, default=RAIZ / "recursos" / "campo_test.txt",
+                   help="Subconjunto a evaluar (p. ej. recursos/campo_test_aqualitas.txt)")
     sub.add_parser("test")
     p = sub.add_parser("limpiar")
     p.add_argument("--si", action="store_true", help="Borrar de verdad (por defecto solo lista)")
@@ -127,10 +134,15 @@ def main() -> int:
         return ejecutar(PY, "src/dividir_datos.py", *extra)
     if args.tarea == "dividir-campo":
         return ejecutar(PY, "src/dividir_campo.py", "--etiquetas", args.etiquetas, *extra)
+    if args.tarea == "seleccionar-campo":
+        return ejecutar(PY, "src/seleccionar_recortes_campo.py", *extra)
+    if args.tarea == "extraer-campo":
+        return ejecutar(PY, "src/extraer_recortes_campo.py", *extra)
     if args.tarea == "entrenar":
         return ejecutar(PY, "src/entrenar.py", *extra)
     if args.tarea == "inferir":
         prueba = ["--run-name", args.prueba] if args.prueba else []
+        prueba += ["--image-list", args.lista] if args.lista else []
         return ejecutar(PY, "Inferir/infer_and_split_resnet_single_folder.py", args.entrada,
                         "--classifier", args.classifier, *prueba, *extra)
     if args.tarea == "evaluar":
@@ -138,7 +150,7 @@ def main() -> int:
         comando = [PY, "src/evaluar_campo.py", "--dino", excel, "--resnet", args.resnet or excel,
                    "--etiquetas", args.etiquetas, "--salida", args.resultados / "informe_campo.xlsx"]
         if not args.todo:
-            comando += ["--subconjunto", "recursos/campo_test.txt"]
+            comando += ["--subconjunto", args.lista]
         return ejecutar(*comando, *extra)
     if args.tarea == "test":
         return ejecutar(PY, "-m", "unittest", *(f"tests.{t}" for t in TESTS))

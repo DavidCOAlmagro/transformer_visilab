@@ -326,7 +326,13 @@ def model_name(args: argparse.Namespace) -> str:
     return "+".join(names)
 
 
-def discover_images(input_path: Path, excluded_paths: Iterable[Path] = ()) -> list[Path]:
+def read_image_list(path: Path) -> set[str]:
+    """Rutas relativas a la carpeta de entrada (como la columna ``image`` del Excel), una por línea."""
+    return {line.strip().replace("\\", "/") for line in path.read_text(encoding="utf-8").splitlines() if line.strip()}
+
+
+def discover_images(input_path: Path, excluded_paths: Iterable[Path] = (),
+                    only: set[str] | None = None) -> list[Path]:
     if input_path.is_file() and input_path.suffix.lower() in IMAGE_EXTENSIONS:
         return [input_path]
     if not input_path.is_dir():
@@ -343,6 +349,8 @@ def discover_images(input_path: Path, excluded_paths: Iterable[Path] = ()) -> li
             for part in path.relative_to(input_path).parts[:-1]
         )
     )
+    if only is not None:
+        images = [path for path in images if path.relative_to(input_path).as_posix() in only]
     if not images:
         raise ValueError(f"No se encontraron imágenes en: {input_path}")
     return images
@@ -528,6 +536,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--resnet-classes", type=Path, default=DEFAULT_RESNET_CLASSES)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--run-name", help="Nombre de la prueba (por defecto, fecha y hora).")
+    parser.add_argument("--image-list", type=Path,
+                        help="Procesar solo estas imágenes (rutas relativas a la entrada), p. ej. recursos/campo_test.txt.")
     parser.add_argument("--output-dir", type=Path,
                         help="Solo si hace falta otra carpeta; por defecto Inferir/resultados_inferencia/<modelo>/<prueba>.")
     parser.add_argument("--conf", type=float, default=0.30)
@@ -555,7 +565,8 @@ def main(argv: Iterable[str] | None = None) -> int:
                 f"--output-dir no puede estar dentro de la entrada {input_path}: {output_dir}. "
                 "Usa una carpeta de resultados hermana para no reingerir salidas."
             )
-    images = discover_images(input_path, (output_dir,))
+    only = read_image_list(args.image_list) if args.image_list else None
+    images = discover_images(input_path, (output_dir,), only)
     yolo_path = args.yolo_weights.expanduser()
     if not yolo_path.is_file():
         raise FileNotFoundError(f"No se encontraron los pesos YOLO: {yolo_path}")
