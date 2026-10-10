@@ -7,7 +7,7 @@ Tareas del proyecto en un solo comando (Windows y Ubuntu, sin instalar nada).
     python tareas.py seleccionar-campo --dino X --resnet X --etiquetas X   recortes de campo -> recursos/recortes_campo.csv
     python tareas.py extraer-campo [--entrada DIR]   recorta esas cajas de las fotos -> data/.../campo_pool/
     python tareas.py entrenar [opciones]        fine-tuning (opciones de src/entrenar.py)
-    python tareas.py inferir [entrada] [--prueba NOMBRE] [--classifier both|dinov2|resnet]
+    python tareas.py inferir [--entrada DIR] [--prueba NOMBRE] [--classifier both|dinov2|resnet]
                                                 -> Inferir/resultados_inferencia/<modelo>/<prueba>/
     python tareas.py evaluar --resultados DIR --etiquetas cruce_ground_truth.xlsx
     python tareas.py test
@@ -111,7 +111,8 @@ def main() -> int:
     sub.add_parser("extraer-campo", help="Acepta las opciones de src/extraer_recortes_campo.py")
     sub.add_parser("entrenar", help="Acepta las opciones de src/entrenar.py")
     p = sub.add_parser("inferir")
-    p.add_argument("entrada", nargs="?", type=Path, default=RAIZ / "Inferir" / "imagenes_inferencia")
+    # Opción y no posicional: un posicional se quedaría con el valor de una opción que pasa al script (--dino-weights X)
+    p.add_argument("--entrada", type=Path, default=RAIZ / "Inferir" / "imagenes_inferencia")
     p.add_argument("--prueba", help="Nombre de la ejecución (por defecto, fecha y hora)")
     p.add_argument("--lista", type=Path, help="Solo estas imágenes, p. ej. recursos/campo_test.txt")
     p.add_argument("--classifier", default="both", choices=("both", "dinov2", "resnet"))

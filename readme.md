@@ -48,7 +48,7 @@ Compruébalo con `python tareas.py estado`.
 | Qué | Comando (Windows o Ubuntu) | Ubuntu |
 |---|---|---|
 | Comprobar modelo, pesos y GPU | `python tareas.py estado` | `make estado` |
-| Inferencia de campo | `python tareas.py inferir [carpeta] [--prueba NOMBRE] [--classifier both\|dinov2\|resnet]` | `make inferir` |
+| Inferencia de campo | `python tareas.py inferir [--entrada CARPETA] [--prueba NOMBRE] [--classifier both\|dinov2\|resnet]` | `make inferir` |
 | Evaluar una inferencia en el test de campo | `python tareas.py evaluar --resultados DIR --etiquetas cruce_ground_truth.xlsx` | `make evaluar RESULTADOS=… ETIQUETAS=…` |
 | Reparto train/val/test | `python tareas.py dividir-datos` | `make dividir-datos` |
 | Test de campo fijo / pool | `python tareas.py dividir-campo --etiquetas cruce_ground_truth.xlsx` | `make dividir-campo ETIQUETAS=…` |

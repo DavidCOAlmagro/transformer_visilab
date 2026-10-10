@@ -20,7 +20,7 @@ Ver la lista completa: python tareas.py --help
 Pon las imágenes (con subcarpetas) en Inferir/imagenes_inferencia/ o indica otra carpeta:
 
     python tareas.py inferir                       (Ubuntu: make inferir)
-    python tareas.py inferir OTRA_CARPETA --prueba NOMBRE --classifier dinov2
+    python tareas.py inferir --entrada OTRA_CARPETA --prueba NOMBRE --classifier dinov2
 
 Salida (siempre en Inferir/resultados_inferencia/<modelo>/<prueba>/; nunca se sobrescribe):
   classification_results.xlsx (+ uno por modelo): top-1/2/3, confianza, revisión (< 80 %)
