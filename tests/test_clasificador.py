@@ -140,6 +140,15 @@ class SalidaTests(unittest.TestCase):
                          ("Gomphonema (vista pleural)", "vista pleural", "Restos", 70.0))
         self.assertEqual(imagenes.estado.tolist(), ["ok", "sin detecciones", "error"])
 
+    def test_etiquetas_no_se_pisan(self):
+        from clasificador_diatomeas.anotacion import posicion_etiqueta
+        ocupadas = []
+        for caja in [(700, 120, 1100, 260), (720, 100, 900, 250), (710, 110, 1000, 240)]:  # tres cajas juntas arriba
+            ocupadas.append(posicion_etiqueta(caja, 800, 60, 2048, 1536, ocupadas))
+        for i, a in enumerate(ocupadas):
+            for b in ocupadas[i + 1:]:
+                self.assertFalse(a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3], (a, b))
+
     def test_anotar(self):
         foto = foto_ruido(200, 120)
         anotada = anotar(foto, resultados_ejemplo()[0].recortes)

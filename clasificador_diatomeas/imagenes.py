@@ -26,7 +26,7 @@ def abrir_imagen(foto: str | Path | Image.Image) -> Image.Image:
                 abierta.load()
                 imagen = abierta.copy()
         except (OSError, ValueError) as error:
-            raise ErrorEntrada(f"No se puede leer {foto}: {error}") from error
+            raise ErrorEntrada(f"No se puede abrir {Path(foto).name}: no es una imagen o está dañada") from error
     imagen = ImageOps.exif_transpose(imagen)
     if imagen.mode in MODOS_16_BITS:
         valores = np.asarray(imagen, dtype=np.float32)
