@@ -1,338 +1,75 @@
 """
 --------------------------------------
-En este archivo se encuentran las funciones que preparan los datos para el clasificador,
-como pasar las etiquetas de texto a números, filtrar las clases que se van a usar y
-dividir los datos en conjuntos de entrenamiento, validación y prueba.
+Utilidades de datos: recorrer las carpetas de imágenes, normalizar los nombres
+de especie, géneros y semilla de reproducibilidad.
 --------------------------------------
 """
 
-import statistics
+from __future__ import annotations
+
 import random
-import numpy as np
-from tqdm import tqdm
-import torch
-from constantes import VARIABLES_GLOBALES
 from pathlib import Path
-import json
-from datetime import datetime
-import argparse
+
+import numpy as np
+import torch
+
+from constantes import VARIABLES_GLOBALES
 
 
-def get_datos(nombre_split: str) -> dict[str, torch.Tensor]:
+def normalizar_nombre_especie(nombre_carpeta: str) -> str:
     """
-    Devuelve los embeddings y las etiquetas de las imágenes,
-    según si es de entrenamiento, val o test.
+    Convierte el nombre de una carpeta en el nombre de especie canónico:
+    espacios y puntos pasan a '_' (p. ej. 'Fistulifera saprophila' ->
+    'Fistulifera_saprophila'). Sin esto, 387 imágenes de Fistulifera
+    quedaban fuera de los splits (spec 009).
     """
-    ruta_embeddings = VARIABLES_GLOBALES["RUTA_EMBEDDINGS"] / \
-        f"embeddings_{nombre_split}.pt"
-    datos: dict[str, torch.Tensor] = torch.load(ruta_embeddings,
-                                                weights_only=True)
-
-    return datos
+    return "_".join(nombre_carpeta.replace(".", " ").split())
 
 
-def codificacion(
-        datos: dict[str, torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor, dict[str, int]]:
+def rutas_imagenes(especies: set[str] | None = None) -> list[tuple[Path, str]]:
     """
-    Convierte las etiquetas de texto de las especies filtradas en números
-    correlativos (0, 1, 2, ...). Devuelve los embeddings, las etiquetas numéricas y especie -> num.
+    Recorre ``data/imagenes_visilab(raw)/<grupo>/<especie>/`` y devuelve
+    (ruta, especie normalizada). Si ``especies`` es None, devuelve todas.
     """
-    # Mapeo especie -> número
-    especies_ordenadas: list[str] = sorted(sorted(obtener_especies_activas()))
-    numero_especie: dict[str, int] = {}
-    for i, especie in enumerate(especies_ordenadas):
-        numero_especie[especie] = i
-
-    embeddings_filtrados = []
-    especies_numericas = []
-
-    # Filtrar embeddings y etiquetas simultáneamente
-    for emb, especie in zip(datos["embeddings"], datos["etiquetas"]):
-        if especie in numero_especie:
-            embeddings_filtrados.append(emb)
-            especies_numericas.append(numero_especie[especie])
-
-    # Convertir a tensores
-    embeddings_tensor = torch.stack(embeddings_filtrados)
-    etiquetas_tensor = torch.tensor(especies_numericas, dtype=torch.long)
-
-    return embeddings_tensor, etiquetas_tensor, numero_especie
-
-
-def rutas_imagenes(incluir_todas: bool = False) -> list[tuple[str, str]]:
-    """
-    Recorre las carpetas con las imágenes y devuelve una lista de tuplas (ruta_completa, especie).
-    """
-    imagenes: list[tuple[str, str]] = []
-    ruta_imagenes: Path = VARIABLES_GLOBALES["RUTA_BASE"] / \
-        "imagenes_visilab(raw)"
-
-    if not ruta_imagenes.exists():
-        raise FileNotFoundError(
-            f"No se encontró la carpeta de imágenes: {ruta_imagenes}")
-    grupos = []
-
-    for p in ruta_imagenes.iterdir():
-        if p.is_dir():
-            grupos.append(p.name)
-    grupos.sort()
-
+    raiz = VARIABLES_GLOBALES["RUTA_BASE"] / "imagenes_visilab(raw)"
+    if not raiz.is_dir():
+        raise FileNotFoundError(f"No se encontró la carpeta de imágenes: {raiz}")
+    grupos = sorted(p for p in raiz.iterdir() if p.is_dir())
     if not grupos:
-        raise FileNotFoundError(
-            f"No se encontraron subcarpetas de grupo en: {ruta_imagenes}")
+        raise FileNotFoundError(f"No se encontraron subcarpetas de grupo en: {raiz}")
 
-    especies_activas = None if incluir_todas else obtener_especies_activas()
-
+    imagenes: list[tuple[Path, str]] = []
     for grupo in grupos:
-        ruta_grupo = ruta_imagenes / grupo
-
-        print(f"Recorriendo {ruta_grupo}...")
-        if ruta_grupo.exists():
-
-            especies = [ruta for ruta in ruta_grupo.iterdir() if ruta.is_dir()
-                        and (especies_activas is None or ruta.name in especies_activas)]
-
-            for especie in especies:
-                for archivo in especie.iterdir():
-                    if archivo.suffix.lower() in VARIABLES_GLOBALES["EXTENSIONES_VALIDAS"]:
-                        imagenes.append((archivo, especie.name))
-
+        print(f"Recorriendo {grupo}...")
+        for carpeta in sorted(p for p in grupo.iterdir() if p.is_dir()):
+            especie = normalizar_nombre_especie(carpeta.name)
+            if especies is not None and especie not in especies:
+                continue
+            if especie != carpeta.name:
+                print(f"Aviso: carpeta '{carpeta.name}' tratada como '{especie}'.")
+            imagenes.extend(
+                (archivo, especie) for archivo in sorted(carpeta.iterdir())
+                if archivo.suffix.lower() in VARIABLES_GLOBALES["EXTENSIONES_VALIDAS"]
+            )
     return imagenes
 
 
-def contar_clases_train(et_train: torch.Tensor, numero_especie: dict[str, int]) -> None:
-    """
-    Cuenta cuántas imágenes de train hay por cada especie de
-    ESPECIES_FILTRADAS, para detectar si alguna se ha quedado
-    con 0 muestras (lo que provocaría nan en la loss por división
-    entre cero al calcular los pesos de clase).
-    """
-
-    especie_numero: dict[int, str] = {}
-    for especie, numero in numero_especie.items():
-        especie_numero[numero] = especie
-    # torch.bincount() devuelve un tensor con el conteo de cada número en et_train.
-    conteo = torch.bincount(et_train, minlength=len(numero_especie))
-
-    for numero, cantidad in enumerate(conteo):
-        especie = especie_numero[numero]
-        print(f"{especie:40s} {cantidad.item()} imágenes en train")
-        if cantidad.item() == 0:
-            raise ValueError(
-                f"La especie '{especie}' tiene 0 imágenes en train. "
-                "Revisa que el nombre coincide exactamente con el de la carpeta.")
-
-
-def calcular_conteo_por_especie(imagenes: list[tuple[Path, str]]) -> dict[str, int]:
-    """
-    Cuenta cuántas imágenes originales hay de cada especie en la lista dada
-    (antes de aplicar ningún augmentation).
-    """
-    conteo_por_especie: dict[str, int] = {}
-    for _, especie in imagenes:
-        conteo_por_especie[especie] = conteo_por_especie.get(especie, 0) + 1
-    return conteo_por_especie
-
-
-def calcular_copias_extra_por_especie(
-        conteo_por_especie: dict[str, int], max_copias: int = 3) -> dict[str, int]:
-    """
-    Calcula cuántas copias extra de augmentation le corresponden a cada especie,
-    de forma continua según su frecuencia relativa respecto la mediana de todas las
-    especies. Las especies con tantas imágenes como la mediana o más no reciben
-    copias extra. Las más minoritarias reciben más copias, hasta max_copias.
-    """
-    mediana: float = statistics.median(conteo_por_especie.values())
-
-    copias_por_especie: dict[str, int] = {}
-    for especie, conteo in conteo_por_especie.items():
-        copias_ideales: float = (mediana / conteo) - 1
-        copias: int = max(0, min(max_copias, round(copias_ideales)))
-        copias_por_especie[especie] = copias
-
-    return copias_por_especie
-
-
 def obtener_genero(especie: str) -> str:
-    """Extrae el género de UNA SOLA especie a partir de la primera palabra antes del '_'."""
-    genero: str = especie.split("_")[0]
-    return genero
+    """Extrae el género de una especie: la primera palabra antes del '_'."""
+    return especie.split("_")[0]
 
 
-def construir_numero_genero(especies_filtradas: set[str]) -> dict[str, int]:
-    """Mapea cada género presente en ESPECIES_FILTRADAS a un índice numérico."""
-    generos_desordenados: list[str] = []
-    for especie in especies_filtradas:
-        genero: str = obtener_genero(especie)
-        generos_desordenados.append(genero)
-    generos_ordenados = sorted(set(generos_desordenados))
-    mapeado: dict[str, int] = {}
-    for i, genero in enumerate(generos_ordenados):
-        mapeado[genero] = i
-    return mapeado
-
-
-def etiquetas_a_generos(
-        etiquetas_especie: torch.Tensor, numero_especie: dict[str, int],
-        numero_genero: dict[str, int]) -> torch.Tensor:
-    """
-    Convierte un tensor de etiquetas de especie en un tensor de etiquetas de
-    género, manteniendo el mismo orden de las muestras.Invierte numero_especie 
-    para pasar de número->especie en vez de especie->número. Finalmente,
-    convierte el género a su índice numérico 
-    """
-    especie_numero: dict[int, str] = {}
-
-    for especie, numero in numero_especie.items():
-        especie_numero[numero] = especie   # aquí SÍ rellenamos el diccionario
-
-    etiquetas_genero: list[int] = []
-
-    for idx in etiquetas_especie:
-        numero = idx.item()
-        especie = especie_numero[numero]
-        genero = obtener_genero(especie)
-        numero_del_genero = numero_genero[genero]
-        etiquetas_genero.append(numero_del_genero)
-
-    etiquetas_genero_tensor = torch.tensor(etiquetas_genero, dtype=torch.long)
-
-    return etiquetas_genero_tensor
-
-
-def construir_especies_por_genero(
-        numero_especie: dict[str, int], numero_genero: dict[str, int]) -> dict[int, list[int]]:
-    """
-    Mapea cada índice de género al listado de índices de especie (globales)
-    que le pertenecen. Necesario para que el clasificador sepa qué cabeza
-    usar y cómo traducir sus salidas locales a índices globales de especie.
-    Se deriva automáticamente del nombre de cada especie.
-    Devuelve un diccionario: índice de género -> lista de índices
-    (Achnanthidium: Achnanthidium_minutissimum, Achnanthidium_parvulum, ...)
-    """
-    especies_por_genero: dict[int, list[int]] = {}
-    for especie, indice_especie in numero_especie.items():
-        genero: str = obtener_genero(especie)
-        indice_genero: int = numero_genero[genero]
-        # Si clave no existe, se crea la lista y se guarda en el diccionario. Y luego se
-        # añade el índice de especie a la lista correspondiente.
-        especies_por_genero.setdefault(
-            indice_genero, []).append(indice_especie)
-    return especies_por_genero
+def construir_numero_genero(especies: set[str]) -> dict[str, int]:
+    """Mapea cada género presente en las especies a un índice numérico."""
+    return {genero: i for i, genero in enumerate(sorted({obtener_genero(e) for e in especies}))}
 
 
 def fijar_semilla(semilla: int) -> None:
-    """
-    Configura una semilla para que los resultados no cambien.
-    """
+    """Fija las semillas para que los resultados sean reproducibles."""
     random.seed(semilla)
     np.random.seed(semilla)
     torch.manual_seed(semilla)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(semilla)
-    # Evita que la inicialización de pesos y el shuffle del dataloader sean aleatorios
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-
-
-def guardar_resumen_entrenamiento(ruta_modelo: Path, historial_macro_f1_val: list[float],
-                                  metricas_test: dict[str, float]) -> None:
-    """Guarda las métricas principales del último entrenamiento."""
-    if not historial_macro_f1_val:
-        raise ValueError(
-            "El historial de macro F1 de validación está vacío. No se puede guardar el resumen.")
-
-    indice_mejor = max(range(len(historial_macro_f1_val)),
-                       key=lambda indice: historial_macro_f1_val[indice])
-
-    resumen = {
-        "fecha": datetime.now().isoformat(timespec="seconds"),
-        "mejor_epoca": indice_mejor + 1,
-        "mejor_macro_f1_validacion": historial_macro_f1_val[indice_mejor],
-        **metricas_test
-    }
-
-    ruta_resumen = ruta_modelo.parent / "resumen_entrenamiento.json"
-    if ruta_resumen.is_file():
-        with open(ruta_resumen, "r", encoding="utf-8") as archivo:
-            contenido = json.load(archivo)
-        historial_resumenes = contenido if isinstance(
-            contenido, list) else [contenido]
-    else:
-        historial_resumenes = []
-
-    historial_resumenes.append(resumen)
-
-    with open(ruta_resumen, "w", encoding="utf-8") as archivo:
-        json.dump(historial_resumenes, archivo, indent=4, ensure_ascii=False)
-
-    print(f"Resumen guardado en: {ruta_resumen}")
-
-
-def obtener_especies_activas() -> set[str]:
-    """
-    Devuelve el conjunto de especies del experimento actual (PRUEBA).
-    Si ya existe metadatos_modelo.json para ese experimento, se usa esa
-    lista ESPECIES_FILTRADAS de constantes.py como valor por defecto.
-    """
-    ruta_metadatos = (VARIABLES_GLOBALES["RUTA_MODELOS"]
-                      / VARIABLES_GLOBALES["PRUEBA"] / "metadatos_modelo.json")
-    if not ruta_metadatos.is_file():
-        raise FileNotFoundError(
-            f"No se encontró el archivo de metadatos en: modelos/{VARIABLES_GLOBALES['PRUEBA']}/")
-
-    with open(ruta_metadatos, "r", encoding="utf-8") as f:
-        metadatos = json.load(f)
-        return set(metadatos["especies_filtradas"])
-    return VARIABLES_GLOBALES["ESPECIES_FILTRADAS"]
-
-
-def parsear_argumentos() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Entrena y evalúa el clasificador de diatomeas (DINOv2 + MLP).")
-    parser.add_argument("--reentrenar", choices=["s", "n"], default=None,
-                        help="¿Entrenar un modelo nuevo? Si no se indica, se pregunta interactivamente.")
-    parser.add_argument("--regenerar-splits", choices=["s", "n"], default=None,
-                        help="¿Regenerar splits train/val/test?")
-    parser.add_argument("--recalcular-embeddings", choices=["s", "n"], default=None,
-                        help="¿Recalcular embeddings?")
-    parser.add_argument("--prueba", type=str, default=None,
-                        help="Nombre del experimento (sobreescribe PRUEBA de constantes.py).")
-    return parser.parse_args()
-
-
-def preguntas_si_no(mensaje: str) -> bool:
-    """
-    Pregunta al usuario una respuesta sí/no y devuelve True/False.
-    """
-    valid = True
-    while valid:
-        respuesta = input(f"{mensaje} (s/n): ").strip().lower()
-        if respuesta in {"s", "n"}:
-            valid = False
-            return respuesta == "s"
-        else:
-            print("Respuesta inválida. Por favor, ingrese 's' para sí o 'n' para no.")
-
-
-def verificar_especies_consistentes() -> None:
-    """
-    Si la PRUEBA actual ya tiene metadatos_modelo.json, comprueba que las
-    especies coinciden con las de ESPECIES_FILTRADAS. Si no, lanza error en
-    vez de sobreescribir en silencio (los splits/embeddings en disco serían
-    del conjunto de especies antiguo).
-    """
-    ruta_metadatos = (VARIABLES_GLOBALES["RUTA_MODELOS"]
-                      / VARIABLES_GLOBALES["PRUEBA"] / "metadatos_modelo.json")
-    if not ruta_metadatos.is_file():
-        return
-
-    with open(ruta_metadatos, "r", encoding="utf-8") as f:
-        especies_guardadas = set(json.load(f)["especies_filtradas"])
-
-    if especies_guardadas != VARIABLES_GLOBALES["ESPECIES_FILTRADAS"]:
-        raise ValueError(
-            f"La prueba '{VARIABLES_GLOBALES['PRUEBA']}' ya existe con otras especies. "
-            "Usa otro --prueba o borra su carpeta en modelos/, data/splits/ y "
-            "data/embeddings_procesado/ antes de reentrenar."
-        )

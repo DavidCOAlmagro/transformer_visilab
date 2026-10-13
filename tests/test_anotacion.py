@@ -21,7 +21,7 @@ class AnotacionTests(unittest.TestCase):
     def test_recuadro_verde_y_fuente_escalable(self):
         imagen = Image.new("RGB", (2000, 1500), (128, 128, 128))
         prediccion = {"especie_mas_parecida": "Nitzschia_palea", "confianza": 90.0, "revisar": False}
-        anotada = _annotate_image(imagen, [(500, 600, 900, 1000)], [prediccion], "dinov2")
+        anotada = _annotate_image(imagen, [(500, 600, 900, 1000)], [prediccion])
         self.assertEqual(anotada.getpixel((500, 800)), ANNOTATION_COLOR)  # borde izquierdo del recuadro
         self.assertGreaterEqual(_font(50).size, 50)
 
@@ -30,7 +30,7 @@ class AnotacionTests(unittest.TestCase):
         cajas = [(500, 600, 900, 1000), (700, 620, 1100, 1020)]
         predicciones = [{"especie_mas_parecida": "A_b", "confianza": 1.0, "revisar": False}] * 2
         # No debe fallar y ambas cajas deben quedar dibujadas
-        anotada = _annotate_image(imagen, cajas, predicciones, "resnet")
+        anotada = _annotate_image(imagen, cajas, predicciones)
         self.assertEqual(anotada.getpixel((1100, 900)), ANNOTATION_COLOR)
 
 

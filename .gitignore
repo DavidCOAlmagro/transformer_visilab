@@ -83,3 +83,10 @@ huggingface/
 transformers/
 
 ~$*.xlsx
+
+# ============================
+# CONTEXTO LOCAL (no versionar)
+# ============================
+contexto_IA/
+CLAUDE.md
+.claude/

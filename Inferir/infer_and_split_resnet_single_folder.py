@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 from collections import deque
+from datetime import datetime
 from concurrent.futures import Future, ThreadPoolExecutor
 from functools import lru_cache
 import itertools
@@ -28,14 +29,17 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
+from embeddings import resolver_modelo_dinov2
 from preprocesado import preparar_para_dinov2
 
 DEFAULT_INPUT = ROOT / "Inferir" / "imagenes_inferencia"
 DEFAULT_YOLO_WEIGHTS = ROOT / "Inferir" / "yolo_dinov2" / "yolo_best.pt"
-DEFAULT_DINO_WEIGHTS = ROOT / "modelos" / "75_objetivo_pad" / "modelo_75_objetivo_pad.pth"
+DEFAULT_DINO_WEIGHTS = ROOT / "modelos" / "75_objetivo_ft" / "modelo_75_objetivo_ft.pth"
 DEFAULT_RESNET_WEIGHTS = ROOT / "Inferir" / "yolo_dinov2" / "resnet50_checkpoint_epoch50.pth"
 DEFAULT_DINO_CLASSES = ROOT / "Inferir" / "txt_classes" / "classes_77(dino).txt"
 DEFAULT_RESNET_CLASSES = ROOT / "Inferir" / "txt_classes" / "classes_78(resnet).txt"
+# Único sitio donde se decide dónde van los resultados: <RESULTS_ROOT>/<modelo>/<prueba>/
+RESULTS_ROOT = ROOT / "Inferir" / "resultados_inferencia"
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
 IMAGE_LOAD_WORKERS = 3
 IMAGE_PREFETCH = 6
@@ -52,28 +56,13 @@ GENERATED_DIRS = {
     "resultados_inferencia",
     "runs",
 }
-_PIL_IMAGE_OPEN = Image.open
-
-
-def extract_original_class(image_path: str | Path) -> str:
-    """Obtiene la clase indicada por las dos primeras partes del nombre."""
-    import re
-
-    parts = [part for part in re.split(r"[_\s]+", Path(image_path).stem) if part]
-    return " ".join(parts[:2]) if len(parts) >= 2 else (parts[0] if parts else "")
 
 
 def load_torch_checkpoint(path: Path, device: torch.device) -> Any:
-    """Carga un checkpoint usando weights_only cuando el runtime lo admite."""
-    try:
-        return torch.load(path, map_location=device, weights_only=True)
-    except TypeError as error:
-        if "weights_only" not in str(error):
-            raise
-        return torch.load(path, map_location=device)
+    return torch.load(path, map_location=device, weights_only=True)
 
 
-def read_classes(path: Path, expected: int, label: str) -> list[str]:
+def read_classes(path: Path, expected: int | None, label: str) -> list[str]:
     """Lee una clase por línea, tolerando BOM, comentarios y líneas vacías."""
     if not path.is_file():
         raise FileNotFoundError(f"No se encontró el fichero de clases {label}: {path}")
@@ -82,7 +71,7 @@ def read_classes(path: Path, expected: int, label: str) -> list[str]:
         for line in path.read_text(encoding="utf-8-sig").splitlines()
         if line.strip() and not line.lstrip().startswith("#")
     ]
-    if len(classes) != expected:
+    if expected is not None and len(classes) != expected:
         raise ValueError(
             f"{label} debe contener exactamente {expected} clases; contiene {len(classes)}: {path}"
         )
@@ -101,8 +90,8 @@ def read_metadata_classes(path: Path) -> list[str]:
     classes = data.get("especies_filtradas") or data.get("especies")
     if not isinstance(classes, list) or not all(isinstance(item, str) for item in classes):
         raise ValueError(f"El metadata no contiene una lista de clases: {path}")
-    if len(classes) != 77 or len(set(classes)) != 77:
-        raise ValueError(f"El metadata DINOv2 debe contener exactamente 77 clases: {path}")
+    if len(set(classes)) != len(classes):
+        raise ValueError(f"El metadata DINOv2 contiene clases duplicadas: {path}")
     return list(classes)
 
 
@@ -121,7 +110,8 @@ def resolve_dino_classes(weights: Path, classes_path: Path | None) -> list[str]:
         ) if path not in candidates
     )
     class_file = next((path for path in candidates if path.is_file()), None)
-    classes = read_classes(class_file, 77, "clases DINOv2") if class_file else None
+    expected = len(metadata) if metadata is not None else None
+    classes = read_classes(class_file, expected, "clases DINOv2") if class_file else None
     if metadata is not None and classes is not None and classes != metadata:
         raise ValueError(
             "El orden de clases DINOv2 no coincide entre metadatos_modelo.json y clases.txt."
@@ -131,7 +121,7 @@ def resolve_dino_classes(weights: Path, classes_path: Path | None) -> list[str]:
     if classes is not None:
         return classes
     raise FileNotFoundError(
-        "No se encontró una lista DINOv2 de 77 clases ni metadatos_modelo.json."
+        "No se encontró una lista de clases DINOv2 ni metadatos_modelo.json."
     )
 
 
@@ -184,17 +174,13 @@ def _state_dict(checkpoint: Any, label: str) -> dict[str, Any]:
     }
 
 
-def backbone_state(state: dict[str, Any]) -> dict[str, Any]:
-    """Extracts fine-tuned DINOv2 backbone weights (``backbone.*`` keys), if any.
+def _with_prefix(state: dict[str, Any], prefix: str) -> dict[str, Any]:
+    return {key.removeprefix(prefix): value for key, value in state.items() if key.startswith(prefix)}
 
-    Checkpoints from the partial fine-tuning (spec 006) store the whole backbone
-    under ``backbone.``; older checkpoints only contain the MLP and return {}.
-    """
-    return {
-        key.removeprefix("backbone."): value
-        for key, value in state.items()
-        if key.startswith("backbone.")
-    }
+
+def backbone_state(state: dict[str, Any]) -> dict[str, Any]:
+    """Backbone ajustado (claves ``backbone.*``) de los checkpoints del fine-tuning; {} en los antiguos."""
+    return _with_prefix(state, "backbone.")
 
 
 class ResNetClassifier:
@@ -212,14 +198,14 @@ class ResNetClassifier:
             torch.nn.Linear(features, 256),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.3),
-            torch.nn.Linear(256, 78),
+            torch.nn.Linear(256, len(classes)),
         )
         state = _state_dict(load_torch_checkpoint(weights, device), "ResNet")
         try:
             self.model.load_state_dict(state, strict=True)
         except RuntimeError as error:
             raise ValueError(
-                "Los pesos ResNet no coinciden con ResNet50 de 78 clases."
+                f"Los pesos ResNet no coinciden con ResNet50 de {len(classes)} clases."
             ) from error
         self.model.to(device).eval()
         self.transform = transforms.Compose([
@@ -259,8 +245,10 @@ class DinoClassifier:
                 f"No se pudo cargar el checkpoint DINOv2 {weights}. "
                 "Comprueba que sea un checkpoint PyTorch válido y no esté incompleto."
             ) from error
+        # Igual que en el entrenamiento: caché local o DINOV2_MODEL_PATH, sin depender de la red
+        model_path, local_only = resolver_modelo_dinov2()
         try:
-            self.backbone = AutoModel.from_pretrained("facebook/dinov2-base")
+            self.backbone = AutoModel.from_pretrained(model_path, local_files_only=local_only)
         except Exception as error:
             raise RuntimeError(
                 "No se pudo cargar el backbone DINOv2 'facebook/dinov2-base'. "
@@ -280,48 +268,18 @@ class DinoClassifier:
             torch.nn.Linear(hidden, 512), torch.nn.ReLU(), torch.nn.Dropout(0.3),
             torch.nn.Linear(512, 256), torch.nn.ReLU(), torch.nn.Dropout(0.2),
         )
-        self.head = torch.nn.Linear(256, 77)
-        head_weight = state.get("cabeza_especie.weight")
-        head_bias = state.get("cabeza_especie.bias")
-        if (
-            head_weight is None
-            or head_bias is None
-            or head_weight.ndim != 2
-            or head_weight.shape != self.head.weight.shape
-            or head_bias.shape != self.head.bias.shape
-        ):
+        self.head = torch.nn.Linear(256, len(classes))
+        try:
+            self.trunk.load_state_dict(_with_prefix(state, "tronco."), strict=True)
+            self.head.load_state_dict(_with_prefix(state, "cabeza_especie."), strict=True)
+        except RuntimeError as error:
             raise ValueError(
-                "El checkpoint DINOv2 debe contener cabeza_especie.weight y "
-                "cabeza_especie.bias compatibles con exactamente 77 clases."
-            )
-        required = {
-            "tronco.0.weight": self.trunk[0].weight,
-            "tronco.0.bias": self.trunk[0].bias,
-            "tronco.3.weight": self.trunk[3].weight,
-            "tronco.3.bias": self.trunk[3].bias,
-            "cabeza_especie.weight": self.head.weight,
-            "cabeza_especie.bias": self.head.bias,
-        }
-        missing = [key for key in required if key not in state]
-        incompatible = [
-            key for key, value in required.items()
-            if key in state and state[key].shape != value.shape
-        ]
-        if missing or incompatible:
-            raise ValueError(
-                f"Faltan pesos esenciales DINOv2: {missing}; dimensiones incompatibles: {incompatible}."
-            )
-        self.trunk.load_state_dict({
-            key.removeprefix("tronco."): state[key] for key in required if key.startswith("tronco.")
-        }, strict=True)
-        self.head.load_state_dict({
-            key.removeprefix("cabeza_especie."): state[key]
-            for key in required if key.startswith("cabeza_especie.")
-        }, strict=True)
+                f"El checkpoint DINOv2 {weights} no tiene un MLP compatible con {len(classes)} clases: {error}"
+            ) from error
         self.backbone.to(device).eval()
         self.trunk.to(device).eval()
         self.head.to(device).eval()
-        self.processor = AutoImageProcessor.from_pretrained("facebook/dinov2-base")
+        self.processor = AutoImageProcessor.from_pretrained(model_path, local_files_only=local_only)
 
     @torch.inference_mode()
     def predict_batch(self, images: list[Image.Image], threshold: float) -> list[dict[str, Any]]:
@@ -347,7 +305,34 @@ class DinoClassifier:
         return top_predictions(logits, self.classes, threshold)
 
 
-def discover_images(input_path: Path, excluded_paths: Iterable[Path] = ()) -> list[Path]:
+def results_dir(model_name: str, run_name: str | None = None, root: Path = RESULTS_ROOT) -> Path:
+    """Carpeta de una ejecución nueva; si el nombre ya existe se añade _2, _3… para no sobrescribir."""
+    run_name = run_name or datetime.now().strftime("%Y%m%d_%H%M%S")
+    path = root / model_name / run_name
+    suffix = 2
+    while path.exists():
+        path = root / model_name / f"{run_name}_{suffix}"
+        suffix += 1
+    return path
+
+
+def model_name(args: argparse.Namespace) -> str:
+    """Nombre del modelo para la carpeta de resultados: carpeta de los pesos DINOv2 y/o resnet50."""
+    names = []
+    if args.classifier in ("dinov2", "both"):
+        names.append(args.dino_weights.expanduser().resolve().parent.name)
+    if args.classifier in ("resnet", "both"):
+        names.append("resnet50")
+    return "+".join(names)
+
+
+def read_image_list(path: Path) -> set[str]:
+    """Rutas relativas a la carpeta de entrada (como la columna ``image`` del Excel), una por línea."""
+    return {line.strip().replace("\\", "/") for line in path.read_text(encoding="utf-8").splitlines() if line.strip()}
+
+
+def discover_images(input_path: Path, excluded_paths: Iterable[Path] = (),
+                    only: set[str] | None = None) -> list[Path]:
     if input_path.is_file() and input_path.suffix.lower() in IMAGE_EXTENSIONS:
         return [input_path]
     if not input_path.is_dir():
@@ -364,6 +349,8 @@ def discover_images(input_path: Path, excluded_paths: Iterable[Path] = ()) -> li
             for part in path.relative_to(input_path).parts[:-1]
         )
     )
+    if only is not None:
+        images = [path for path in images if path.relative_to(input_path).as_posix() in only]
     if not images:
         raise ValueError(f"No se encontraron imágenes en: {input_path}")
     return images
@@ -390,7 +377,7 @@ def normalize_bbox(
 
 def load_rgb_image(image_path: Path) -> Image.Image | None:
     try:
-        with _PIL_IMAGE_OPEN(image_path) as image:
+        with Image.open(image_path) as image:
             return image.convert("RGB")
     except (ModuleNotFoundError, OSError, ValueError) as error:
         print(f"Se omite la imagen ilegible {image_path}: {error}", file=sys.stderr)
@@ -450,7 +437,6 @@ def _annotate_image(
     original: Image.Image,
     boxes: list[tuple[int, int, int, int]],
     predictions: list[dict[str, Any]],
-    model_name: str,
 ) -> Image.Image:
     """Dibuja recuadros verdes con el nombre de la especie sobre una copia de la imagen.
 
@@ -549,16 +535,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dino-classes", type=Path, default=DEFAULT_DINO_CLASSES)
     parser.add_argument("--resnet-classes", type=Path, default=DEFAULT_RESNET_CLASSES)
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--run-name", help="Nombre de la prueba (por defecto, fecha y hora).")
+    parser.add_argument("--image-list", type=Path,
+                        help="Procesar solo estas imágenes (rutas relativas a la entrada), p. ej. recursos/campo_test.txt.")
+    parser.add_argument("--output-dir", type=Path,
+                        help="Solo si hace falta otra carpeta; por defecto Inferir/resultados_inferencia/<modelo>/<prueba>.")
     parser.add_argument("--conf", type=float, default=0.30)
     parser.add_argument("--threshold", type=float, default=0.80)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--imgsz", type=int, default=1024)
-    parser.add_argument(
-        "--reinhard-reference",
-        type=Path,
-        help="Referencia requerida para Reinhard; no se aplica por defecto y aún no se implementa.",
-    )
     return parser
 
 
@@ -566,22 +551,10 @@ def main(argv: Iterable[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if not 0 <= args.conf <= 1 or not 0 <= args.threshold <= 1:
         raise SystemExit("--conf y --threshold deben estar entre 0 y 1.")
-    if args.reinhard_reference is not None:
-        raise NotImplementedError(
-            "Reinhard requiere estadísticas de una imagen de referencia; "
-            "no se aplica automáticamente."
-        )
 
     input_path = args.input.expanduser().resolve()
-    output_dir = (
-        args.output_dir.expanduser().resolve()
-        if args.output_dir is not None
-        else (
-            input_path.parent / "resultados_inferencia"
-            if input_path.is_file()
-            else input_path.parent / f"{input_path.name}_resultados"
-        )
-    )
+    output_dir = (args.output_dir.expanduser().resolve() if args.output_dir is not None
+                  else results_dir(model_name(args), args.run_name))
     if input_path.is_dir():
         try:
             output_dir.relative_to(input_path)
@@ -592,7 +565,8 @@ def main(argv: Iterable[str] | None = None) -> int:
                 f"--output-dir no puede estar dentro de la entrada {input_path}: {output_dir}. "
                 "Usa una carpeta de resultados hermana para no reingerir salidas."
             )
-    images = discover_images(input_path, (output_dir,))
+    only = read_image_list(args.image_list) if args.image_list else None
+    images = discover_images(input_path, (output_dir,), only)
     yolo_path = args.yolo_weights.expanduser()
     if not yolo_path.is_file():
         raise FileNotFoundError(f"No se encontraron los pesos YOLO: {yolo_path}")
@@ -691,7 +665,6 @@ def main(argv: Iterable[str] | None = None) -> int:
                         original,
                         [box for _, _, box in detections],
                         predictions[name],
-                        name,
                     ),
                     bbox_model_dirs[name] / f"{stem}.jpg",
                     quality=85,
