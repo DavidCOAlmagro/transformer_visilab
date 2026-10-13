@@ -90,3 +90,6 @@ transformers/
 contexto_IA/
 CLAUDE.md
 .claude/
+
+# Carpeta de modelos exportada para clasificador_diatomeas (se entrega aparte)
+dist/

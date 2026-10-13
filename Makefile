@@ -8,7 +8,7 @@
 PY ?= python3
 ARGS ?=
 
-.PHONY: estado dividir-datos dividir-campo extraer-campo entrenar inferir evaluar test limpiar
+.PHONY: estado dividir-datos dividir-campo extraer-campo exportar-modelos entrenar inferir evaluar test limpiar
 
 estado:
 	$(PY) tareas.py estado
@@ -21,6 +21,9 @@ dividir-campo:
 
 extraer-campo:
 	$(PY) tareas.py extraer-campo $(ARGS)
+
+exportar-modelos:
+	$(PY) tareas.py exportar-modelos $(ARGS)
 
 # En la torre del trabajo, sin freno térmico (preferencia del usuario)
 entrenar:

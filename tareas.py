@@ -10,6 +10,7 @@ Tareas del proyecto en un solo comando (Windows y Ubuntu, sin instalar nada).
     python tareas.py inferir [--entrada DIR] [--prueba NOMBRE] [--classifier both|dinov2|resnet]
                                                 -> Inferir/resultados_inferencia/<modelo>/<prueba>/
     python tareas.py evaluar --resultados DIR --etiquetas cruce_ground_truth.xlsx
+    python tareas.py exportar-modelos [--dino X] [--salida DIR]   carpeta de modelos para clasificador_diatomeas
     python tareas.py test
     python tareas.py limpiar [--si]             lista (y con --si borra) lo regenerable
 
@@ -111,6 +112,7 @@ def main() -> int:
     p.add_argument("--etiquetas", type=Path, required=True)
     sub.add_parser("seleccionar-campo", help="Acepta las opciones de src/seleccionar_recortes_campo.py")
     sub.add_parser("extraer-campo", help="Acepta las opciones de src/extraer_recortes_campo.py")
+    sub.add_parser("exportar-modelos", help="Acepta las opciones de src/exportar_modelos.py")
     sub.add_parser("entrenar", help="Acepta las opciones de src/entrenar.py")
     p = sub.add_parser("inferir")
     # Opción y no posicional: un posicional se quedaría con el valor de una opción que pasa al script (--dino-weights X)
@@ -139,6 +141,8 @@ def main() -> int:
         return ejecutar(PY, "src/dividir_campo.py", "--etiquetas", args.etiquetas, *extra)
     if args.tarea == "seleccionar-campo":
         return ejecutar(PY, "src/seleccionar_recortes_campo.py", *extra)
+    if args.tarea == "exportar-modelos":
+        return ejecutar(PY, "src/exportar_modelos.py", *extra)
     if args.tarea == "extraer-campo":
         return ejecutar(PY, "src/extraer_recortes_campo.py", *extra)
     if args.tarea == "entrenar":
