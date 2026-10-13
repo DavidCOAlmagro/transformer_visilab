@@ -39,6 +39,8 @@ LIMPIABLE = [
     RAIZ / ".venv",
 ]
 CARPETAS_CODIGO = ("src", "tests", "Inferir")
+# Modelos que limpiar no toca nunca (el de referencia y los reentrenados con campo, incluidos los 77_campo_<fecha>)
+MODELOS_PROTEGIDOS = ("75_objetivo_ft", "77_campo")
 
 
 def ejecutar(*argumentos: object) -> int:
@@ -58,7 +60,7 @@ def candidatos_limpieza() -> list[Path]:
     rutas = [r for r in LIMPIABLE if r.exists()]
     modelos = RAIZ / "modelos"
     if modelos.is_dir():
-        rutas += [d for d in modelos.iterdir() if d.is_dir() and d.name != "75_objetivo_ft"]
+        rutas += [d for d in modelos.iterdir() if d.is_dir() and not d.name.startswith(MODELOS_PROTEGIDOS)]
     # Solo en carpetas de código: recorrer data/ entero (millones de imágenes) es lentísimo
     rutas += [p for c in CARPETAS_CODIGO for p in (RAIZ / c).rglob("__pycache__")]
     rutas += [p for p in [RAIZ / "__pycache__"] if p.exists()]
