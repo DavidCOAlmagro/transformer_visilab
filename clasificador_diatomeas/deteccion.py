@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import math
+import os
+import sys
 from pathlib import Path
 
 from PIL import Image
@@ -28,8 +30,16 @@ class Detector:
     def __init__(self, pesos: Path, confianza: float, tamano: int) -> None:
         if not pesos.is_file():
             raise ErrorModelos(f"No existe {pesos}")
+        # Que ultralytics no consulte internet ni intente instalar paquetes con pip
+        os.environ.setdefault("YOLO_OFFLINE", "true")
+        os.environ.setdefault("YOLO_AUTOINSTALL", "false")
         from ultralytics import YOLO
 
+        if getattr(sys, "frozen", False):
+            # En una app empaquetada (PyInstaller) sys.executable es la propia app: ultralytics la volvería
+            # a lanzar para hacer "python -m pip show ultralytics" si la carpeta está dentro de un repositorio git
+            from ultralytics.utils import checks
+            checks.check_multiple_install = lambda: None
         self.modelo = YOLO(str(pesos))
         self.confianza = confianza
         self.tamano = tamano

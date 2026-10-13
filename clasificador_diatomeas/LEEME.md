@@ -59,6 +59,22 @@ Las fotos anotadas quedan en `resultados/anotadas/`.
 python -m clasificador_diatomeas carpeta_de_fotos carpeta_de_salida --modelos ruta/a/modelos
 ```
 
+## Si conviertes la app en .exe (PyInstaller)
+
+Probado con PyInstaller 6.22. Añade estas opciones a tu comando:
+
+```
+--onedir --collect-data clasificador_diatomeas --collect-data ultralytics
+--collect-submodules transformers.models.dinov2 --collect-submodules transformers.models.bit
+--copy-metadata transformers --copy-metadata torch
+```
+
+- Usa `--onedir`, no `--onefile`: con `--onefile` la app descomprime unos 900 MB cada vez que arranca.
+- Construye en una carpeta con una ruta corta (por ejemplo `C:\build`). Windows falla con rutas de más de
+  260 caracteres y algunas de transformers son muy largas.
+- La carpeta `modelos` no va dentro del .exe: déjala al lado de la app y pásale su ruta a `Clasificador`.
+- Ocupa unos 900 MB la app empaquetada y 490 MB los modelos.
+
 ## Tiempos
 
 En un portátil, unos 5-6 s por foto con 10 diatomeas. Cargar los modelos, entre 10 s y 1 min la primera vez.
