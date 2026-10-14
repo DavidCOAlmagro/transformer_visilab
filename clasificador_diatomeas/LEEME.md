@@ -6,8 +6,8 @@ Para cada diatomea da la especie más probable y las tres más probables con su 
 ## Qué necesitas
 
 - La carpeta `clasificador_diatomeas` (este código).
-- La carpeta `modelos` (unos 490 MB, te la paso aparte). No la cambies de contenido.
-- Python 3.13 y las librerías de `requirements_clasificador.txt`:
+- La carpeta `modelos` (unos 490 MB, te la paso aparte). No cambies lo que hay dentro.
+- Python 3.13 (probado con 3.13.4) y las librerías de `requirements_clasificador.txt`:
 
 ```
 python -m pip install -r requirements_clasificador.txt
@@ -17,23 +17,35 @@ Funciona solo con el procesador (CPU) y sin internet.
 
 ## Uso
 
+Carga los modelos **una sola vez** (tarda entre 10 s y 1 min) y después pásale las fotos que quieras.
+Si no quieres que la app se quede parada al arrancar, crea el `Clasificador` en un hilo aparte mientras se abre la ventana.
+
+Foto a foto, leyendo de una carpeta:
+
 ```python
+from pathlib import Path
 from clasificador_diatomeas import Clasificador
 
-clf = Clasificador("ruta/a/modelos")   # tarda entre 10 s y 1 min: hazlo una vez, al abrir la app
+clf = Clasificador("ruta/a/modelos")              # una vez, al abrir la app
 
-# Una foto
-resultado = clf.clasificar("foto.tif")
-for diatomea in resultado.recortes:
-    print(diatomea.especie, diatomea.caja, diatomea.top3)
-imagen = clf.anotar("foto.tif", resultado)   # la foto con los recuadros, para mostrarla en la app
+resultados = []
+for foto in sorted(Path("fotos").glob("*.tif")):
+    resultado = clf.clasificar(foto)               # unos 3-5 s por foto
+    resultados.append(resultado)
+    clf.anotar(foto, resultado).save(f"anotadas/{foto.stem}.jpg")   # la foto con los recuadros (opcional)
 
-# Una carpeta entera: escribe resultados.xlsx y las fotos anotadas
+clf.guardar_excel(resultados, "resultados.xlsx")
+```
+
+O todo de una vez (busca también en subcarpetas y escribe el Excel y las fotos anotadas):
+
+```python
 excel = clf.procesar_carpeta("fotos", "resultados",
                              al_avanzar=lambda hechas, total, foto: print(f"{hechas}/{total}"))
 ```
 
-`resultado.estado` es `"ok"` o `"sin detecciones"`. Cada elemento de `resultado.recortes` tiene:
+`resultado.estado` es `"ok"`, `"sin detecciones"` o `"error"` (la foto no se puede abrir; el motivo está en
+`resultado.mensaje`). Cada elemento de `resultado.recortes` es una diatomea:
 
 | Campo | Qué es |
 |---|---|
@@ -42,16 +54,13 @@ excel = clf.procesar_carpeta("fotos", "resultados",
 | `caja` | `(x1, y1, x2, y2)` en píxeles de la foto |
 | `top3` | Las tres más probables: `[(clase, probabilidad de 0 a 1), ...]` |
 
-Si una foto no se puede abrir, `clasificar` lanza `ErrorEntrada`. Si falta algo en la carpeta de modelos,
-`Clasificador(...)` lanza `ErrorModelos`. `procesar_carpeta` no se para por una foto mala: la apunta con estado `error`.
+Si falta algo en la carpeta de modelos, `Clasificador(...)` lanza `ErrorModelos`.
 
-## El Excel (`resultados.xlsx`)
+## El Excel
 
 - **Recortes**: una fila por diatomea: foto, número, caja, especie, tipo, top1 / % top1, top2 / % top2, top3 / % top3.
 - **Imagenes**: una fila por foto, con su estado (`ok`, `sin detecciones` o `error`) y el motivo si falla.
 - **Info**: versión del clasificador y de los modelos, y fecha.
-
-Las fotos anotadas quedan en `resultados/anotadas/`.
 
 ## Probarlo sin la app
 
@@ -73,11 +82,9 @@ Probado con PyInstaller 6.22. Añade estas opciones a tu comando:
 - Construye en una carpeta con una ruta corta (por ejemplo `C:\build`). Windows falla con rutas de más de
   260 caracteres y algunas de transformers son muy largas.
 - La carpeta `modelos` no va dentro del .exe: déjala al lado de la app y pásale su ruta a `Clasificador`.
+- Si ofuscas con PyArmor, mejor deja fuera `clasificador_diatomeas`. Si lo ofuscas, incluye su carpeta
+  `fuentes` (la letra de las fotos anotadas).
 - Ocupa unos 900 MB la app empaquetada y 490 MB los modelos.
-
-## Tiempos
-
-En un portátil, unos 5-6 s por foto con 10 diatomeas. Cargar los modelos, entre 10 s y 1 min la primera vez.
 
 ## Limitaciones
 

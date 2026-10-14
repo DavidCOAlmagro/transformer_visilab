@@ -64,12 +64,20 @@ class Clasificador:
         self.indices = indices_resnet(clases["resnet"], self.clases) if usar_resnet else []
 
     def clasificar(self, foto: str | Path | Image.Image, guardar_probabilidades: bool = False) -> Resultado:
-        """Clasifica una foto (ruta o ``PIL.Image``). Lanza ``ErrorEntrada`` si no se puede leer."""
+        """Clasifica una foto (ruta o ``PIL.Image``). Si no se puede abrir, el resultado sale con estado ``error``."""
         if isinstance(foto, Image.Image):
             nombre = Path(getattr(foto, "filename", "") or "imagen").name
         else:
             nombre = Path(foto).name
-        return self._clasificar(abrir_imagen(foto), nombre, guardar_probabilidades)
+        try:
+            imagen = abrir_imagen(foto)
+        except ErrorEntrada as error:
+            return Resultado(nombre, "error", mensaje=str(error))
+        return self._clasificar(imagen, nombre, guardar_probabilidades)
+
+    def guardar_excel(self, resultados: list[Resultado], ruta: str | Path) -> Path:
+        """Escribe el Excel (hojas Recortes, Imagenes e Info) con los resultados de ``clasificar``."""
+        return guardar_excel(resultados, Path(ruta), self.version_modelos)
 
     def anotar(self, foto: str | Path | Image.Image, resultado: Resultado) -> Image.Image:
         """La foto con un recuadro en cada diatomea y el nombre de su especie."""
@@ -117,7 +125,7 @@ class Clasificador:
                 al_avanzar(hechas, len(fotos), relativa.as_posix())
         if guardar_probabilidades:
             guardar_npz(resultados, salida / "probabilidades.npz")
-        return guardar_excel(resultados, salida / "resultados.xlsx", self.version_modelos)
+        return self.guardar_excel(resultados, salida / "resultados.xlsx")
 
     def _clasificar(self, imagen: Image.Image, nombre: str, guardar_probabilidades: bool) -> Resultado:
         detecciones = self.detector.detectar(imagen)
