@@ -17,7 +17,8 @@ Funciona solo con el procesador (CPU) y sin internet.
 
 ## Uso
 
-Carga los modelos **una sola vez** (tarda entre 10 s y 1 min) y después pásale las fotos que quieras.
+Carga los modelos **una sola vez** (unos 6 s; la primera vez después de encender el ordenador puede tardar hasta 1 min)
+y después pásale las fotos que quieras.
 Si no quieres que la app se quede parada al arrancar, crea el `Clasificador` en un hilo aparte mientras se abre la ventana.
 
 Foto a foto, leyendo de una carpeta:
@@ -73,14 +74,12 @@ python -m clasificador_diatomeas carpeta_de_fotos carpeta_de_salida --modelos ru
 Probado con PyInstaller 6.22. Añade estas opciones a tu comando:
 
 ```
---onedir --collect-data clasificador_diatomeas --collect-data ultralytics
---collect-submodules transformers.models.dinov2 --collect-submodules transformers.models.bit
---copy-metadata transformers --copy-metadata torch
+--onedir --collect-data clasificador_diatomeas --collect-data ultralytics --copy-metadata torch
 ```
 
 - Usa `--onedir`, no `--onefile`: con `--onefile` la app descomprime unos 900 MB cada vez que arranca.
-- Construye en una carpeta con una ruta corta (por ejemplo `C:\build`). Windows falla con rutas de más de
-  260 caracteres y algunas de transformers son muy largas.
+- Construye en una carpeta con una ruta corta (por ejemplo `C:\build`): Windows falla con rutas de más de
+  260 caracteres.
 - La carpeta `modelos` no va dentro del .exe: déjala al lado de la app y pásale su ruta a `Clasificador`.
 - Si ofuscas con PyArmor, mejor deja fuera `clasificador_diatomeas`. Si lo ofuscas, incluye su carpeta
   `fuentes` (la letra de las fotos anotadas).

@@ -11,6 +11,7 @@ import numpy as np
 import torch
 from PIL import Image
 
+from .dinov2 import Dinov2, Preprocesado
 from .errores import ErrorModelos
 from .preprocesado import preparar_para_dinov2
 
@@ -48,14 +49,12 @@ class ModeloDino:
     """DINOv2-base ajustado + MLP. La configuración de DINOv2 va en la carpeta de modelos: no se descarga nada."""
 
     def __init__(self, pesos: Path, carpeta_config: Path, n_clases: int) -> None:
-        from transformers import AutoImageProcessor, Dinov2Config, Dinov2Model
-
         estado = cargar_pesos(pesos)
         try:
-            self.backbone = Dinov2Model(Dinov2Config.from_json_file(carpeta_config / "config.json"))
+            self.backbone = Dinov2(carpeta_config / "config.json")
             self.backbone.load_state_dict(con_prefijo(estado, "backbone."), strict=True)
             self.tronco = torch.nn.Sequential(
-                torch.nn.Linear(self.backbone.config.hidden_size, 512), torch.nn.ReLU(), torch.nn.Dropout(0.3),
+                torch.nn.Linear(self.backbone.hidden_size, 512), torch.nn.ReLU(), torch.nn.Dropout(0.3),
                 torch.nn.Linear(512, 256), torch.nn.ReLU(), torch.nn.Dropout(0.2),
             )
             self.cabeza = torch.nn.Linear(256, n_clases)
@@ -63,15 +62,14 @@ class ModeloDino:
             self.cabeza.load_state_dict(con_prefijo(estado, "cabeza_especie."), strict=True)
         except (OSError, RuntimeError, ValueError) as error:
             raise ErrorModelos(f"Los pesos de DINOv2 ({pesos.name}) no encajan con el modelo: {error}") from error
-        self.procesador = AutoImageProcessor.from_pretrained(carpeta_config, local_files_only=True)
+        self.procesador = Preprocesado(carpeta_config / "preprocessor_config.json")
         self.n_clases = n_clases
         for modulo in (self.backbone, self.tronco, self.cabeza):
             modulo.eval()
 
     @torch.inference_mode()
     def _lote(self, recortes: list[Image.Image]) -> np.ndarray:
-        entrada = self.procesador(images=[preparar_para_dinov2(r) for r in recortes], return_tensors="pt")
-        cls = self.backbone(pixel_values=entrada["pixel_values"]).pooler_output
+        cls = self.backbone(self.procesador([preparar_para_dinov2(r) for r in recortes]))
         logits = self.cabeza(self.tronco(cls / cls.norm(dim=1, keepdim=True).clamp_min(1e-12)))
         return torch.softmax(logits.float(), dim=1).numpy()
 

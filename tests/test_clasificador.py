@@ -1,5 +1,6 @@
 """Tests de clasificador_diatomeas que no necesitan los modelos (spec 014)."""
 
+import importlib.util
 import sys
 import tempfile
 import unittest
@@ -7,6 +8,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import torch
 from PIL import Image
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -55,6 +57,42 @@ class PreprocesadoTests(unittest.TestCase):
             referencia = preprocesado_entrenamiento.preparar_para_dinov2(recorte)
             self.assertEqual(nuestro.size, referencia.size)
             self.assertEqual(nuestro.tobytes(), referencia.tobytes())
+
+
+def _carpeta_config_dinov2():
+    """config.json y preprocessor_config.json de dinov2-base en la caché de Hugging Face (o None)."""
+    try:
+        from embeddings import resolver_modelo_dinov2
+        ruta, local = resolver_modelo_dinov2()
+    except Exception:
+        return None
+    return Path(ruta) if local else None
+
+
+@unittest.skipUnless(importlib.util.find_spec("transformers") and _carpeta_config_dinov2(),
+                     "hace falta transformers y dinov2-base en la caché para comparar")
+class Dinov2PropioTests(unittest.TestCase):
+    """El DINOv2 del paquete da exactamente lo mismo que el de transformers (con los mismos pesos)."""
+
+    def test_preprocesado_identico(self):
+        from transformers import AutoImageProcessor
+        from clasificador_diatomeas.dinov2 import Preprocesado
+        carpeta = _carpeta_config_dinov2()
+        recortes = [preparar_para_dinov2(foto_ruido(a, b, s)) for s, (a, b) in enumerate([(60, 180), (300, 90), (224, 224)])]
+        esperado = AutoImageProcessor.from_pretrained(carpeta, local_files_only=True)(images=recortes, return_tensors="pt")
+        self.assertTrue(torch.equal(Preprocesado(carpeta / "preprocessor_config.json")(recortes), esperado["pixel_values"]))
+
+    def test_modelo_identico(self):
+        from transformers import Dinov2Config, Dinov2Model
+        from clasificador_diatomeas.dinov2 import Dinov2
+        config = _carpeta_config_dinov2() / "config.json"
+        torch.manual_seed(0)
+        referencia = Dinov2Model(Dinov2Config.from_json_file(config)).eval()  # pesos aleatorios
+        nuestro = Dinov2(config).eval()
+        nuestro.load_state_dict(referencia.state_dict(), strict=True)
+        pixeles = torch.randn(2, 3, 224, 224)
+        with torch.inference_mode():
+            self.assertTrue(torch.equal(nuestro(pixeles), referencia(pixel_values=pixeles).pooler_output))
 
 
 class CombinacionTests(unittest.TestCase):
