@@ -5,8 +5,7 @@ DINOv2-base y su preprocesado, escritos solo con torch y torchvision.
 Es el mismo modelo que Dinov2Model de la librería transformers (mismas
 operaciones y mismos nombres de los pesos), así que el .pth del
 entrenamiento se carga tal cual y no hace falta instalar transformers,
-que era lo que más tardaba al abrir la app. Comprobado que da
-exactamente lo mismo (tests/test_clasificador.py).
+que era lo que más tardaba al abrir la app.
 --------------------------------------
 """
 import json
@@ -49,7 +48,7 @@ def rellenar_cuadrado(imagen: Image.Image) -> Image.Image:
     """
     Centra el recorte en un lienzo cuadrado del color del borde. Así la
     diatomea no se deforma ni se corta al redimensionar. Es lo mismo que se
-    hizo al entrenar (src/preprocesado.py).
+    hizo al entrenar.
     """
     rgb = imagen.convert("RGB")
     ancho, alto = rgb.size

@@ -4,8 +4,7 @@ Los modelos: YOLO busca las diatomeas en la foto y DINOv2 (y, si se
 activa, también ResNet50) dice de qué especie es cada recorte.
 
 Todo va en CPU y sin internet. La arquitectura y el preprocesado son los
-mismos que en Inferir/infer_and_split_resnet_single_folder.py, con el que
-se midieron los resultados.
+mismos con los que se entrenaron y se midieron los modelos.
 --------------------------------------
 """
 import math
@@ -66,7 +65,7 @@ def con_prefijo(pesos: dict[str, torch.Tensor], prefijo: str) -> dict[str, torch
 def normalizar_caja(caja: list[float], ancho: int, alto: int) -> tuple[int, int, int, int] | None:
     """
     Pasa la caja de YOLO a píxeles enteros dentro de la foto. Devuelve None si
-    no es válida. Es igual que normalize_bbox del script de investigación.
+    no es válida.
     """
     if len(caja) != 4 or not all(math.isfinite(float(valor)) for valor in caja):
         return None
@@ -134,7 +133,7 @@ class ModeloDino:
         try:
             self.backbone = Dinov2(carpeta_config / "config.json")
             self.backbone.load_state_dict(con_prefijo(todos, "backbone."), strict=True)
-            # Misma MLP que en el entrenamiento (src/clasificador.py): 768 -> 512 -> 256 -> especies
+            # Misma MLP que en el entrenamiento: 768 -> 512 -> 256 -> especies
             self.tronco = nn.Sequential(
                 nn.Linear(self.backbone.hidden_size, 512), nn.ReLU(), nn.Dropout(0.3),
                 nn.Linear(512, 256), nn.ReLU(), nn.Dropout(0.2),
@@ -168,7 +167,7 @@ class ModeloDino:
 
 
 class ModeloResNet:
-    """ResNet50 del grupo con su cabeza de 78 clases. Los recortes se pasan a 256x256 como en la referencia."""
+    """ResNet50 con su cabeza de 78 clases. Los recortes se pasan a 256x256, como al entrenarla."""
 
     def __init__(self, pesos: Path, n_clases: int):
         self.modelo = models.resnet50(weights=None)

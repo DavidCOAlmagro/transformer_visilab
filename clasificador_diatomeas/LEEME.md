@@ -1,90 +1,61 @@
 # Clasificador de diatomeas
 
-Busca las diatomeas de una foto de microscopio y dice de qué especie es cada una (77 especies).
-Para cada diatomea da la especie más probable y las tres más probables con su porcentaje.
+Detecta las diatomeas de una foto de microscopio y dice de qué especie es cada una (conoce 77 especies).
+De cada diatomea da la especie más probable y las tres más probables con su porcentaje, y saca un Excel con todo.
 
-## Qué necesitas
+## Instalación
 
-- La carpeta `clasificador_diatomeas` (este código).
-- La carpeta `modelos` (unos 490 MB, te la paso aparte). No cambies lo que hay dentro.
-- Python 3.13 (probado con 3.13.4) y las librerías de `requirements_clasificador.txt`:
+Necesita Python 3.13 y las librerías de `requirements.txt`:
 
-```
-python -m pip install -r requirements_clasificador.txt
-```
+    pip install -r requirements.txt
 
-Funciona solo con el procesador (CPU) y sin internet.
+La carpeta `modelos` (unos 490 MB) va aparte. Funciona con el procesador y no necesita internet.
 
 ## Uso
 
-Carga los modelos **una sola vez** (unos 6 s; la primera vez después de encender el ordenador puede tardar hasta 1 min)
-y después pásale las fotos que quieras.
-Si no quieres que la app se quede parada al arrancar, crea el `Clasificador` en un hilo aparte mientras se abre la ventana.
+    from clasificador_diatomeas import Clasificador
 
-Foto a foto, leyendo de una carpeta:
+    clf = Clasificador("ruta/a/modelos")   # tarda unos segundos, mejor una sola vez al abrir la app
 
-```python
-from pathlib import Path
-from clasificador_diatomeas import Clasificador
+    resultados = []
+    for foto in fotos:
+        resultado = clf.clasificar(foto)
+        resultados.append(resultado)
+        clf.anotar(foto, resultado).save("anotada.jpg")   # la foto con los recuadros, si la quieres
 
-clf = Clasificador("ruta/a/modelos")              # una vez, al abrir la app
+    clf.guardar_excel(resultados, "resultados.xlsx")
 
-resultados = []
-for foto in sorted(Path("fotos").glob("*.tif")):
-    resultado = clf.clasificar(foto)               # unos 3-5 s por foto
-    resultados.append(resultado)
-    clf.anotar(foto, resultado).save(f"anotadas/{foto.stem}.jpg")   # la foto con los recuadros (opcional)
+Cada `resultado` tiene un `estado` ("ok", "sin detecciones" o "error" si la foto no se puede abrir, con el motivo en
+`mensaje`) y una lista `recortes` con una entrada por diatomea:
 
-clf.guardar_excel(resultados, "resultados.xlsx")
-```
+- `especie`: el nombre, por ejemplo "Navicula gregaria"
+- `tipo`: "especie", "vista pleural" (la diatomea está de lado y solo se sabe el género) o "resto" (restos o fragmentos)
+- `caja`: (x1, y1, x2, y2) en píxeles de la foto
+- `top3`: las tres más probables, como [(clase, probabilidad), ...]
 
-O todo de una vez (busca también en subcarpetas y escribe el Excel y las fotos anotadas):
+Si prefieres procesar una carpeta entera de golpe está `clf.procesar_carpeta("fotos", "resultados")`, que guarda el
+Excel y las fotos anotadas. Para probarlo sin la app:
 
-```python
-excel = clf.procesar_carpeta("fotos", "resultados",
-                             al_avanzar=lambda hechas, total, foto: print(f"{hechas}/{total}"))
-```
-
-`resultado.estado` es `"ok"`, `"sin detecciones"` o `"error"` (la foto no se puede abrir; el motivo está en
-`resultado.mensaje`). Cada elemento de `resultado.recortes` es una diatomea:
-
-| Campo | Qué es |
-|---|---|
-| `especie` | Nombre de la especie más probable, p. ej. `Navicula gregaria` |
-| `tipo` | `especie`, `vista pleural` (la diatomea se ve de lado y solo se sabe el género) o `resto` (restos o fragmentos) |
-| `caja` | `(x1, y1, x2, y2)` en píxeles de la foto |
-| `top3` | Las tres más probables: `[(clase, probabilidad de 0 a 1), ...]` |
-
-Si falta algo en la carpeta de modelos, `Clasificador(...)` lanza `ErrorModelos`.
+    python -m clasificador_diatomeas carpeta_fotos carpeta_resultados --modelos ruta/a/modelos
 
 ## El Excel
 
-- **Recortes**: una fila por diatomea: foto, número, caja, especie, tipo, top1 / % top1, top2 / % top2, top3 / % top3.
-- **Imagenes**: una fila por foto, con su estado (`ok`, `sin detecciones` o `error`) y el motivo si falla.
-- **Info**: versión del clasificador y de los modelos, y fecha.
+Tiene tres hojas: Recortes (una fila por diatomea con la especie y el top-3 con porcentajes), Imagenes (una fila por
+foto con su estado) e Info (versiones y fecha).
 
-## Probarlo sin la app
+## PyInstaller
 
-```
-python -m clasificador_diatomeas carpeta_de_fotos carpeta_de_salida --modelos ruta/a/modelos
-```
+Funciona añadiendo estas opciones:
 
-## Si conviertes la app en .exe (PyInstaller)
+    --onedir --collect-data ultralytics --copy-metadata torch
 
-Probado con PyInstaller 6.22. Añade estas opciones a tu comando:
+Mejor `--onedir` que `--onefile`, porque con `--onefile` tiene que descomprimir unos 900 MB cada vez que se abre.
+Constrúyelo en una ruta corta (tipo `C:\build`), que Windows da problemas con rutas muy largas. La carpeta `modelos`
+déjala fuera del exe. Si ofuscas con PyArmor, deja fuera este paquete.
 
-```
---onedir --collect-data ultralytics --copy-metadata torch
-```
+## A tener en cuenta
 
-- Usa `--onedir`, no `--onefile`: con `--onefile` la app descomprime unos 900 MB cada vez que arranca.
-- Construye en una carpeta con una ruta corta (por ejemplo `C:\build`): Windows falla con rutas de más de
-  260 caracteres.
-- La carpeta `modelos` no va dentro del .exe: déjala al lado de la app y pásale su ruta a `Clasificador`.
-- Si ofuscas con PyArmor, mejor deja fuera `clasificador_diatomeas`.
-- Ocupa unos 900 MB la app empaquetada y 490 MB los modelos.
-
-## Limitaciones
-
-- Solo conoce 77 especies. Si en la foto hay otra, dirá la más parecida de esas 77 (no avisa de que no la conoce).
+- En un portátil normal tarda unos 3 s en buscar las diatomeas de una foto y medio segundo más por cada una, así que una
+  foto con 10 diatomeas son unos 8 s. Con un procesador de 2 núcleos, más o menos el doble.
+- Solo conoce 77 especies: si en la foto hay otra, te dirá la más parecida.
 - Está probado con fotos de Aqualitas y DBO5. Con otro microscopio o aumento puede funcionar peor.
