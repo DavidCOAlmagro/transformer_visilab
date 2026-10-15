@@ -1,5 +1,9 @@
-"""Tests de clasificador_diatomeas que no necesitan los modelos (spec 014)."""
-
+"""
+--------------------------------------
+Tests de clasificador_diatomeas (spec 014) que no necesitan los pesos.
+Los de DINOv2 propio se saltan si no está transformers instalado.
+--------------------------------------
+"""
 import importlib.util
 import sys
 import tempfile
@@ -15,15 +19,12 @@ RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 sys.path.insert(0, str(RAIZ / "src"))
 import preprocesado as preprocesado_entrenamiento  # noqa: E402
-from clasificador_diatomeas.anotacion import anotar  # noqa: E402
-from clasificador_diatomeas.clasificador import nombre_fichero  # noqa: E402
-from clasificador_diatomeas.combinacion import combinar, indices_resnet, top3  # noqa: E402
-from clasificador_diatomeas.errores import ErrorEntrada, ErrorModelos  # noqa: E402
-from clasificador_diatomeas.imagenes import abrir_imagen, buscar_imagenes  # noqa: E402
-from clasificador_diatomeas.nombres import nombre_legible, tipo_clase  # noqa: E402
-from clasificador_diatomeas.preprocesado import preparar_para_dinov2  # noqa: E402
-from clasificador_diatomeas.resultados import Recorte, Resultado  # noqa: E402
-from clasificador_diatomeas.salida import COLUMNAS_IMAGENES, COLUMNAS_RECORTES, guardar_excel  # noqa: E402
+from clasificador_diatomeas.clasificador import Recorte, Resultado  # noqa: E402
+from clasificador_diatomeas.dinov2 import rellenar_cuadrado  # noqa: E402
+from clasificador_diatomeas.excel import COLUMNAS_IMAGENES, COLUMNAS_RECORTES, guardar_excel, nombre_legible, tipo_clase  # noqa: E402
+from clasificador_diatomeas.imagenes import (ErrorEntrada, abrir_imagen, anotar, buscar_imagenes,  # noqa: E402
+                                             nombre_fichero, posicion_etiqueta)
+from clasificador_diatomeas.modelos import ErrorModelos, combinar, indices_resnet, top3  # noqa: E402
 
 CLASES_DINO = (RAIZ / "Inferir" / "txt_classes" / "classes_77(dino).txt").read_text(encoding="utf-8").split()
 CLASES_RESNET = (RAIZ / "Inferir" / "txt_classes" / "classes_78(resnet).txt").read_text(encoding="utf-8").split()
@@ -43,24 +44,26 @@ class NombresTests(unittest.TestCase):
         self.assertEqual(nombre_legible("Fragments"), "Fragmento")
 
     def test_todas_las_clases(self):
-        tipos = {c: tipo_clase(c) for c in CLASES_DINO}
-        self.assertEqual(sum(t == "resto" for t in tipos.values()), 2)
-        self.assertEqual(sum(t == "vista pleural" for t in tipos.values()), 9)
-        self.assertTrue(all(nombre_legible(c) and "_" not in nombre_legible(c) for c in CLASES_DINO))
+        tipos = [tipo_clase(clase) for clase in CLASES_DINO]
+        self.assertEqual(tipos.count("resto"), 2)
+        self.assertEqual(tipos.count("vista pleural"), 9)
+        for clase in CLASES_DINO:
+            self.assertTrue(nombre_legible(clase))
+            self.assertNotIn("_", nombre_legible(clase))
 
 
-class PreprocesadoTests(unittest.TestCase):
+class RellenoTests(unittest.TestCase):
     def test_igual_que_en_el_entrenamiento(self):
         for semilla, (ancho, alto) in enumerate([(50, 200), (300, 40), (128, 128), (1, 7)]):
             recorte = foto_ruido(ancho, alto, semilla)
-            nuestro = preparar_para_dinov2(recorte)
+            nuestro = rellenar_cuadrado(recorte)
             referencia = preprocesado_entrenamiento.preparar_para_dinov2(recorte)
             self.assertEqual(nuestro.size, referencia.size)
             self.assertEqual(nuestro.tobytes(), referencia.tobytes())
 
 
 def _carpeta_config_dinov2():
-    """config.json y preprocessor_config.json de dinov2-base en la caché de Hugging Face (o None)."""
+    """Carpeta de dinov2-base en la caché de Hugging Face (con config.json y preprocessor_config.json), o None."""
     try:
         from embeddings import resolver_modelo_dinov2
         ruta, local = resolver_modelo_dinov2()
@@ -72,15 +75,17 @@ def _carpeta_config_dinov2():
 @unittest.skipUnless(importlib.util.find_spec("transformers") and _carpeta_config_dinov2(),
                      "hace falta transformers y dinov2-base en la caché para comparar")
 class Dinov2PropioTests(unittest.TestCase):
-    """El DINOv2 del paquete da exactamente lo mismo que el de transformers (con los mismos pesos)."""
+    """El DINOv2 del paquete da exactamente lo mismo que el de transformers con los mismos pesos."""
 
     def test_preprocesado_identico(self):
         from transformers import AutoImageProcessor
         from clasificador_diatomeas.dinov2 import Preprocesado
         carpeta = _carpeta_config_dinov2()
-        recortes = [preparar_para_dinov2(foto_ruido(a, b, s)) for s, (a, b) in enumerate([(60, 180), (300, 90), (224, 224)])]
-        esperado = AutoImageProcessor.from_pretrained(carpeta, local_files_only=True)(images=recortes, return_tensors="pt")
-        self.assertTrue(torch.equal(Preprocesado(carpeta / "preprocessor_config.json")(recortes), esperado["pixel_values"]))
+        recortes = [foto_ruido(ancho, alto, semilla) for semilla, (ancho, alto) in enumerate([(60, 180), (300, 90), (224, 224)])]
+        procesador_hf = AutoImageProcessor.from_pretrained(carpeta, local_files_only=True)
+        esperado = procesador_hf(images=[rellenar_cuadrado(r) for r in recortes], return_tensors="pt")["pixel_values"]
+        obtenido = Preprocesado(carpeta / "preprocessor_config.json")(recortes)
+        self.assertTrue(torch.equal(obtenido, esperado))
 
     def test_modelo_identico(self):
         from transformers import Dinov2Config, Dinov2Model
@@ -108,7 +113,8 @@ class CombinacionTests(unittest.TestCase):
 
     def test_combinar_y_top3(self):
         rng = np.random.default_rng(1)
-        p_dino, p_resnet = rng.dirichlet(np.ones(77), 4), rng.dirichlet(np.ones(78), 4)
+        p_dino = rng.dirichlet(np.ones(77), 4)
+        p_resnet = rng.dirichlet(np.ones(78), 4)
         indices = indices_resnet(CLASES_RESNET, CLASES_DINO)
         np.testing.assert_array_equal(combinar(p_dino, p_resnet, indices, 1.0), p_dino)
         mezcla = combinar(p_dino, p_resnet, indices, 0.6)
@@ -116,7 +122,9 @@ class CombinacionTests(unittest.TestCase):
         mejores = top3(mezcla, CLASES_DINO)
         self.assertEqual(len(mejores), 4)
         self.assertEqual(mejores[0][0][0], CLASES_DINO[int(np.argmax(mezcla[0]))])
-        self.assertTrue(all(a[1] >= b[1] for fila in mejores for a, b in zip(fila, fila[1:])))
+        for fila in mejores:
+            self.assertGreaterEqual(fila[0][1], fila[1][1])
+            self.assertGreaterEqual(fila[1][1], fila[2][1])
 
 
 class ImagenesTests(unittest.TestCase):
@@ -134,7 +142,7 @@ class ImagenesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as carpeta:
             ruta = Path(carpeta) / "girada.jpg"
             exif = Image.Exif()
-            exif[0x0112] = 6  # girada 90°
+            exif[0x0112] = 6  # girada 90 grados
             foto_ruido(40, 20).save(ruta, exif=exif)
             self.assertEqual(abrir_imagen(ruta).size, (20, 40))
 
@@ -160,17 +168,19 @@ class ImagenesTests(unittest.TestCase):
 
 def resultados_ejemplo():
     recorte = Recorte(1, (10, 10, 60, 40), [("Gomphonema_fp", 0.7), ("Debris", 0.2), ("Navicula_gregaria", 0.05)], "Diatom")
-    return [Resultado("a.tif", "ok", [recorte]), Resultado("b.tif", "sin detecciones"),
-            Resultado("c.tif", "error", mensaje="No se puede leer c.tif")]
+    return [Resultado("a.tif", "ok", [recorte]),
+            Resultado("b.tif", "sin detecciones"),
+            Resultado("c.tif", "error", mensaje="No se puede abrir c.tif")]
 
 
 class SalidaTests(unittest.TestCase):
     def test_excel(self):
         with tempfile.TemporaryDirectory() as carpeta:
-            ruta = guardar_excel(resultados_ejemplo(), Path(carpeta) / "resultados.xlsx", "prueba")
+            ruta = guardar_excel(resultados_ejemplo(), Path(carpeta) / "resultados.xlsx", "1.0.0", "prueba")
             hojas = pd.read_excel(ruta, sheet_name=None)
         self.assertEqual(list(hojas), ["Recortes", "Imagenes", "Info"])
-        recortes, imagenes = hojas["Recortes"], hojas["Imagenes"]
+        recortes = hojas["Recortes"]
+        imagenes = hojas["Imagenes"]
         self.assertEqual(list(recortes.columns), COLUMNAS_RECORTES)
         self.assertEqual(list(imagenes.columns), COLUMNAS_IMAGENES)
         fila = recortes.iloc[0]
@@ -179,20 +189,21 @@ class SalidaTests(unittest.TestCase):
         self.assertEqual(imagenes.estado.tolist(), ["ok", "sin detecciones", "error"])
 
     def test_etiquetas_no_se_pisan(self):
-        from clasificador_diatomeas.anotacion import posicion_etiqueta
         ocupadas = []
         for caja in [(700, 120, 1100, 260), (720, 100, 900, 250), (710, 110, 1000, 240)]:  # tres cajas juntas arriba
             ocupadas.append(posicion_etiqueta(caja, 800, 60, 2048, 1536, ocupadas))
         for i, a in enumerate(ocupadas):
             for b in ocupadas[i + 1:]:
-                self.assertFalse(a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3], (a, b))
+                se_pisan = a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+                self.assertFalse(se_pisan, (a, b))
 
     def test_anotar(self):
         foto = foto_ruido(200, 120)
-        anotada = anotar(foto, resultados_ejemplo()[0].recortes)
+        recortes = resultados_ejemplo()[0].recortes
+        anotada = anotar(foto, [r.caja for r in recortes], [r.especie for r in recortes])
         self.assertEqual(anotada.size, foto.size)
         self.assertNotEqual(anotada.tobytes(), foto.tobytes())
-        self.assertEqual(anotar(foto, []).tobytes(), foto.tobytes())
+        self.assertEqual(anotar(foto, [], []).tobytes(), foto.tobytes())
 
 
 if __name__ == "__main__":

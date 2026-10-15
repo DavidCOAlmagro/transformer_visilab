@@ -74,15 +74,14 @@ python -m clasificador_diatomeas carpeta_de_fotos carpeta_de_salida --modelos ru
 Probado con PyInstaller 6.22. Añade estas opciones a tu comando:
 
 ```
---onedir --collect-data clasificador_diatomeas --collect-data ultralytics --copy-metadata torch
+--onedir --collect-data ultralytics --copy-metadata torch
 ```
 
 - Usa `--onedir`, no `--onefile`: con `--onefile` la app descomprime unos 900 MB cada vez que arranca.
 - Construye en una carpeta con una ruta corta (por ejemplo `C:\build`): Windows falla con rutas de más de
   260 caracteres.
 - La carpeta `modelos` no va dentro del .exe: déjala al lado de la app y pásale su ruta a `Clasificador`.
-- Si ofuscas con PyArmor, mejor deja fuera `clasificador_diatomeas`. Si lo ofuscas, incluye su carpeta
-  `fuentes` (la letra de las fotos anotadas).
+- Si ofuscas con PyArmor, mejor deja fuera `clasificador_diatomeas`.
 - Ocupa unos 900 MB la app empaquetada y 490 MB los modelos.
 
 ## Limitaciones

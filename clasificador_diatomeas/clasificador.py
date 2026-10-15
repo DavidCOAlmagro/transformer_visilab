@@ -1,24 +1,57 @@
-"""Clasificador: detecta las diatomeas de una foto y da la especie más probable de cada una, con su top-3."""
+"""
+--------------------------------------
+Clasificador de diatomeas para la app.
 
-from __future__ import annotations
-
+Se crea una vez (carga los modelos) y después se le pasan las fotos:
+YOLO encuentra las diatomeas y, para cada una, el modelo da la especie
+más probable y las tres más probables con su probabilidad.
+--------------------------------------
+"""
 import hashlib
 import json
-import re
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
 import numpy as np
 from PIL import Image
 
-from .anotacion import anotar
-from .combinacion import combinar, indices_resnet, top3
-from .deteccion import Detector
-from .errores import ErrorEntrada, ErrorModelos
-from .imagenes import abrir_imagen, buscar_imagenes
-from .modelos import ModeloDino, ModeloResNet
-from .resultados import Recorte, Resultado
-from .salida import guardar_excel
+from .excel import guardar_excel, nombre_legible, tipo_clase
+from .imagenes import ErrorEntrada, abrir_imagen, anotar, buscar_imagenes, nombre_fichero
+from .modelos import Detector, ErrorModelos, ModeloDino, ModeloResNet, combinar, indices_resnet, top3
+
+VERSION = "1.0.0"
+
+
+@dataclass
+class Recorte:
+    """Una diatomea encontrada en la foto."""
+    numero: int                        # orden en que la encontró YOLO (1, 2, ...)
+    caja: tuple[int, int, int, int]    # x1, y1, x2, y2 en píxeles de la foto
+    top3: list[tuple[str, float]]      # (clase, probabilidad de 0 a 1), de más a menos probable
+    clase_detector: str = ""           # lo que dijo YOLO: Diatom o Not_diatom
+
+    @property
+    def codigo(self) -> str:
+        return self.top3[0][0]
+
+    @property
+    def especie(self) -> str:
+        return nombre_legible(self.codigo)
+
+    @property
+    def tipo(self) -> str:
+        return tipo_clase(self.codigo)
+
+
+@dataclass
+class Resultado:
+    """Resultado de una foto. El estado es "ok", "sin detecciones" o "error"."""
+    imagen: str
+    estado: str
+    recortes: list[Recorte] = field(default_factory=list)
+    mensaje: str = ""
+    probabilidades: dict | None = field(default=None, repr=False)  # solo si se piden (uso interno)
 
 
 def leer_json(ruta: Path) -> dict:
@@ -28,7 +61,10 @@ def leer_json(ruta: Path) -> dict:
 
 
 def comprobar_modelos(carpeta: str | Path) -> list[str]:
-    """Ficheros de la carpeta de modelos que faltan o no coinciden con el manifiesto (vacía si todo está bien)."""
+    """
+    Comprueba con el sha256 del manifiesto que los ficheros de la carpeta de
+    modelos están completos. Devuelve los que faltan o están dañados.
+    """
     carpeta = Path(carpeta)
     malos = []
     for nombre, sha256 in leer_json(carpeta / "manifest.json").get("ficheros", {}).items():
@@ -38,33 +74,41 @@ def comprobar_modelos(carpeta: str | Path) -> list[str]:
     return malos
 
 
-def nombre_fichero(relativa: Path) -> str:
-    """``muestra 1/foto.tif`` -> ``muestra_1__foto``: único por foto y válido en cualquier sistema."""
-    partes = [re.sub(r"[^0-9A-Za-zÀ-ÿ.-]+", "_", parte).strip(" ._") or "imagen" for parte in relativa.with_suffix("").parts]
-    return "__".join(partes) or "imagen"
-
-
 class Clasificador:
-    """Carga los modelos de ``carpeta_modelos`` una sola vez; después se usa con tantas fotos como haga falta."""
+    """
+    Carga los modelos de la carpeta indicada una sola vez. Después se puede
+    usar con todas las fotos que hagan falta.
+    """
 
-    def __init__(self, carpeta_modelos: str | Path, cargar_resnet: bool | None = None) -> None:
+    def __init__(self, carpeta_modelos: str | Path, cargar_resnet: bool | None = None):
         self.carpeta = Path(carpeta_modelos)
         manifiesto = leer_json(self.carpeta / "manifest.json")
         clases = leer_json(self.carpeta / "clases.json")
         self.clases: list[str] = clases["dino"]
-        self.version_modelos = manifiesto.get("version_modelos", "")
+        self.version_modelos: str = manifiesto.get("version_modelos", "")
+        # Peso de DINOv2 al mezclarlo con ResNet (1 = solo DINOv2)
         self.peso_dino = float(manifiesto.get("peso_dino", 1.0))
+        # Si es True se descartan las cajas que YOLO marca como Not_diatom
         self.solo_diatomeas = bool(manifiesto.get("solo_cajas_diatom", False))
+
         yolo = manifiesto.get("yolo", {})
         self.detector = Detector(self.carpeta / "yolo.pt", yolo.get("confianza", 0.30), yolo.get("tamano", 1024))
         self.dino = ModeloDino(self.carpeta / "dinov2.pth", self.carpeta / "dinov2_config", len(self.clases))
-        # ResNet solo se carga si entra en la combinación (o si se piden sus probabilidades)
-        usar_resnet = self.peso_dino < 1 if cargar_resnet is None else cargar_resnet
-        self.resnet = ModeloResNet(self.carpeta / "resnet50.pth", len(clases["resnet"])) if usar_resnet else None
-        self.indices = indices_resnet(clases["resnet"], self.clases) if usar_resnet else []
+
+        # ResNet solo se carga si entra en la mezcla (o si se piden sus probabilidades)
+        if cargar_resnet is None:
+            cargar_resnet = self.peso_dino < 1
+        self.resnet = None
+        self.indices = []
+        if cargar_resnet:
+            self.resnet = ModeloResNet(self.carpeta / "resnet50.pth", len(clases["resnet"]))
+            self.indices = indices_resnet(clases["resnet"], self.clases)
 
     def clasificar(self, foto: str | Path | Image.Image, guardar_probabilidades: bool = False) -> Resultado:
-        """Clasifica una foto (ruta o ``PIL.Image``). Si no se puede abrir, el resultado sale con estado ``error``."""
+        """
+        Clasifica una foto (ruta o imagen de PIL). Si no se puede abrir, el
+        resultado sale con estado "error" y el motivo en "mensaje".
+        """
         if isinstance(foto, Image.Image):
             nombre = Path(getattr(foto, "filename", "") or "imagen").name
         else:
@@ -75,40 +119,40 @@ class Clasificador:
             return Resultado(nombre, "error", mensaje=str(error))
         return self._clasificar(imagen, nombre, guardar_probabilidades)
 
-    def guardar_excel(self, resultados: list[Resultado], ruta: str | Path) -> Path:
-        """Escribe el Excel (hojas Recortes, Imagenes e Info) con los resultados de ``clasificar``."""
-        return guardar_excel(resultados, Path(ruta), self.version_modelos)
-
     def anotar(self, foto: str | Path | Image.Image, resultado: Resultado) -> Image.Image:
         """La foto con un recuadro en cada diatomea y el nombre de su especie."""
-        return anotar(abrir_imagen(foto), resultado.recortes)
+        cajas = [recorte.caja for recorte in resultado.recortes]
+        nombres = [recorte.especie for recorte in resultado.recortes]
+        return anotar(abrir_imagen(foto), cajas, nombres)
 
-    def procesar_carpeta(
-        self,
-        entrada: str | Path,
-        salida: str | Path,
-        anotar_fotos: bool = True,
-        al_avanzar: Callable[[int, int, str], None] | None = None,
-        guardar_probabilidades: bool = False,
-    ) -> Path:
-        """Clasifica una foto o todas las de una carpeta (con subcarpetas) y escribe en ``salida``:
+    def guardar_excel(self, resultados: list[Resultado], ruta: str | Path) -> Path:
+        """Escribe el Excel (hojas Recortes, Imagenes e Info) con los resultados de clasificar."""
+        return guardar_excel(resultados, Path(ruta), VERSION, self.version_modelos)
 
-        - ``resultados.xlsx``: una fila por diatomea (hoja Recortes) y una por foto (hoja Imagenes);
-        - ``anotadas/<foto>.jpg`` si ``anotar_fotos``.
-
-        Una foto que falla sale en la hoja Imagenes con estado ``error`` y no para el resto.
-        ``al_avanzar(hechas, total, foto)`` se llama tras cada foto, por ejemplo para una barra de progreso.
+    def procesar_carpeta(self, entrada: str | Path, salida: str | Path, anotar_fotos: bool = True,
+                         al_avanzar: Callable[[int, int, str], None] | None = None,
+                         guardar_probabilidades: bool = False) -> Path:
+        """
+        Clasifica una foto o todas las de una carpeta (con subcarpetas) y escribe en "salida":
+            resultados.xlsx            una fila por diatomea y otra por foto
+            anotadas/<foto>.jpg        si anotar_fotos es True
+        Si una foto falla sale con estado "error" y se sigue con las demás.
+        al_avanzar(hechas, total, foto) se llama después de cada foto (para una barra de progreso).
         Devuelve la ruta del Excel.
         """
-        entrada, salida = Path(entrada), Path(salida)
+        entrada = Path(entrada)
+        salida = Path(salida)
         if entrada.is_file():
-            fotos, base = [entrada], entrada.parent
+            fotos = [entrada]
+            base = entrada.parent
         elif entrada.is_dir():
-            fotos, base = buscar_imagenes(entrada, excluir=salida), entrada
+            fotos = buscar_imagenes(entrada, excluir=salida)
+            base = entrada
         else:
             raise ErrorEntrada(f"No existe {entrada}")
         if not fotos:
             raise ErrorEntrada(f"No hay fotos en {entrada}")
+
         resultados = []
         for hechas, foto in enumerate(fotos, start=1):
             relativa = foto.relative_to(base)
@@ -116,45 +160,63 @@ class Clasificador:
                 imagen = abrir_imagen(foto)
                 resultado = self._clasificar(imagen, relativa.as_posix(), guardar_probabilidades)
                 if anotar_fotos:
-                    (salida / "anotadas").mkdir(parents=True, exist_ok=True)
-                    anotar(imagen, resultado.recortes).save(salida / "anotadas" / f"{nombre_fichero(relativa)}.jpg", quality=90)
-            except Exception as error:  # una foto que falla no para el lote
+                    carpeta_anotadas = salida / "anotadas"
+                    carpeta_anotadas.mkdir(parents=True, exist_ok=True)
+                    cajas = [recorte.caja for recorte in resultado.recortes]
+                    nombres = [recorte.especie for recorte in resultado.recortes]
+                    anotar(imagen, cajas, nombres).save(carpeta_anotadas / f"{nombre_fichero(relativa)}.jpg", quality=90)
+            except Exception as error:  # una foto que falla no para todo el lote
                 resultado = Resultado(relativa.as_posix(), "error", mensaje=str(error))
             resultados.append(resultado)
             if al_avanzar is not None:
                 al_avanzar(hechas, len(fotos), relativa.as_posix())
+
         if guardar_probabilidades:
             guardar_npz(resultados, salida / "probabilidades.npz")
         return self.guardar_excel(resultados, salida / "resultados.xlsx")
 
     def _clasificar(self, imagen: Image.Image, nombre: str, guardar_probabilidades: bool) -> Resultado:
+        # 1. YOLO busca las diatomeas
         detecciones = self.detector.detectar(imagen)
         if self.solo_diatomeas:
-            detecciones = [d for d in detecciones if d[2] == "Diatom"]
+            detecciones = [deteccion for deteccion in detecciones if deteccion[2] == "Diatom"]
         if not detecciones:
             return Resultado(nombre, "sin detecciones")
+
+        # 2. Cada diatomea se recorta y se clasifica
         recortes = [imagen.crop(caja) for _, caja, _ in detecciones]
         p_dino = self.dino.probabilidades(recortes)
         p_resnet = self.resnet.probabilidades(recortes) if self.resnet is not None else None
         probabilidades = combinar(p_dino, p_resnet, self.indices, self.peso_dino)
-        resultado = Resultado(nombre, "ok", [
-            Recorte(numero, caja, mejores, clase)
-            for (numero, caja, clase), mejores in zip(detecciones, top3(probabilidades, self.clases))
-        ])
+
+        # 3. Top-3 de cada recorte
+        resultado = Resultado(nombre, "ok")
+        for (numero, caja, clase_detector), mejores in zip(detecciones, top3(probabilidades, self.clases)):
+            resultado.recortes.append(Recorte(numero, caja, mejores, clase_detector))
         if guardar_probabilidades:
             resultado.probabilidades = {"dino": p_dino, "resnet": p_resnet}
         return resultado
 
 
 def guardar_npz(resultados: list[Resultado], ruta: Path) -> None:
-    """Probabilidades completas de cada recorte (uso interno: elegir la combinación, spec 013)."""
-    con_datos = [r for r in resultados if r.probabilidades is not None]
-    recortes = [(r, c) for r in con_datos for c in r.recortes]
+    """
+    Guarda las probabilidades completas de cada recorte. Es de uso interno:
+    sirve para decidir cómo mezclar DINOv2 y ResNet (spec 013).
+    """
+    con_datos = [resultado for resultado in resultados if resultado.probabilidades is not None]
+    imagenes, numeros, cajas, clases_detector = [], [], [], []
+    for resultado in con_datos:
+        for recorte in resultado.recortes:
+            imagenes.append(resultado.imagen)
+            numeros.append(recorte.numero)
+            cajas.append(recorte.caja)
+            clases_detector.append(recorte.clase_detector)
+
     datos = {
-        "imagen": np.array([r.imagen for r, _ in recortes]),
-        "recorte": np.array([c.numero for _, c in recortes]),
-        "caja": np.array([c.caja for _, c in recortes]).reshape(-1, 4),
-        "clase_detector": np.array([c.clase_detector for _, c in recortes]),
+        "imagen": np.array(imagenes),
+        "recorte": np.array(numeros),
+        "caja": np.array(cajas).reshape(-1, 4),
+        "clase_detector": np.array(clases_detector),
         "p_dino": np.concatenate([r.probabilidades["dino"] for r in con_datos]) if con_datos else np.zeros((0, 0)),
     }
     if con_datos and all(r.probabilidades["resnet"] is not None for r in con_datos):
