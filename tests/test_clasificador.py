@@ -132,10 +132,10 @@ class FotosTests(unittest.TestCase):
 
 
 def resultados_ejemplo():
-    recorte = Recorte(1, (10, 10, 60, 40), "Gomphonema (vista pleural)", "vista pleural",
-                      [("Gomphonema (vista pleural)", 70.0), ("Restos", 20.0), ("Navicula gregaria", 5.0)])
-    return [Resultado("a.tif", "ok", [recorte]), Resultado("b.tif", "sin detecciones"),
-            Resultado("c.tif", "error", mensaje="No se puede abrir c.tif")]
+    con_diatomea = Resultado("a.tif", "ok")
+    con_diatomea.recortes.append(Recorte(1, (10, 10, 60, 40), "Gomphonema (vista pleural)", "vista pleural",
+                                         [("Gomphonema (vista pleural)", 70.0), ("Restos", 20.0), ("Navicula gregaria", 5.0)]))
+    return [con_diatomea, Resultado("b.tif", "sin detecciones"), Resultado("c.tif", "error", mensaje="No se puede abrir c.tif")]
 
 
 class ExcelTests(unittest.TestCase):

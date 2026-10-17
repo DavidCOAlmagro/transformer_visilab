@@ -14,7 +14,6 @@ DINOv2 da la probabilidad de cada especie.
 import math
 import os
 import sys
-from dataclasses import dataclass, field
 from pathlib import Path
 
 import torch
@@ -27,27 +26,30 @@ TAMANO_YOLO = 1024      # tamaño al que YOLO redimensiona la foto
 LOTE = 32               # recortes que se clasifican a la vez
 
 
-@dataclass
 class Recorte:
     """Una diatomea de la foto."""
-    numero: int                        # orden en que la encontró YOLO (1, 2, ...)
-    caja: tuple[int, int, int, int]    # x1, y1, x2, y2 en píxeles
-    especie: str                       # la más probable, por ejemplo "Navicula gregaria"
-    tipo: str                          # "especie", "vista pleural" o "resto"
-    top3: list[tuple[str, float]]      # las 3 más probables: (especie, porcentaje)
+
+    def __init__(self, numero, caja, especie, tipo, top3):
+        self.numero = numero      # orden en que la encontró YOLO (1, 2, ...)
+        self.caja = caja          # recuadro (x1, y1, x2, y2) en píxeles
+        self.especie = especie    # la más probable, por ejemplo "Navicula gregaria"
+        self.tipo = tipo          # "especie", "vista pleural" o "resto"
+        self.top3 = top3          # las 3 más probables: [(especie, porcentaje), ...]
 
 
-@dataclass
 class Resultado:
-    """Lo que sale de una foto. estado: "ok", "sin detecciones" o "error"."""
-    imagen: str
-    estado: str
-    recortes: list[Recorte] = field(default_factory=list)
-    mensaje: str = ""
+    """Lo que sale de una foto."""
+
+    def __init__(self, imagen, estado, mensaje=""):
+        self.imagen = imagen      # nombre de la foto
+        self.estado = estado      # "ok", "sin detecciones" o "error"
+        self.mensaje = mensaje    # el motivo, si hay error
+        self.recortes = []        # un Recorte por cada diatomea
 
 
 def cargar_yolo(ruta: Path):
-    # Que ultralytics no se conecte a internet ni intente instalar paquetes
+    # Que ultralytics no se conecte a internet ni intente instalar paquetes.
+    # ultralytics lee estas dos variables al importarse, por eso el import va aquí y no arriba.
     os.environ.setdefault("YOLO_OFFLINE", "true")
     os.environ.setdefault("YOLO_AUTOINSTALL", "false")
     from ultralytics import YOLO

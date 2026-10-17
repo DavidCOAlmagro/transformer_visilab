@@ -3,6 +3,7 @@
 Abrir las fotos y dibujar encima las diatomeas encontradas.
 --------------------------------------
 """
+import matplotlib
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
@@ -35,9 +36,8 @@ def abrir(foto) -> Image.Image:
 def fuente(tamano: int) -> ImageFont.ImageFont:
     """La letra DejaVu Sans Bold, que viene con matplotlib (se instala con ultralytics)."""
     try:
-        import matplotlib
         return ImageFont.truetype(f"{matplotlib.get_data_path()}/fonts/ttf/DejaVuSans-Bold.ttf", tamano)
-    except (ImportError, OSError):
+    except OSError:
         return ImageFont.load_default(size=tamano)
 
 
