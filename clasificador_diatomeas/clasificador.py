@@ -25,7 +25,7 @@ CONFIANZA_YOLO = 0.30   # YOLO solo devuelve las cajas con al menos esta confian
 TAMANO_YOLO = 1024      # tamaño al que YOLO redimensiona la foto
 LOTE = 32               # recortes que se clasifican a la vez
 
-
+# Las clases recorte y resultado solo guardan info, como un struct de C.
 class Recorte:
     """Una diatomea de la foto."""
 
@@ -49,14 +49,11 @@ class Resultado:
 
 def cargar_yolo(ruta: Path):
     # Que ultralytics no se conecte a internet ni intente instalar paquetes.
-    # ultralytics lee estas dos variables al importarse, por eso el import va aquí y no arriba.
     os.environ.setdefault("YOLO_OFFLINE", "true")
     os.environ.setdefault("YOLO_AUTOINSTALL", "false")
     from ultralytics import YOLO
 
-    if getattr(sys, "frozen", False):
-        # Dentro de un .exe de PyInstaller, ultralytics volvería a abrir la app para
-        # ejecutar "pip show" si la carpeta está en un repositorio git. Se desactiva.
+    if getattr(sys, "frozen", False):  # dentro de un .exe: evita que ultralytics vuelva a abrir la app
         from ultralytics.utils import checks
         checks.check_multiple_install = lambda: None
 
